@@ -4,21 +4,23 @@ This repository captures the architecture plan for a hand-controlled drone
 system that can be simulated end to end in pyrite before the physical boards
 exist.
 
-The target system uses two PCBs:
+The researched baseline uses two PCBs and three processors:
 
-- Hand controller PCB: ESP32-C3 plus IMU.
-- Drone PCB: STM32H7 flight controller plus a second ESP32-C3 BLE radio.
+- Hand controller PCB: ESP32-C3-MINI-1-N4X plus IMU.
+- Drone PCB: STM32H753VIT6 flight controller plus a second
+  ESP32-C3-MINI-1-N4X BLE gateway.
 
-The hand controller reads tilt and gesture data, converts that into command
-frames, and sends those frames over BLE. The drone-side ESP32-C3 bridges BLE to
-the STM32H7 over a serial link. The STM32H7 runs the flight-control firmware and
-produces motor commands.
+The hand controller reads tilt and gesture data, converts it into an 18-byte
+command frame, and sends notifications over BLE. The drone-side ESP32-C3
+validates those frames and publishes CRSF receiver frames over a full-duplex
+UART. The STM32H753 runs PX4-class flight-control firmware and remains the sole
+authority for arming, failsafes, stabilization, and motor commands.
 
 The simulation goal is to run the whole control path:
 
 ```text
-hand tilt trace -> hand ESP32-C3 -> BLE -> drone ESP32-C3 -> serial wire
--> STM32H7 flight firmware -> ESC/motor sink
+hand tilt trace -> hand ESP32-C3 -> BLE -> drone ESP32-C3 -> CRSF/UART
+-> STM32H753 flight firmware -> ESC/motor sink
 ```
 
 ## Architecture
@@ -26,34 +28,27 @@ hand tilt trace -> hand ESP32-C3 -> BLE -> drone ESP32-C3 -> serial wire
 Start here:
 
 - [System architecture](docs/architecture.md)
+- [MCU and architecture research](docs/mcu-architecture-research.md)
 
 ## Target System In Simulation
 
 ```text
-HAND PCB                              AIR                              DRONE PCB
-+-----------------------+                                      +------------------------------------------+
-| ESP32-C3 remote       |                                      | ESP32-C3 drone radio     STM32H7 FC      |
-|                       |                                      |                                          |
-| +-------------------+ |      +----------------------+        | +-------------------+   +--------------+ |
-| | IMU               | |      | BleMedium            |        | | NimBLE central    |   | flight fw    | |
-| | I2C or GPSPI2     | |      | adv/connect/GATT     |        | | or peripheral    |   | Zephyr/bare  | |
-| +---------+---------+ |      | L2CAP                |        | +---------+---------+   | Cortex-M7    | |
-|           |           |      | impairments:         |        |           |             | USART/DMA    | |
-|           v           |      | loss, range/RSSI,    |        |           | UART/SPI    | TIM/PWM      | |
-| +-------------------+ |      | interval, latency    |        | +---------v---------+   +------+-------+ |
-| | NimBLE peripheral | +----->| pcap tap             +------->| | bridge firmware   +--------->       | |
-| | gesture -> cmd    | |      +----------------------+        | | BLE <-> serial    | cmd frames in, | |
-| +-------------------+ |                                      | +-------------------+ telemetry out  | |
-+-----------------------+                                      +--------------------------+--------------+
-          ^                                                                                 |
-          | scenario-driven IMU traces                                                       v
- +--------+---------+                                                            +----------------+
- | sensor feed      |                                                            | ESC/motor sink |
- +------------------+                                                            +----------------+
+HAND PCB                    AIR                  DRONE PCB
++------------------+    +-----------+    +------------------+    +------------------+
+| ESP32-C3         |    | BLE       |    | ESP32-C3        |    | STM32H753        |
+| IMU -> gestures  +--->| medium    +--->| validate/map    +--->| PX4 flight stack |
+| NimBLE peripheral|    | loss/lag  |    | CRSF gateway    |UART| estimator/control|
++------------------+    +-----------+    +------------------+    +--------+---------+
+                                                                          |
+                                                                          v
+                                                                 +----------------+
+                                                                 | ESC/motor sink |
+                                                                 +----------------+
 ```
 
-All three MCUs run in one pyrite `Emulation` with one virtual clock and a
-lockstep quantum.
+The two ESP32-C3 firmwares run exactly in Pyrite first. PX4 SITL and H753 HITL
+cover vehicle dynamics and real flight hardware while the H753 Pyrite platform
+is brought up incrementally.
 
 ## What Pyrite Already Has
 
@@ -71,22 +66,23 @@ lockstep quantum.
 | # | Workstream | Effort | Gate |
 |---|---|---:|---|
 | W1 | STM32H7 platform in pyrite | 2-3 weeks | Flight firmware boots and prints on USART; timer PWM toggles. |
-| W2 | Serial wire medium | days | Drone C3 sends a frame, H7 parses it, in one scenario. |
-| W3 | Scripted protocol peer | days | Each firmware passes alone against the peer. |
+| W2 | CRSF UART wire medium | days | Drone C3 sends CRSF, and a scripted receiver peer parses it. |
+| W3 | Scripted protocol peer | days | Each radio firmware passes alone against its peer. |
 | W4 | C3 I2C or GPSPI2 master model | 1-2 weeks | Unmodified ESP-IDF driver reads `WHO_AM_I`. |
 | W5 | IMU device model | about 1 week | IDF IMU driver streams samples; FIFO overflow path is exercised. |
 | W6 | BLE impairment knobs | days | Scenario cuts link; drone failsafe is asserted. |
 | W7 | Sensor feed plus ESC sink | small | Recorded hand-tilt trace produces expected motor commands. |
 
-Critical path: W1. W2 and W3 unblock both firmware teams early. The BLE hop is
-usable immediately. Total estimate: about 6-8 person-weeks.
+W2 and W3 unblock both radio firmware teams early. W1 is no longer allowed to
+block PX4 SITL or H753 HITL validation. The original 6-8 person-week estimate
+should be treated as provisional until an H753 peripheral inventory is complete.
 
 ## Milestones
 
 1. M1 - Hop by hop:
    remote C3 to drone C3 BLE, drone C3 to scripted peer, and H7 boot.
 2. M2 - Wire closed:
-   drone C3 to H7 over the serial wire with command-frame round trip.
+   drone C3 emits CRSF and PX4 detects both valid input and receiver loss.
 3. M3 - Sensor in:
    IMU on remote C3, recorded trace to BLE to drone to H7 command.
 4. M4 - Failure modes:
@@ -97,8 +93,7 @@ usable immediately. Total estimate: about 6-8 person-weeks.
 
 ## Open Decisions
 
-- Drone PCB radio: second ESP32-C3, nRF module, or HCI module driven by the H7.
-- Drone C3 to H7 link: UART or SPI.
-- IMU part and bus.
-- Command and telemetry framing: MAVLink, COBS, or custom framing.
-
+- Exact hand and flight IMU selections and bus allocation.
+- PX4 board port versus a smaller custom flight stack.
+- BLE demonstrator-only operating range and the threshold for moving to
+  ExpressLRS.
