@@ -1,99 +1,71 @@
-# Hand-Controlled Drone Pyrite Simulation Design
+# Gesture-Controlled H7 Drone
 
-This repository captures the architecture plan for a hand-controlled drone
-system that can be simulated end to end in pyrite before the physical boards
-exist.
+This repository contains the researched hardware, firmware, and safety design
+for a small gesture-controlled quadcopter. The project now goes directly to an
+STM32H7 flight controller. Bluetooth Low Energy (BLE) is the first control
+transport; ExpressLRS is a later receiver swap, not a flight-controller
+redesign.
 
-The researched baseline uses two PCBs and three processors:
-
-- Hand controller PCB: ESP32-C3-MINI-1-N4X plus IMU.
-- Drone PCB: STM32H753VIT6 flight controller plus a second
-  ESP32-C3-MINI-1-N4X BLE gateway.
-
-The hand controller reads tilt and gesture data, converts it into an 18-byte
-command frame, and sends notifications over BLE. The drone-side ESP32-C3
-validates those frames and publishes CRSF receiver frames over a full-duplex
-UART. The STM32H753 runs PX4-class flight-control firmware and remains the sole
-authority for arming, failsafes, stabilization, and motor commands.
-
-The simulation goal is to run the whole control path:
+## Selected Build
 
 ```text
-hand tilt trace -> hand ESP32-C3 -> BLE -> drone ESP32-C3 -> CRSF/UART
--> STM32H753 flight firmware -> ESC/motor sink
+HAND CONTROLLER                         AIRCRAFT
+
+BNO085 + joystick + safety buttons     GNSS + compass
+              |                              |
+       XIAO ESP32-C3  -- BLE -->  XIAO ESP32-C3
+                                         |
+                                         | CRSF UART
+                                         v
+                              Holybro Kakute H7 Mini v1.5
+                              STM32H743 + PX4 v1.17
+                                         |
+                                         | DShot
+                                         v
+                              3-6S four-in-one ESC
+                                         |
+                                  4 x brushless motor
 ```
 
-## Architecture
+The H7/PX4 flight controller is the only flight authority. It owns arming,
+state estimation, stabilization, position control, geofencing, failsafes, and
+motor output. The aircraft ESP32-C3 only validates BLE commands and presents
+them to PX4 as a conventional CRSF receiver.
 
-Start here:
+## Locked Baseline
+
+- Flight controller: Holybro Kakute H7 Mini v1.5, STM32H743.
+- Flight firmware: pinned PX4 v1.17.0 custom build with `crsf_rc` enabled.
+- Aircraft sensors: onboard ICM-42688-P accelerometer/gyroscope and SPA06
+  barometer, plus an external ARK SAM GPS Mini GNSS/compass.
+- Initial air link: encrypted, bonded BLE between two XIAO ESP32-C3 boards.
+- Flight-controller link: full-duplex CRSF on `TELEM1`.
+- Motors: four T-Motor F1204 5000KV motors on 3S, conditional on testing the
+  team's actual propellers.
+- ESC: T-Motor V45A Lite four-in-one, selected because the manufacturer lists
+  current inventory. Its 30.5 mm mount requires the body to support separate
+  20 mm and 30.5 mm electronics patterns.
+- Battery: 3S 450 mAh standard LiPo with XT30, with final capacity subject to
+  all-up mass and measured voltage sag.
+- Boundary: PX4 GNSS geofence outdoors; physical net/enclosure indoors.
+
+BLE RSSI is not a position sensor and cannot enforce a bounding box. The
+software boundary is therefore based on the H7's estimated position outdoors.
+An electronic indoor box would require a local-position system such as UWB,
+motion capture, or validated optical flow and range sensing.
+
+## Documentation
 
 - [System architecture](docs/architecture.md)
-- [MCU and architecture research](docs/mcu-architecture-research.md)
+- [H7 MCU decision](docs/mcu-architecture-research.md)
+- [Direct H7 BLE build specification](docs/h7-ble/README.md)
+- [Component list and procurement gates](docs/h7-ble/component-list.md)
+- [Electronics and wiring](docs/h7-ble/electronics-design.md)
+- [Firmware and protocols](docs/h7-ble/firmware-design.md)
+- [Safety and test plan](docs/h7-ble/safety-and-test-plan.md)
+- [Research sources](docs/h7-ble/sources.md)
 
-## Target System In Simulation
-
-```text
-HAND PCB                    AIR                  DRONE PCB
-+------------------+    +-----------+    +------------------+    +------------------+
-| ESP32-C3         |    | BLE       |    | ESP32-C3        |    | STM32H753        |
-| IMU -> gestures  +--->| medium    +--->| validate/map    +--->| PX4 flight stack |
-| NimBLE peripheral|    | loss/lag  |    | CRSF gateway    |UART| estimator/control|
-+------------------+    +-----------+    +------------------+    +--------+---------+
-                                                                          |
-                                                                          v
-                                                                 +----------------+
-                                                                 | ESC/motor sink |
-                                                                 +----------------+
-```
-
-The two ESP32-C3 firmwares run exactly in Pyrite first. PX4 SITL and H753 HITL
-cover vehicle dynamics and real flight hardware while the H753 Pyrite platform
-is brought up incrementally.
-
-## What Pyrite Already Has
-
-- ESP32-C3 machine booting mask ROM plus flash image.
-- C3 BLE controller through connection and GATT discovery.
-- `BleMedium` with pcap tap.
-- Lockstep multi-machine `Emulation`.
-- STM32 F401/F429 platforms with reusable UART, DMA, GPIO, timer, SPI, and I2C
-  models.
-- `spi_device` seam for external devices.
-- `sim` crate with pyrite-backed binary and scenario loader.
-
-## Workstreams
-
-| # | Workstream | Effort | Gate |
-|---|---|---:|---|
-| W1 | STM32H7 platform in pyrite | 2-3 weeks | Flight firmware boots and prints on USART; timer PWM toggles. |
-| W2 | CRSF UART wire medium | days | Drone C3 sends CRSF, and a scripted receiver peer parses it. |
-| W3 | Scripted protocol peer | days | Each radio firmware passes alone against its peer. |
-| W4 | C3 I2C or GPSPI2 master model | 1-2 weeks | Unmodified ESP-IDF driver reads `WHO_AM_I`. |
-| W5 | IMU device model | about 1 week | IDF IMU driver streams samples; FIFO overflow path is exercised. |
-| W6 | BLE impairment knobs | days | Scenario cuts link; drone failsafe is asserted. |
-| W7 | Sensor feed plus ESC sink | small | Recorded hand-tilt trace produces expected motor commands. |
-
-W2 and W3 unblock both radio firmware teams early. W1 is no longer allowed to
-block PX4 SITL or H753 HITL validation. The original 6-8 person-week estimate
-should be treated as provisional until an H753 peripheral inventory is complete.
-
-## Milestones
-
-1. M1 - Hop by hop:
-   remote C3 to drone C3 BLE, drone C3 to scripted peer, and H7 boot.
-2. M2 - Wire closed:
-   drone C3 emits CRSF and PX4 detects both valid input and receiver loss.
-3. M3 - Sensor in:
-   IMU on remote C3, recorded trace to BLE to drone to H7 command.
-4. M4 - Failure modes:
-   BLE loss, latency, cut, stale frames, garbage injection, and CI failsafe
-   assertions.
-5. M5 - Loop out:
-   ESC sink and measured hand-to-motor latency budget.
-
-## Open Decisions
-
-- Exact hand and flight IMU selections and bus allocation.
-- PX4 board port versus a smaller custom flight stack.
-- BLE demonstrator-only operating range and the threshold for moving to
-  ExpressLRS.
+The documents are a prototype engineering baseline, not an assertion that the
+aircraft is safe merely because it has been designed. Every gate in the test
+plan must be demonstrated with the finished body and propeller before free
+flight.

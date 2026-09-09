@@ -1,158 +1,169 @@
-# Architecture Design
+# System Architecture
 
-This design keeps human-interface logic, radio bridging, and real-time flight
-control as separate responsibilities.
+Research baseline: 2026-09-09
 
-## Responsibility Split
+## Architecture Decision
 
-| Subsystem | Processor | Owns | Does not own |
-|---|---|---|---|
-| Hand controller | ESP32-C3-MINI-1-N4X | IMU sampling, filtering, gesture mapping, 18-byte command notifications, local safety input | Motor mixing, flight stabilization |
-| Drone radio bridge | ESP32-C3-MINI-1-N4X | BLE central, packet validation, BLE-to-CRSF conversion, telemetry forwarding | Gesture interpretation, arming authority, motor control |
-| Flight controller | STM32H753VIT6 | CRSF input, arming, failsafe, control loops, estimator, mixer, PWM/DShot outputs | BLE stack, hand gesture classification |
-| Simulation harness | pyrite / rn-engine | Virtual clock, multi-machine lockstep, scenario inputs, impairment injection, trace capture | Product firmware policy |
+Build the first flying prototype around three processors:
 
-## End-To-End Control Path
+| Location | Processor | Purpose |
+|---|---|---|
+| Hand controller | XIAO ESP32-C3 | BNO085 acquisition, gesture mapping, physical safety inputs, BLE peripheral |
+| Aircraft receiver gateway | XIAO ESP32-C3 | BLE central, command validation, CRSF receiver emulation |
+| Flight controller | STM32H743 on Holybro Kakute H7 Mini v1.5 | PX4 estimation, safety, control, DShot, logging |
+
+This is a direct H7 design. There is no F7 interim flight controller and no
+custom STM32H753 board in the critical path to first flight. The off-the-shelf
+H743 board provides the H7 headroom the project wants while avoiding a custom
+flight-control PCB bring-up.
+
+## End-to-End Design
 
 ```mermaid
 flowchart LR
-    trace[Scenario IMU trace] --> imu[IMU device model]
-    imu --> handDriver[Hand C3 IMU driver]
-    handDriver --> gesture[Gesture filtering and mapping]
-    gesture --> cmd[Command frame]
-    cmd --> bleTx[Hand C3 NimBLE peripheral]
-    bleTx --> medium[BleMedium with impairments and pcap tap]
-    medium --> bleRx[Drone C3 NimBLE central]
-    bleRx --> bridge[BLE-to-CRSF gateway firmware]
-    bridge --> wire[Virtual CRSF UART at 420000 baud]
-    wire --> h7Rx[STM32H753 USART + DMA]
-    h7Rx --> fc[Flight-control firmware]
-    fc --> mixer[Mixer and output scheduler]
-    mixer --> esc[ESC / motor sink]
-
-    fc --> telemetry[Telemetry frame]
-    telemetry --> wire
-    bridge --> bleRx
+    bno[BNO085 in UART-RVC mode] --> hand[Hand ESP32-C3]
+    stick[Yaw and vertical stick] --> hand
+    switches[Deadman + ARM + KILL] --> hand
+    hand -->|BLE notification\n100 Hz| gateway[Aircraft ESP32-C3]
+    gateway -->|CRSF UART\n420000 baud| h7[STM32H743 / PX4]
+    gps[GNSS + external compass] --> h7
+    imu[ICM-42688-P + SPA06] --> h7
+    h7 -->|DShot300| esc[4-in-1 ESC]
+    esc --> motors[Four motors]
+    h7 -. telemetry .-> gateway
+    gateway -. BLE telemetry .-> hand
 ```
 
-## Simulation Boundary
+The laptop and QGroundControl are setup tools, not part of the live pilot path.
+Use USB for bootloader installation, calibration, parameter setup, log download,
+and props-off verification.
+
+## Authority Boundaries
+
+| Subsystem | Owns | Must not own |
+|---|---|---|
+| Hand C3 | Neutral calibration, BNO085 filtering, bounded pilot axes, buttons, BLE security and transmission | Aircraft attitude, position, arming decision, motor mixing |
+| Aircraft C3 | Bonding, allowlist, packet integrity and age, CRSF packing, limited telemetry forwarding | Stabilization, geofence, autonomous landing, direct ESC output |
+| H7/PX4 | Sensor fusion, prearm checks, flight modes, RC-loss behavior, geofence, control allocation, DShot | Gesture interpretation or BLE reconnection policy |
+| ESC | Motor commutation from H7 DShot commands | Flight policy, radio policy, or position safety |
+
+The gateway stops CRSF output when BLE commands are stale. PX4 independently
+detects receiver loss and executes the configured action. This gives two
+freshness checks without pretending that the ESP32-C3 is a second flight
+controller.
+
+## Position and Boundary
 
 ```mermaid
 flowchart TB
-    subgraph Pyrite_Emulation[pyrite Emulation: one virtual clock]
-        subgraph Hand_Machine[Machine 1: hand ESP32-C3]
-            HandFlash[ESP-IDF hand firmware image]
-            HandPeripherals[I2C/GPSPI2, GPIO, BLE controller]
-        end
-
-        subgraph Air_Medium[Machine-to-machine media]
-            BLE[BleMedium]
-            Serial[CRSF UART wire medium]
-        end
-
-        subgraph Drone_Radio_Machine[Machine 2: drone ESP32-C3]
-            RadioFlash[ESP-IDF bridge firmware image]
-            RadioPeripherals[BLE controller, CRSF UART]
-        end
-
-        subgraph Flight_Machine[Machine 3: STM32H753]
-            H7Flash[PX4 or flight firmware image]
-            H7Peripherals[RCC/PWR, USART, DMA, GPIO, TIM/DShot, SPI/I2C]
-        end
-
-        SensorFeed[scenario sensor feed]
-        IMUModel[IMU model]
-        ESCSink[ESC/motor sink]
-
-        SensorFeed --> IMUModel --> HandPeripherals
-        HandPeripherals --> BLE --> RadioPeripherals
-        RadioPeripherals --> Serial --> H7Peripherals
-        H7Peripherals --> ESCSink
-    end
+    gnss[GNSS position and velocity] --> ekf[PX4 EKF]
+    compass[External compass] --> ekf
+    baro[Barometer] --> ekf
+    aircraftImu[Aircraft accel and gyro] --> ekf
+    ekf --> position[Position mode]
+    ekf --> fence[Geofence]
+    controls[CRSF pilot setpoints] --> position
+    position --> controller[Attitude and rate control]
+    fence -->|breach| hold[Hold]
+    loss[CRSF loss] --> land[Land]
+    hold --> controller
+    land --> controller
 ```
 
-## BLE Command Frame Contract
+The first outdoor envelope has three different boundaries:
 
-The hand controller should send commands, not motor outputs.
+| Boundary | Initial value | Meaning |
+|---|---:|---|
+| Pilot operating target | 10 m radius, 3 m high | Normal movement remains comfortably inside the fence |
+| PX4 geofence | 15 m radius, 5 m high | H7 commands Hold after a detected breach |
+| Physically clear test site | At least 25 m radius | Contains GPS error, stopping distance, wind, and fence overshoot |
+
+The geofence is not a hard wall. It reacts after the estimated position crosses
+the limit. It also requires valid position. Indoors, GNSS and BLE RSSI cannot
+enforce this boundary; use a netted physical enclosure and prop guards.
+
+## Control Contract
+
+The hand sends pilot intent, not motor values. Version 1 uses this fixed
+little-endian payload:
 
 ```text
-CommandFrameV1 {
-    protocol_version_u8
-    flags_u8
-    sequence_u16
-    sender_tick_ms_u32
-    pitch_i16
-    roll_i16
-    thrust_i16
-    yaw_i16
-    crc16_ccitt_u16
-}
+CommandFrameV1 (18 bytes)
+offset  size  field
+0       1     protocol_version
+1       1     flags: deadman, arm, kill, calibrated, fault
+2       2     sequence_u16
+4       4     sender_tick_ms_u32 (diagnostics only)
+8       2     pitch_i16       -1000..1000
+10      2     roll_i16        -1000..1000
+12      2     vertical_i16    -1000..1000
+14      2     yaw_i16         -1000..1000
+16      2     CRC16-CCITT over bytes 0..15
 ```
 
-The drone side should reject frames that are stale, duplicated, corrupt, or
-outside the expected mode/state transition rules.
+The receiver uses its own monotonic clock to determine packet age. Clocks are
+not synchronized, so the sender timestamp is never used for the safety timeout.
 
-## Recommended Protocol Shape
+## CRSF Channel Contract
+
+| Channel | Meaning |
+|---|---|
+| CH1 | Roll |
+| CH2 | Pitch |
+| CH3 | Vertical/throttle input |
+| CH4 | Yaw |
+| CH5 | Deliberate arm request |
+| CH6 | Position-mode selector |
+| CH7 | Link-valid diagnostic |
+| CH8 | Guarded kill switch |
+
+Calibrate and verify every channel in QGroundControl with propellers removed.
+The exact switch thresholds are configuration, not assumptions embedded in a
+cable diagram.
+
+## Safety State
 
 ```mermaid
-sequenceDiagram
-    participant Hand as Hand ESP32-C3
-    participant BLE as BleMedium
-    participant Radio as Drone ESP32-C3
-    participant Wire as CRSF UART
-    participant H7 as STM32H753 FC
-    participant ESC as ESC/motor sink
-
-    Hand->>Hand: sample IMU and dead-man input
-    Hand->>Hand: filter, decimate, map gesture
-    Hand->>BLE: 18-byte command notification
-    BLE->>Radio: deliver command with modeled latency/loss
-    Radio->>Radio: validate length, sequence, CRC, range, and age
-    Radio->>Wire: publish CRSF while input is fresh
-    Wire->>H7: receive at 420000 baud
-    H7->>H7: PX4 CRSF input and independent RC-loss check
-    H7->>ESC: emit PWM/DShot motor outputs
-    H7-->>Wire: CRSF telemetry
-    Wire-->>Radio: selected telemetry
-    Radio-->>BLE: telemetry characteristic
-    BLE-->>Hand: telemetry
+stateDiagram-v2
+    [*] --> Boot
+    Boot --> Disarmed: self-tests complete
+    Disarmed --> Pairing: physical pairing action
+    Pairing --> Disarmed: bond complete or timeout
+    Disarmed --> Ready: encrypted link + neutral stream + PX4 ready
+    Ready --> Armed: deadman held + deliberate ARM + PX4 prearm pass
+    Armed --> Armed: fresh bounded commands
+    Armed --> LinkLoss: command older than 60 ms
+    LinkLoss --> Landing: gateway silent and PX4 RC-loss timeout
+    Landing --> Disarmed: land detector disarms
+    Armed --> Killed: guarded KILL
+    Killed --> Disarmed: power cycle and explicit reset sequence
 ```
 
-## Key Design Rules
+Reconnection never restores an armed state. KILL is deliberately separate from
+deadman release: KILL immediately stops thrust and can make the vehicle fall;
+deadman release invokes a flight-stack-managed landing.
 
-- Use the hand C3 as the BLE peripheral and the drone C3 as the central. Send
-  command notifications at 100 Hz with a 10 ms connection interval.
-- Keep flight stabilization on the STM32H7, not the glove.
-- Use per-hop sequence numbers and local age checks; do not compare timestamps
-  across independent clocks.
-- Use CRSF over full-duplex UART between the drone C3 and H753. Stop CRSF output
-  when BLE input is stale; never hold the final command indefinitely.
-- Keep arming and motor-output authority exclusively on the H753.
-- Simulate failure first: BLE cut, stale frames, garbage serial data, FIFO
-  overflow, and sensor silence should all become CI scenarios.
+## ExpressLRS Upgrade
 
-## Verification Layers
-
-Use complementary layers so H753 emulator bring-up does not block control-system
-validation:
-
-1. Host tests for framing, CRC, mapping, sequence wrap, and state transitions.
-2. Pyrite with both exact C3 images, the BLE medium, and a scripted CRSF peer.
-3. PX4 SITL with recorded gesture traces and vehicle physics.
-4. H753 HITL for real clocks, DMA, UART, interrupts, and watchdog behavior.
-5. Targeted H753 Pyrite support for deterministic peripheral fault injection.
-
-## Build Order
-
-```mermaid
-flowchart LR
-    W2W3[W2/W3: CRSF UART + scripted peer] --> M1[M1 hop-by-hop]
-    W1[W1: STM32H7 platform] --> M1
-    M1 --> M2[M2 wire closed]
-    W4W5[W4/W5: C3 bus + IMU model] --> M3[M3 sensor in]
-    M2 --> M3
-    W6[W6: BLE impairments] --> M4[M4 failure modes]
-    M3 --> M4
-    W7[W7: ESC sink] --> M5[M5 loop out]
-    M4 --> M5
+```text
+BLE phase:   aircraft C3 TX/RX/GND -- receiver plug -- H7 TELEM1
+ELRS phase:  ELRS RX TX/RX/GND/5V  -- same plug ----- H7 TELEM1
 ```
+
+Only one receiver is connected at a time. Never Y-connect two TX outputs. PX4
+continues to receive CRSF, so channel mapping, geofence, position mode, and
+failsafe policy remain unchanged when ExpressLRS replaces BLE.
+
+## Verification Strategy
+
+1. Host tests cover frame encoding, CRC, sequence wrap, range checks, and state
+   transitions.
+2. Two C3 boards pass BLE latency, packet-loss, disconnect, and reconnect tests
+   without motors.
+3. PX4 SITL validates mapping, position-mode behavior, geofence, and link loss.
+4. The real H7 passes bootloader, sensor, UART, and output tests with props off.
+5. One motor and the actual team propeller pass a thrust-stand test.
+6. Enclosed tether-free hops precede outdoor GNSS Position-mode tests.
+7. Free flight begins only after every acceptance gate in the safety plan passes.
+
+Detailed implementation is in the [H7 BLE build specification](h7-ble/README.md).
