@@ -1,16 +1,18 @@
 # System Architecture
 
-Research baseline: 2026-09-09
+Research baseline: 2026-09-10
 
 ## Architecture Decision
 
-Build the first flying prototype around three processors:
+Build the first flying prototype around three control processors, then add a
+fourth non-radio processor for collision sensing after the base aircraft flies:
 
 | Location | Processor | Purpose |
 |---|---|---|
 | Hand controller | XIAO ESP32-C3 | BNO085 acquisition, gesture mapping, physical safety inputs, BLE peripheral |
 | Aircraft receiver gateway | XIAO ESP32-C3 | BLE central, command validation, CRSF receiver emulation |
 | Flight controller | STM32H743 on Holybro Kakute H7 Mini v1.5 | PX4 estimation, safety, control, DShot, logging |
+| Aircraft range hub | XIAO RP2040 | Address and sample four VL53L1X sensors; send range-only frames to H7 |
 
 This is a direct H7 design. There is no F7 interim flight controller and no
 custom STM32H753 board in the critical path to first flight. The off-the-shelf
@@ -28,6 +30,8 @@ flowchart LR
     gateway -->|CRSF UART\n420000 baud| h7[STM32H743 / PX4]
     gps[GNSS + external compass] --> h7
     imu[ICM-42688-P + SPA06] --> h7
+    tof[4 x VL53L1X] --> hub[RP2040 range hub]
+    hub -->|range UART on TELEM2| h7
     h7 -->|DShot300| esc[4-in-1 ESC]
     esc --> motors[Four motors]
     h7 -. telemetry .-> gateway
@@ -45,6 +49,7 @@ and props-off verification.
 | Hand C3 | Neutral calibration, BNO085 filtering, bounded pilot axes, buttons, BLE security and transmission | Aircraft attitude, position, arming decision, motor mixing |
 | Aircraft C3 | Bonding, allowlist, packet integrity and age, CRSF packing, limited telemetry forwarding | Stabilization, geofence, autonomous landing, direct ESC output |
 | H7/PX4 | Sensor fusion, prearm checks, flight modes, RC-loss behavior, geofence, control allocation, DShot | Gesture interpretation or BLE reconnection policy |
+| Range hub | ToF address assignment, sampling, validation, health flags, range UART | BLE, RC channels, arming, setpoints, motor output |
 | ESC | Motor commutation from H7 DShot commands | Flight policy, radio policy, or position safety |
 
 The gateway stops CRSF output when BLE commands are stale. PX4 independently
@@ -81,6 +86,13 @@ The first outdoor envelope has three different boundaries:
 The geofence is not a hard wall. It reacts after the estimated position crosses
 the limit. It also requires valid position. Indoors, GNSS and BLE RSSI cannot
 enforce this boundary; use a netted physical enclosure and prop guards.
+
+The staged collision layer uses four narrow range sensors to let PX4 slow or
+stop Position-mode motion toward detected obstacles. It covers only forward,
+right, rear, and left. Initial collision-assisted commands are axis-locked,
+movement into sectors with no data is disabled, and the sensors do not replace
+the geofence or physical containment. See the
+[collision-prevention design](h7-ble/collision-prevention.md).
 
 ## Control Contract
 
@@ -164,6 +176,8 @@ failsafe policy remain unchanged when ExpressLRS replaces BLE.
 4. The real H7 passes bootloader, sensor, UART, and output tests with props off.
 5. One motor and the actual team propeller pass a thrust-stand test.
 6. Enclosed tether-free hops precede outdoor GNSS Position-mode tests.
-7. Free flight begins only after every acceptance gate in the safety plan passes.
+7. Range sensors pass target, FoV, freshness, direction, and braking tests before
+   collision assistance is enabled.
+8. Free flight begins only after every acceptance gate in the safety plan passes.
 
 Detailed implementation is in the [H7 BLE build specification](h7-ble/README.md).

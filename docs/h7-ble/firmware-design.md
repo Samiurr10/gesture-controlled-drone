@@ -9,6 +9,7 @@ Pin exact toolchain and firmware versions in the implementation repository:
 | H7 flight controller | PX4 v1.17.0, `holybro_kakuteh7mini_default` | Custom build with `crsf_rc`; archive binary, parameters, and source commit |
 | Hand C3 | ESP-IDF stable release selected at implementation start | Use ESP-NimBLE and hardware UART; no Wi-Fi at runtime |
 | Aircraft C3 | Same ESP-IDF release as hand | Share protocol library and test vectors |
+| Range hub | Pinned Pico SDK or equivalent RP2040 release | No radio stack; archive binary, source commit, and sensor configuration |
 | ESC | Factory BLHeli_S revision recorded before changes | Configure only after props-off motor tests |
 
 PX4 v1.17 is the stable documentation baseline at the research date.
@@ -23,6 +24,8 @@ sequenceDiagram
     participant Hand as Hand C3
     participant BLE as BLE link
     participant Air as Aircraft C3
+    participant ToF as 4 x VL53L1X
+    participant Hub as Range RP2040
     participant H7 as H7 / PX4
     participant ESC as ESC
 
@@ -32,15 +35,17 @@ sequenceDiagram
     BLE->>Air: encrypted notification
     Air->>Air: length, version, CRC, sequence, range, age
     Air->>H7: CRSF RC_CHANNELS_PACKED
+    ToF->>Hub: I2C range + status
+    Hub->>H7: HubRangeFrameV1 on TELEM2
     H7->>H7: RC mapping, mode, EKF, control, failsafe
     H7->>ESC: DShot300 motor commands
     H7-->>Air: selected CRSF telemetry
     Air-->>Hand: compact BLE telemetry
 ```
 
-The H7 never waits on BLE. The aircraft C3 never computes motor percentages.
-The hand never sends an attitude target that bypasses PX4's manual-control
-limits.
+The H7 never waits on BLE or the range hub. The aircraft C3 never computes motor
+percentages. The range hub cannot change RC channels or setpoints. The hand
+never sends an attitude target that bypasses PX4's manual-control limits.
 
 ## Shared Command Protocol
 
@@ -145,6 +150,13 @@ Initial gesture mapping:
 Do not use hand yaw from the BNO085 for aircraft yaw in version 1. This avoids
 turning magnetic heading drift and operator body rotation into an unintended
 aircraft command. The dedicated stick is unambiguous and self-centering.
+
+When collision-assisted mode is selected, apply dominant-axis locking after
+deadband/filtering: emit either roll or pitch, never both. Use magnitude
+hysteresis to retain the current axis near equality, and require horizontal
+neutral before accepting yaw. This keeps pilot commands inside the four
+measured VL53L1X cones; unrestricted diagonal movement is not supported by the
+first sensor geometry.
 
 Capture neutral only while disarmed, deadman released, buttons inactive, and
 the IMU is stable for at least two seconds. Store calibration with a version and
@@ -327,6 +339,28 @@ telemetry frames and forward compact status at 20 Hz or less:
 
 Telemetry loss must never delay, block, or invalidate fresh command processing.
 
+## Range-Hub Firmware and H7 Driver
+
+The XIAO RP2040 starts all four VL53L1X sensors in shutdown, releases them one
+at a time, and assigns volatile I2C addresses `0x30..0x33`. It then alternates
+front/rear and right/left measurement slots, validates range status, and emits
+fixed `HubRangeFrameV1` messages at 50 Hz on H7 `TELEM2`.
+
+Every frame carries a sequence, four distances, a per-direction valid mask,
+sample span, supply voltage, and CRC16. A sample older than 100 ms loses its
+valid bit. Hub reset, bus recovery, or address reinitialization clears every
+valid bit before any sensor is restarted. Unknown/no-return is never converted
+to maximum range.
+
+Add a small PX4 `gesture_obstacle` serial driver to validate local receive age,
+frame structure, CRC, sequence, health, voltage, and range. It publishes one
+oriented `distance_sensor` instance per fresh direction with the exact tested
+FoV. It stops publishing a direction immediately when the hub marks it invalid.
+
+The complete 26-byte frame, task schedule, pin map, PX4 publication behavior,
+and tests are specified in
+[collision-prevention.md](collision-prevention.md).
+
 ## PX4 Build and Installation
 
 The Kakute ships with Betaflight. PX4 requires flashing the board's PX4
@@ -347,6 +381,8 @@ In `boardconfig`:
 
 - Disable `drivers -> rc_input`.
 - Enable `drivers -> RC -> crsf_rc`.
+- Enable the project `gesture_obstacle` distance-sensor driver after it passes
+  host tests; retain PX4's Collision Prevention and multicopter position control.
 - Save the board configuration change in the project fork.
 
 Build and upload only after installing the PX4 bootloader:
@@ -377,6 +413,7 @@ Archive for every flight-test release:
 |---|---|
 | CRSF port | Free `TELEM1` from its MAVLink mapping, then set `RC_CRSF_PRT_CFG=TELEM1` |
 | CRSF telemetry | `RC_CRSF_TEL_EN=1` only after command-only operation passes |
+| Range-hub port | Free `TELEM2` from MAVLink; start `gesture_obstacle` on `/dev/ttyS1` at 115200 |
 | GNSS | UART4 / `GPS1`, verified in QGroundControl |
 | External compass | Enable/detect external magnetometer and calibrate in final installed orientation |
 | ESC protocol | DShot300 on motor outputs M1-M4 |
@@ -430,6 +467,27 @@ Configure battery cell count, voltage-divider calibration, charged/empty
 voltage, warning thresholds, and Land action for the exact 3S pack. Derive
 thresholds from the battery manufacturer's limits and measured sag; do not copy
 generic values from this document.
+
+### Collision-assisted profile
+
+Keep `CP_DIST` negative/disabled until the complete collision test sequence
+passes. The first enabled profile uses:
+
+| Parameter/policy | Initial value |
+|---|---:|
+| `CP_DIST` | 0.6 m |
+| `CP_DELAY` | 0.3 s, then tune from logs |
+| `CP_GUIDE_ANG` | 0 deg |
+| `CP_GO_NO_DATA` | 0 |
+| `MPC_POS_MODE` | Acceleration based |
+| `MPC_VEL_MANUAL` | 0.5 m/s |
+| `MPC_ACC_HOR_MAX` | 1.5 m/s^2 |
+| Horizontal command policy | Dominant axis only; no translation while yawing |
+
+PX4 maps rangefinder reports into obstacle sectors according to their
+orientation and FoV, blocks movement into no-data directions when configured,
+and stops/Holds after complete range loss on documented timeouts. Verify every
+behavior on the pinned build. [[32]](sources.md#source-32)
 
 ## Failure Timing Budget
 

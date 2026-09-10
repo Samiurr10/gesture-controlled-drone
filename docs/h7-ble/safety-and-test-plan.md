@@ -15,8 +15,9 @@ The first safety principle is layered containment:
 3. Aircraft-gateway packet validation and 60 ms freshness limit.
 4. PX4 prearm checks, Position mode, geofence, RC-loss Land, and low-battery
    action.
-5. A netted enclosure indoors or a physically clear area outdoors.
-6. A second person ready to disconnect the battery after landing or a fault.
+5. Four-direction ToF collision braking after its separate validation gates.
+6. A netted enclosure indoors or a physically clear area outdoors.
+7. A second person ready to disconnect the battery after landing or a fault.
 
 No single software switch is called the safety system.
 
@@ -38,6 +39,11 @@ margin. [[19]](sources.md#source-19)
 A literal rectangular box may be uploaded later as a QGroundControl inclusion
 polygon, but the first validation uses the simpler cylinder. Polygon support
 does not make the boundary collision avoidance.
+
+The range-sensor layer is separate from the geofence. It measures nearby
+objects in four narrow body directions and can constrain low-speed Position-mode
+movement before contact. It does not know the aircraft's geographic location,
+cover diagonal blind sectors, or keep the aircraft inside the test site.
 
 ### Indoor bounded volume
 
@@ -67,6 +73,8 @@ but no specific system is approved by this version of the design.
 | KILL pressed | Continued thrust is the greater immediate hazard | Gateway latches CH8 high with neutral axes/ARM low; aircraft may fall |
 | BLE disconnect/stale | Pilot link unavailable | Gateway stops CRSF within 60 ms; PX4 Lands after configured timeout |
 | Geofence breach | Estimated position crossed limit | PX4 Hold in initial tests |
+| Obstacle in covered direction | Range enters PX4 braking envelope | Collision Prevention limits speed and stops at configured separation |
+| Range direction missing | Space is unknown, not clear | Block movement into the uncovered sector |
 | Position loss | Position mode can no longer meet its contract | PX4 follows tested position-loss/failsafe degradation |
 | Critical battery | Remaining energy is unsafe | PX4 initiates configured Land behavior |
 
@@ -99,12 +107,14 @@ the hardware when any of these occurs:
 
 - A person or animal enters the controlled area.
 - Unexpected motor starts, wrong motor direction/order, or spontaneous arming.
-- C3, H7, GNSS, or ESC resets under motor load.
+- C3, H7, GNSS, range hub, or ESC resets under motor load.
 - Smoke, odor, swelling, damaged insulation, loose prop/hub, or hot connector.
 - Persistent EKF, compass, vibration, GPS, RC, or battery warning.
 - Command sign differs from the checklist.
 - BLE latency/loss exceeds the accepted envelope.
 - Geofence or RC-loss action differs from the recorded configuration.
+- A range sensor reports the wrong direction, misses an approved target, or
+  marks invalid data as clear.
 - Actual propeller touches a guard at any speed.
 - Any team member is uncertain about the current state.
 
@@ -113,7 +123,8 @@ the hardware when any of these occurs:
 Every test record must identify:
 
 - Date, location, weather/wind for outdoor tests, and team members.
-- Body, guard, propeller, motor, ESC, H7, GNSS, battery, and wiring revisions.
+- Body, guard, propeller, motor, ESC, H7, GNSS, range sensors/hub, battery, and
+  wiring revisions.
 - All-up mass and center of gravity.
 - Hand, gateway, and PX4 firmware commit hashes and binary SHA-256 values.
 - QGroundControl parameter export.
@@ -135,8 +146,10 @@ safety parameters invalidates the affected downstream tests.
 - [ ] Battery, H7 USB, receiver plug, and power disconnect remain accessible.
 - [ ] Propellers clear guards/body/wiring melt or flex at maximum deflection.
 - [ ] GNSS and C3 antennas have clear placement.
-- [ ] Finished planning mass is at or below 160 g, or propulsion target is
-  recalculated.
+- [ ] Finished planning mass is at or below 160 g without collision hardware or
+  175 g with it, or the propulsion target is recalculated.
+- [ ] Each collision sensor has a rigid body datum and an unobstructed measured
+  FoV through the full propeller/guard/body-flex envelope.
 
 ### Gate 0B: electrical review
 
@@ -145,7 +158,8 @@ safety parameters invalidates the affected downstream tests.
 - [ ] H7 rail is budgeted to conservative 1.5 A.
 - [ ] Battery/XT30 wire and capacitor ratings are documented.
 - [ ] Every button has a hardware-defined inactive state.
-- [ ] BLE and GNSS UART TX/RX directions are cross-checked.
+- [ ] BLE, GNSS, and range-hub UART TX/RX directions are cross-checked.
+- [ ] The dedicated 3.3 V ToF rail and every `XSHUT` line are continuity-checked.
 - [ ] Props are physically stored away from the bench.
 
 Acceptance: independent reviewer signs both checklists with no open high-risk
@@ -291,6 +305,21 @@ motors; KILL stops them.
 Acceptance: no persistent sensor warning, orientation error, unreasonable
 innovation, or compass change caused by connecting the flight battery.
 
+### Collision-sensor static checks
+
+- Start with one VL53L1X and characterize approved target materials indoors and
+  in direct sun at 0.1-1.5 m.
+- Verify front/right/rear/left identity by moving one padded target at a time.
+- Map the mounted FoV edges; confirm props, guards, wires, and body never appear.
+- Inject no-return, sensor timeout, one unplugged direction, I2C recovery, hub
+  reset, UART corruption, and complete UART silence.
+- Verify every invalid/stale case becomes unknown/no data, never maximum range.
+
+Acceptance: each approved target is detected reliably at least 1.2 m away,
+p99 sample age is below 75 ms, a failed direction clears within 100 ms, and the
+PX4 obstacle map matches the physical direction. Detailed gates are in the
+[collision-prevention design](collision-prevention.md).
+
 ### Power tests
 
 Use a smoke stopper for first energization, then direct battery only after
@@ -301,8 +330,9 @@ normal current is known.
 | USB only | H7 boots; no backfeed to battery/ESC |
 | 3S battery, motors idle | 5 V rail stable; C3/GNSS remain connected |
 | BLE connect/reconnect burst | No 5 V dip or C3/H7 reset |
+| Range-hub boot/address cycle | Stable 5 V and 3.3 V ToF rails; all four addresses and directions valid |
 | Each motor low-to-mid sweep, props off | No reset, UART error, or abnormal heating |
-| Four motors secured, test prop only where enclosure permits | Rail remains valid; GNSS/compass and BLE remain healthy |
+| Four motors secured, test prop only where enclosure permits | Rails remain valid; GNSS/compass, BLE, range hub, and ToF data remain healthy |
 
 Acceptance: no brownout/reset, no insulation damage, and no component exceeds
 its approved temperature.
@@ -326,9 +356,11 @@ Record at each point:
 - Motor, ESC, connector, and battery temperature.
 - Vibration/noise and any visible deformation.
 
-Acceptance for an aircraft at or below 160 g:
+Acceptance for an aircraft at or below the 175 g collision-hardware planning
+maximum:
 
-- At least 80 g static thrust per motor.
+- At least 87.5 g static thrust per motor, or half of the measured all-up mass
+  if heavier/lighter.
 - No operating point above 6 A per motor.
 - No unsafe temperature or worsening temperature trend.
 - No prop/hub slip, cracking, deformation, guard contact, or excessive
@@ -345,7 +377,8 @@ gate regardless of thrust.
 - Verify every motor direction.
 - Verify ESC startup with zero command and no spontaneous spin.
 - Sweep each motor separately, then all at low output.
-- Trigger BLE stale, C3 reset, H7 reboot, low-battery simulation, and KILL.
+- Trigger BLE stale, C3 reset, range-hub reset/silence, H7 reboot, low-battery
+  simulation, and KILL.
 - Inspect flight logs for sensor clipping, vibration, scheduler load, UART
   errors, and resets.
 
@@ -414,6 +447,47 @@ Acceptance:
 Do not intentionally test the fence near the edge of the clear area. Do not use
 Return until it has a separate home/altitude/path validation plan.
 
+## Phase 9: Four-Direction Collision Assistance
+
+Do not enable `CP_DIST` in flight until Phases 0-8 and the static collision
+sensor checks pass. Load the collision-assisted profile: dominant-axis hand
+commands, no translation while yawing, 0.5 m/s maximum horizontal speed,
+`CP_DIST=0.6 m`, `CP_DELAY=0.3 s` pending log tuning, `CP_GUIDE_ANG=0`, and
+`CP_GO_NO_DATA=0`.
+
+Progression:
+
+1. Reproduce covered and uncovered direction behavior in PX4 SITL.
+2. With props off and either valid outdoor GNSS Position mode or the controlled
+   HIL position source, carry the aircraft toward a padded target while applying
+   the matching command and inspect the fused obstacle map.
+3. Repeat after unplugging one sensor. Movement toward that direction must be
+   unavailable.
+4. Repeat complete hub-silence injection. Horizontal motion must stop and the
+   documented Hold transition must occur.
+5. Outdoors with valid GNSS Position mode, approach a large soft/breakaway
+   target below 0.2 m/s and minimum stable height.
+6. Test front, right, rear, and left separately; do not test diagonal motion.
+7. Test RC loss while obstacle braking is active. The already validated RC-loss
+   behavior must remain effective.
+8. Perform ten low-speed approaches per covered direction against an approved
+   large matte target.
+
+Acceptance:
+
+- No target contact, false-clear event, direction swap, or oscillatory approach.
+- Sensor-to-target separation is at least `CP_DIST`, and the nearest body/prop
+  point independently retains the required physical clearance.
+- A missing/stale direction is blocked rather than treated as clear.
+- Range loss, RC loss, geofence, battery, and KILL actions match the signed
+  interaction matrix.
+- Final speed and `CP_DELAY` come from the worst measured lighting, target,
+  latency, and braking case with margin.
+
+The collision feature remains unavailable indoors as an electronic safety
+claim until a separate local-position system is validated. The physical net and
+guards remain mandatory in every indoor phase. [[32]](sources.md#source-32)
+
 ## Failure Analysis
 
 | Failure | Detection | Response | Residual risk |
@@ -427,6 +501,9 @@ Return until it has a separate home/altitude/path validation plan.
 | Aircraft IMU failure | PX4 sensor/EKF checks | PX4 failsafe behavior | Single IMU is a single point of failure |
 | GNSS/compass loss | EKF/status checks | PX4 position-loss degradation | Position/geofence may be unavailable; clear site remains essential |
 | Fence breach | PX4 estimated position | Hold | Action is after breach and depends on position accuracy |
+| One range sensor stale/missing | Hub valid mask and PX4 data age | Covered sector becomes unknown and blocked | Thin/transparent targets can still be missed |
+| Range hub/I2C/UART loss | Frame age/CRC/status | Horizontal motion stops; Hold after validated complete-loss timeout | Vehicle still moves during sensing/control delay |
+| Wrong range orientation | Props-off direction test and installation record | Block release until corrected | An undetected assembly error creates a false obstacle map |
 | ESC channel failure high | No complete independent electronic cutoff | KILL/H7 output may not stop failed hardware | Physical enclosure/clear area; inspect ESC; future hardware cutoff if required |
 | Battery sag/brownout | Voltage/log/reset checks | Battery failsafe or reset | Incorrect thresholds or severe sag can still cause a fall |
 | Propeller/hub failure | Inspection, vibration, RPM gate | Abort/disarm | Custom prop remains a major mechanical risk |
@@ -436,7 +513,8 @@ Return until it has a separate home/altitude/path validation plan.
 The BLE flight prototype is ready for its intended 10 m by 3 m outdoor
 operating target only when:
 
-- All gates 0 through 8 pass on the final configuration.
+- All gates 0 through 8 pass for base flight; Phase 9 also passes before
+  collision assistance is enabled in free flight.
 - The issue log has no open critical/high-severity item.
 - The exact firmware and parameter artifacts are archived.
 - At least ten consecutive enclosed takeoff/hover/land cycles have no anomaly.

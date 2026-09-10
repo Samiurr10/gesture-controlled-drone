@@ -1,6 +1,6 @@
 # Research Sources
 
-Research completed: 2026-09-09
+Research completed: 2026-09-10
 
 ## Method
 
@@ -256,6 +256,119 @@ Primary firmware source documenting BLHeli_S support for DShot150, DShot300,
 and DShot600. The received ESC firmware identity still has to be read and
 archived before motor testing.
 
+## Source 32
+
+[PX4 v1.17: Collision Prevention](https://docs.px4.io/v1.17/en/computer_vision/collision_prevention)
+
+Official behavior and parameter reference for Position-mode collision
+prevention, 72 five-degree obstacle sectors, rangefinder-to-obstacle mapping,
+`CP_DIST`, `CP_DELAY`, `CP_GUIDE_ANG`, `CP_GO_NO_DATA`, stale/lost range data,
+Hold after complete data loss, and Gazebo simulation. It also warns that the
+external companion-computer setup is currently untested.
+
+## Source 33
+
+[PX4 v1.17: Distance Sensors and Rangefinders](https://docs.px4.io/v1.17/en/sensor/rangefinders)
+
+Official overview of rangefinder uses and simulation targets. It distinguishes
+downward range aiding from horizontal obstacle sensing and provides the
+`gz_x500_lidar_down`, `gz_x500_lidar_front`, and `gz_x500_lidar_2d` test
+models.
+
+## Source 34
+
+[PX4 v1.17: Distance-Sensor Driver Modules](https://docs.px4.io/v1.17/en/modules/modules_driver_distance_sensor)
+
+Official module reference showing the native `vl53l1x` driver and its external
+I2C, address, bus, and rotation options. The prototype instead isolates four
+same-address sensors behind a range hub.
+
+## Source 35
+
+[Pololu: VL53L1X Carrier, Item 3415](https://www.pololu.com/product/3415)
+
+Current manufacturer product page for the selected collision sensor. It lists
+active/preferred status, 13 x 18 x 2 mm size, 0.5 g mass without headers,
+2.6-5.5 V carrier input, 20 mA typical/40 mA peak current, 4 cm minimum,
+mode-dependent range/update rate, typical 27-degree FoV, I2C output, and the
+active-low, non-5-V-tolerant `XSHUT` input.
+
+## Source 36
+
+[Seeed Studio: XIAO RP2040](https://wiki.seeedstudio.com/XIAO-RP2040/)
+
+Official board reference for the selected range hub: dual-core RP2040 at up to
+133 MHz, 264 KB SRAM, 2 MB flash, 11 GPIOs, I2C, UART, SPI, 3.3 V I/O, and
+21 x 17.8 mm dimensions.
+
+## Source 37
+
+[PX4: Kakute H7 Mini Board Definition at v1.17.0](https://github.com/PX4/PX4-Autopilot/blob/v1.17.0/boards/holybro/kakuteh7mini/default.px4board)
+
+Pinned source evidence that Kakute H7 Mini maps `TELEM1` to `/dev/ttyS0`,
+`TELEM2` to `/dev/ttyS1`, GPS1 to `/dev/ttyS3`, and includes the common
+distance-sensor and multicopter position-control configuration.
+
+## Source 38
+
+[Pololu: D24V5F3 3.3 V/500 mA Step-Down Regulator](https://www.pololu.com/product/2842/specs)
+
+Current manufacturer product page for the dedicated ToF rail regulator. It
+lists active/preferred status, 3.3 V output, 500 mA typical maximum output,
+3.4-36 V input, 0.4 x 0.5 x 0.1 inch size, and 0.6 g mass without headers.
+
+## Source 39
+
+[Bitcraze: Multi-ranger Deck](https://www.bitcraze.io/multi-ranger-deck/)
+
+Official comparison/reference design using five VL53L1X sensors and a PCA9534
+reset expander for front, rear, left, right, and up ranging. Bitcraze lists
+2.3 g mass and 35 x 35 x 5 mm size, and explicitly states that the deck supplies
+sensor data rather than collision avoidance by itself.
+
+## Source 40
+
+[Pololu: VL53L7CX Wide-FoV Carrier, Item 3418](https://www.pololu.com/product/3418)
+
+Official wide-FoV array candidate for a custom later phase. It lists a
+60 x 60 degree square FoV, 3.5 m maximum range under favorable conditions,
+4x4/8x8 zones, 100 mA typical/150 mA peak current, 0.5 g carrier mass, and the
+LPn process for assigning several devices unique I2C addresses.
+
+## Source 41
+
+[LightWare: SF45/B Product Guide, Revision 3](https://lightwarelidar.com/wp-content/uploads/2025/07/SF45B-Product-Guide-v3.pdf)
+
+Manufacturer specifications for the wider-coverage upgrade: 0.2-50 m range,
+up to 5,000 readings/s and five sweeps/s, 5-5.5 V at 300 mA typical/<450 mA
+startup, UART/I2C, 51 x 48 x 44 mm size, and 59 g mass excluding cables.
+
+## Source 42
+
+[PX4: LightWare SF45/B Rotating Lidar](https://docs.px4.io/main/en/sensor/sf45_rotating_lidar)
+
+Official integration guide requiring a custom PX4 build with
+`lightware_sf45_serial`, 921600-baud sensor configuration, an unused serial
+port, orientation/update/yaw parameters, and obstacle-map verification. It also
+notes 5 V/300 mA demand and possible cable voltage-drop failures.
+
+## Source 43
+
+[PX4 v1.17: Optical Flow](https://docs.px4.io/v1.17/en/sensor/optical_flow)
+
+Official reference for GNSS-denied position/velocity aiding. It explains that
+optical flow requires downward flow sensing plus distance data and must be
+configured and fused by the estimator. This is an indoor-position dependency,
+not a horizontal collision sensor.
+
+## Source 44
+
+[PX4 v1.17.0: LightWare SF45 Serial Driver](https://github.com/PX4/PX4-Autopilot/tree/v1.17.0/src/drivers/distance_sensor/lightware_sf45_serial)
+
+Pinned source evidence that the selected PX4 v1.17.0 tree contains the SF45/B
+serial-driver implementation even though it is not enabled in every default
+board build.
+
 ## Research Conclusions and Inferences
 
 The following are engineering inferences rather than manufacturer promises:
@@ -272,3 +385,7 @@ The following are engineering inferences rather than manufacturer promises:
   of good handling or adequate flight time.
 - The 450 mAh pack is a starting point. Measured all-up mass, hover current,
   voltage sag, and landed capacity determine the final battery.
+- Four narrow VL53L1X sensors support only four-direction braking. Axis locking
+  and no-data blocking are required to avoid claiming unmeasured diagonal space.
+- A dedicated RP2040 hub adds mass and firmware but isolates experimental ToF
+  I2C traffic from the H7's flight-critical compass bus.

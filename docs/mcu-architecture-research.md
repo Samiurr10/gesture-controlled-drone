@@ -1,18 +1,20 @@
 # MCU Selection Research
 
-Research baseline: 2026-09-09
+Research baseline: 2026-09-10
 
 ## Decision
 
 Use an STM32H743 flight controller now, specifically the Holybro Kakute H7 Mini
 v1.5. Use one ESP32-C3 in the hand controller and a second ESP32-C3 as the
-aircraft BLE-to-CRSF gateway.
+aircraft BLE-to-CRSF gateway. After the base aircraft flies, add one XIAO
+RP2040 as a range-only hub for the four collision sensors.
 
 | Function | Selected MCU | Why |
 |---|---|---|
 | Flight control | STM32H743, 480 MHz Cortex-M7 | Compact PX4-supported H7 board, enough compute and memory for estimation, position control, logging, and future sensors |
 | Hand control | ESP32-C3, 160 MHz RISC-V | Existing XIAO board is sufficient for BNO085 parsing, controls, BLE, and safety-state logic |
 | BLE receiver gateway | ESP32-C3, 160 MHz RISC-V | Same toolchain and radio behavior; isolates BLE from flight-control scheduling |
+| Collision-sensor hub | RP2040, dual-core Cortex-M0+ up to 133 MHz | Handles same-address ToF startup and sampling without sharing the H7 compass I2C bus; has no flight authority |
 
 Holybro lists the v1.5 board with an STM32H743, ICM-42688-P IMU, SPA06
 barometer, six UARTs, 128 Mbit flash, 20 x 20 mm mounting, and 5.5 g mass.
@@ -29,7 +31,8 @@ headroom for:
 - PX4 EKF and GNSS Position mode.
 - Geofence and multiple failsafe policies.
 - High-rate flight logging and post-flight analysis.
-- A future rangefinder, optical flow, UWB, or companion link.
+- A staged four-direction VL53L1X collision-sensing link, followed later by
+  optical flow, UWB, or a wider-coverage range sensor if required.
 - BLE first and CRSF/ExpressLRS later without changing flight hardware.
 
 Starting with H7 avoids a board and firmware migration after the basic flight
@@ -105,6 +108,8 @@ indoor box requires a local-position source and its own loss/degradation policy.
 - Connect BLE gateway CRSF to H7 `TELEM1`.
 - Replace the gateway physically with an ExpressLRS receiver later.
 - Keep all arming, modes, geofence, and failsafe configuration on PX4.
+- Keep the RP2040 range hub outside flight authority: it reports measurements
+  and health only; PX4 decides whether movement is allowed.
 
 This decision deliberately favors getting a measured aircraft flying over
 building a novel flight controller before the requirements are known.

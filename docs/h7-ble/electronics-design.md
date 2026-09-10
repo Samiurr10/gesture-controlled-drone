@@ -13,8 +13,13 @@ flowchart TB
     esc <-->|M1-M4 + ground + VBAT| h7[Kakute H7 Mini]
     h7 -->|regulated 5 V| airc3[Aircraft XIAO ESP32-C3]
     h7 -->|regulated 5 V| gps[ARK GNSS + compass]
+    h7 -->|regulated 5 V| rangehub[XIAO RP2040 range hub]
+    h7 -->|regulated 5 V| tofreg[3.3 V ToF regulator]
     airc3 <-->|3.3 V CRSF UART| h7
     gps -->|UART4 GNSS + I2C compass| h7
+    rangehub -->|UART2 range frames| h7
+    tofreg --> tof[4 x VL53L1X]
+    tof <-->|3.3 V I2C + XSHUT| rangehub
 ```
 
 The flight battery connects directly to the ESC. The H7 receives battery
@@ -26,7 +31,8 @@ with four DShot signals. No ESP32 pin ever connects to a motor output.
 | Domain | Source | Loads | Design rule |
 |---|---|---|---|
 | `VBAT_3S` | 3S LiPo through XT30 | ESC power stage, H7 `B+` sense/input | Short 18 AWG loop; capacitor at ESC pads |
-| `5V_FC` | Kakute H7 regulator | Aircraft C3, GNSS/compass, buzzer | Budget to 1.5 A until delivered-board documentation is reconciled |
+| `5V_FC` | Kakute H7 regulator | Aircraft C3, GNSS/compass, range hub, ToF regulator, buzzer | Budget to 1.5 A until delivered-board documentation is reconciled |
+| `3V3_TOF` | D24V5F3 from `5V_FC` | Four VL53L1X carriers | Dedicated 500 mA rail; I2C must remain at 3.3 V |
 | `3V3_LOGIC` | Local regulators on H7/C3/GNSS boards | UART/I2C logic | Never tie separate 3.3 V regulator outputs together |
 | `HAND_BAT` | Protected 1S LiPo | Hand XIAO battery input | Verify polarity and charging path before connection |
 
@@ -42,12 +48,15 @@ not power the aircraft C3. [[9]](sources.md#source-9)
 |---|---:|
 | Aircraft XIAO ESP32-C3 including BLE peaks | 500 mA transient allowance |
 | ARK SAM GPS Mini | 20 mA maximum published |
+| XIAO RP2040 range hub | 100 mA planning allowance; measure actual |
+| Four VL53L1X sensors through 3.3 V regulator | 160 mA peak at 3.3 V plus conversion loss |
 | Active buzzer | 50 mA allowance; verify selected part |
-| Wiring/regulator margin | At least 500 mA |
-| **Total planning ceiling** | **1.07 A** |
+| Wiring/regulator margin | At least 400 mA |
+| **Total planning ceiling** | **About 1.23 A at 5 V-equivalent worst-case allowances** |
 
-This fits the conservative 1.5 A rail on paper. Validate at cold start, during
-BLE reconnect, with motors running, and at the lowest expected battery voltage.
+This fits the conservative 1.5 A rail on paper but leaves limited margin.
+Validate at cold start, during BLE reconnect and sensor initialization, with
+motors running, and at the lowest expected battery voltage.
 If the C3 resets or the 5 V rail dips below its valid range, power the C3 from a
 separate 5 V buck regulator rated for at least 500 mA continuous and transient
 load. Do not remove decoupling or disable brownout detection to hide the fault.
@@ -139,6 +148,43 @@ Mount the antenna face up and forward, as far as practical from the ESC,
 battery lead, motors, and C3 antenna. Give the cable strain relief without
 placing ferromagnetic fasteners beside the compass.
 
+### H7 to collision-sensor hub
+
+Use Kakute UART2, exposed as `R2/T2` and mapped by PX4 to `TELEM2`. This link is
+separate from the CRSF receiver on `TELEM1` and GNSS on UART4.
+[[10]](sources.md#source-10)
+
+| XIAO RP2040 | Kakute H7 Mini | Direction |
+|---|---|---|
+| `D6/GPIO0` TX | `R2` | Range frames to H7 |
+| `D7/GPIO1` RX | `T2` | Configuration/heartbeat from H7 |
+| `GND` | `GND` | Common reference |
+| `5V` through series Schottky diode | H7 `5V` | Hub power |
+
+Do not power the ToF carriers from the H7 3.3 V pad. Feed H7 5 V into a Pololu
+D24V5F3 and use its 3.3 V output for all four carriers. Add 100 uF at the rail
+entry and 100 nF at each remote sensor connection. The D24V5F3 is rated for
+500 mA and the four sensors total about 80 mA typical/160 mA peak from 3.3 V
+using their published per-board values. [[35]](sources.md#source-35)
+[[38]](sources.md#source-38)
+
+| XIAO RP2040 | Range harness | Rule |
+|---|---|---|
+| `D4/GPIO6` | All sensor SDA | Pull up to `3V3_TOF`, never 5 V |
+| `D5/GPIO7` | All sensor SCL | Pull up to `3V3_TOF`, never 5 V |
+| `D0/GPIO26` | Front `XSHUT` | Output-low/high-impedance only |
+| `D1/GPIO27` | Right `XSHUT` | Output-low/high-impedance only |
+| `D2/GPIO28` | Rear `XSHUT` | Output-low/high-impedance only |
+| `D3/GPIO29` | Left `XSHUT` | Output-low/high-impedance only |
+
+The carriers expose active-low `XSHUT`, which the hub uses to assign unique
+volatile I2C addresses after every power cycle. The pin is not 5 V tolerant.
+Measure the combined pull-up network and I2C waveform with all four final cable
+branches connected; do not add pull-ups by habit. [[35]](sources.md#source-35)
+
+Full frame format, stale-data handling, and collision parameters are in the
+[collision-prevention design](collision-prevention.md).
+
 ### Buzzer
 
 Connect the buzzer positive lead to H7 5 V and negative/control lead to the
@@ -209,6 +255,8 @@ top of aircraft
 GNSS/compass: highest/cleanest location, forward marker aligned
 H7: vibration-isolated 20x20 mount, arrow/orientation recorded
 air C3: antenna at body edge, clear of carbon/battery/ESC
+range hub: protected near center; UART kept away from motor phases
+range sensors: fixed F/R/B/L; each full optical cone kept clear
 ESC: separate 30.5x30.5 mount with airflow
 battery: centered near CG, retained by strap plus anti-ejection stop
 ```
@@ -219,6 +267,8 @@ battery: centered near CG, retained by strap plus anti-ejection stop
 - Keep the H7 IMU near the aircraft center of gravity.
 - Record H7 orientation in the assembly drawing and PX4 configuration.
 - Prevent propeller or guard flex from touching any wire at full deflection.
+- Keep every VL53L1X optical aperture outside the body skin and its measured
+  27-degree cone clear of props, guards, wires, and landing structure.
 - Ensure USB, boot, battery disconnect, and receiver plug remain accessible.
 - Use a second mechanical battery retention feature; a strap alone can loosen.
 
@@ -231,11 +281,13 @@ Before applying power, two people independently verify:
 3. No continuity short from VBAT to ground.
 4. H7/ESC harness pin order wire by wire.
 5. No raw VBAT on C3 or GNSS 5 V pins.
-6. UART TX crosses to RX in both CRSF and GNSS cables.
+6. UART TX crosses to RX in CRSF, GNSS, and range-hub cables.
 7. All grounds are present and regulator outputs are not tied together.
 8. Exposed joints are insulated and every connector is strain-relieved.
 9. H7 and GNSS orientation arrows match documentation.
 10. Propellers are absent for all first-power and motor-order tests.
+11. Front/right/rear/left sensor labels and body orientations match the signed
+    harness map.
 
 Photograph both sides of every board and the final harness routing before the
 body is closed. These images become the as-built record for fault diagnosis.

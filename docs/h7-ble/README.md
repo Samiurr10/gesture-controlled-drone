@@ -9,21 +9,20 @@ and a CRSF boundary that can accept ExpressLRS later.
 ```text
 HAND CONTROLLER                    AIRCRAFT
 
-BNO085 + thumb stick              ARK GNSS + compass
-        |                                |
-XIAO ESP32-C3  -- encrypted BLE --> XIAO ESP32-C3
+BNO085 + thumb stick              ARK GNSS + compass      4 x VL53L1X
+        |                                |                      |
+XIAO ESP32-C3 -- encrypted BLE --> XIAO ESP32-C3       XIAO RP2040
+                                          |                      |
+                                     CRSF |            range UART|
+                                          v                      v
+                                Holybro Kakute H7 Mini v1.5
+                                STM32H743 + ICM-42688-P
                                           |
-                                          | full-duplex CRSF
+                                       DShot300
                                           v
-                              Holybro Kakute H7 Mini v1.5
-                              STM32H743 + ICM-42688-P
+                                T-Motor V45A Lite 4-in-1
                                           |
-                                          | DShot300
-                                          v
-                              T-Motor V45A Lite 4-in-1
-                                          |
-                                          v
-                              4 x F1204 5000KV motors
+                                4 x F1204 5000KV motors
 ```
 
 The H7 runs PX4 and is the only flight authority. It owns the aircraft IMU,
@@ -40,6 +39,9 @@ the aircraft or directly controls an ESC.
 - Use the onboard aircraft ICM-42688-P accel/gyro and SPA06 barometer; do not
   add a duplicate IMU to the first prototype.
 - Add ARK SAM GPS Mini GNSS/compass for outdoor position and geofence.
+- Add four body-mounted VL53L1X sensors through a dedicated XIAO RP2040 hub and
+  H7 `TELEM2` after the base aircraft flies. The first mode is four-direction
+  collision braking, not autonomous or diagonal avoidance.
 - Use four T-Motor F1204 5000KV motors on a 3S battery, conditional on testing
   the team's actual propeller.
 - Use the currently listed T-Motor V45A Lite ESC. Its 30.5 mm mount is larger
@@ -55,15 +57,17 @@ the aircraft or directly controls an ESC.
 2. [Components, motors, and procurement](component-list.md)
 3. [Electronics, power, pinout, and wiring](electronics-design.md)
 4. [Firmware, BLE, CRSF, and PX4](firmware-design.md)
-5. [Boundary safety and test gates](safety-and-test-plan.md)
-6. [Official research sources](sources.md)
+5. [Collision sensing and prevention](collision-prevention.md)
+6. [Boundary safety and test gates](safety-and-test-plan.md)
+7. [Official research sources](sources.md)
 
 ## Baseline Assumptions
 
 - Team-designed guarded body for nominal 2.5-inch propellers.
 - Body provides separate 20 x 20 mm H7 and 30.5 x 30.5 mm ESC mounting.
 - 3S standard LiPo power.
-- Provisional 130-160 g all-up mass, to be replaced by measured mass.
+- Provisional 130-160 g base-aircraft mass and 140-175 g with collision
+  hardware, both to be replaced by measured mass.
 - First outdoor movement remains inside 10 m radius and 3 m height, with a
   15 m horizontal and 5 m vertical PX4 fence in a site clear for at least 25 m.
 - Indoor powered tests occur only in a physical enclosure.

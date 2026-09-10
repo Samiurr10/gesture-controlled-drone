@@ -1,6 +1,6 @@
 # Direct H7 BLE Flight Architecture
 
-Research baseline: 2026-09-09
+Research baseline: 2026-09-10
 
 ## Executive Decision
 
@@ -27,6 +27,8 @@ Keep the ESP32-C3 boards outside the flight-control fault domain:
   encrypted BLE notifications.
 - Aircraft C3: maintain the bonded BLE link, validate commands, and emulate a
   CRSF receiver.
+- Range RP2040: initialize and sample four directional ToF sensors, then send
+  measurements and health only over a dedicated UART.
 - H7/PX4: make every aircraft safety and control decision.
 
 Later, physically replace the BLE gateway with an ExpressLRS receiver on the
@@ -57,6 +59,7 @@ requirement still needs GNSS outdoors or a local-position system indoors.
 |---|---|---|
 | Hand C3 | BNO085 parsing, calibration, filtering, gesture mapping, deadman/ARM/KILL inputs, BLE peripheral | Aircraft attitude, position, mixing, autonomous action |
 | Aircraft C3 | BLE central, pairing, freshness, frame validation, CRSF packing, compact telemetry forwarding | Stabilization, geofence, motor output, automatic landing policy |
+| Range RP2040 | VL53L1X address assignment, sampling, health, range-frame UART | BLE, RC channels, arming, setpoint changes, motor output |
 | H7/PX4 | Aircraft sensors, EKF, arming checks, flight modes, geofence, RC loss, control, DShot | Gesture recognition or BLE recovery |
 | Four-in-one ESC | Commutate motors from H7 DShot commands | Flight or radio policy |
 
@@ -74,6 +77,8 @@ flowchart LR
     ac3 -->|CRSF on TELEM1| h7[STM32H743 / PX4]
     gps[GNSS + compass] -->|UART4 + I2C| h7
     imu[ICM-42688-P + SPA06] --> h7
+    tof[4 x VL53L1X] --> rhub[Range RP2040]
+    rhub -->|range frames on TELEM2| h7
     h7 -->|DShot300| esc[T-Motor V45A Lite]
     esc --> motors[4 x F1204 5000KV]
     h7 -. CRSF telemetry .-> ac3
@@ -160,6 +165,24 @@ measurement. For indoor movement:
 A future indoor electronic box requires UWB/motion capture or validated optical
 flow and range sensing, including a tested policy for sensor dropout and drift.
 
+## Collision Prevention
+
+After the base aircraft flies, add four Pololu VL53L1X ToF sensors facing
+forward, right, rear, and left. A dedicated XIAO RP2040 handles their shared
+I2C-address startup and sends range-only frames to H7 `TELEM2`; a custom PX4
+driver publishes oriented `distance_sensor` reports. PX4 Collision Prevention
+then constrains Position-mode motion. [[32]](sources.md#source-32)
+
+The 27-degree sensor FoVs leave diagonal gaps. The first collision-assisted
+mode therefore uses dominant-axis commands, `CP_GO_NO_DATA=0`,
+`CP_GUIDE_ANG=0`, and a 0.5 m/s speed cap. It can slow/stop toward detected
+obstacles in four covered directions, but it is not 360-degree sensing,
+autonomous path planning, or an indoor position system.
+
+The complete architecture, frame format, power design, parameters, failure
+behavior, and test gates are in the
+[collision-prevention design](collision-prevention.md).
+
 ## BLE Link
 
 The hand is BLE peripheral/GATT server. The aircraft is BLE central/GATT
@@ -223,6 +246,8 @@ and range test.
 | Gateway | No valid command for 60 ms | Stop all CRSF RC frames |
 | PX4 RC loss | CRSF absent for 0.5 s | Land with no extra failsafe delay |
 | PX4 geofence | Estimated radius or height breached | Hold |
+| PX4 collision prevention | Fresh obstacle inside stopping envelope in a covered direction | Constrain speed and stop before configured separation |
+| Range data missing | Sector becomes unknown | Block that direction; full loss stops horizontal motion and then Hold after validated timeout |
 | PX4 position loss | Global estimate invalid | Use PX4 tested degradation/failsafe chain |
 | PX4 battery | Configured voltage warning/critical thresholds | Warn, then Land |
 | Mechanical | Software or RF behavior is wrong | Enclosure or clear-site margin contains aircraft |
@@ -252,9 +277,11 @@ T-Motor publishes F1204 5000KV data on 3S with a GF2540 propeller:
 | 60% | 78.63 g | 2.07 A |
 | 100% | 156.57 g | 5.63 A |
 
-Those figures do not validate the team's propeller. For a provisional 160 g
-aircraft, hover requires 40 g per motor and a 2:1 static ratio requires 80 g per
-motor. The actual propeller must therefore demonstrate at least 80 g per motor
+Those figures do not validate the team's propeller. The base aircraft is
+provisionally 130-160 g and the collision-sensor configuration is provisionally
+140-175 g. At 175 g, hover requires 43.75 g per motor and a 2:1 static ratio
+requires 87.5 g per motor. The actual propeller must therefore demonstrate at
+least half of measured all-up mass in static thrust per motor
 without exceeding 6 A, the motor's temperature limit, the propeller's safe RPM,
 or unacceptable vibration. [[12]](sources.md#source-12)
 
@@ -275,7 +302,11 @@ hover current and landed capacity.
 6. Four motors pass order, direction, DShot-stop, and failsafe tests props-off.
 7. First lift occurs in a physical enclosure.
 8. GNSS Position mode and geofence are validated outdoors under clear sky.
-9. ExpressLRS remains optional and is introduced only as a tested CRSF receiver
+9. One range sensor, then the four-sensor hub, passes material, light, FoV,
+   stale-data, and direction tests.
+10. PX4 collision behavior passes simulation, props-off injection, and
+    low-speed restrained-motion gates before it is enabled in free flight.
+11. ExpressLRS remains optional and is introduced only as a tested CRSF receiver
    replacement.
 
 ## Known Limits
@@ -283,7 +314,8 @@ hover current and landed capacity.
 - This is a prototype architecture, not a safety-certified flight system.
 - The Kakute H7 Mini has one flight IMU, so that sensor is a single point of
   failure.
-- A GNSS fence reacts after a breach and cannot prevent collisions.
+- A GNSS fence reacts after a breach and cannot prevent collisions. The added
+  range layer covers only four narrow directions and cannot detect every target.
 - BLE range and latency are environment-dependent.
 - PX4 CRSF needs a custom firmware build and regression testing after updates.
 - V45A Lite has no ESC telemetry; first flight relies on H7 voltage sensing and

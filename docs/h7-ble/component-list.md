@@ -1,6 +1,6 @@
 # Component List and Procurement Gates
 
-Research and availability check: 2026-09-09
+Research and availability check: 2026-09-10
 
 ## Purchase Strategy
 
@@ -22,11 +22,15 @@ connector, dimensions, and stock.
 | 5 | Motors | T-Motor F1204 5000KV | 2-3S, 1.5 mm shaft, 2.5-3 inch | Four installed plus one spare [[12]](sources.md#source-12) |
 | 1 | BLE gateway | Seeed XIAO ESP32-C3 | BLE central and CRSF UART | Buy or use existing [[1]](sources.md#source-1) |
 | 1 | Position module | ARK SAM GPS Mini | SAM-M10Q GNSS + IIS2MDC compass | Buy exact unit [[13]](sources.md#source-13) |
+| 5 | Horizontal range sensor | Pololu VL53L1X carrier, item 3415 | Four installed plus one spare; 27-degree typical FoV | Buy after one-sensor proof [[35]](sources.md#source-35) |
+| 1 | Range-sensor hub | Seeed XIAO RP2040 | I2C address/sampling hub; range-only UART to H7 | Buy for collision phase [[36]](sources.md#source-36) |
+| 1 | ToF rail regulator | Pololu D24V5F3 | 3.3 V/500 mA from H7 5 V rail | Buy for collision phase [[38]](sources.md#source-38) |
 | 3 | Flight batteries | Tattu 450 mAh 3S 75C XT30 | Standard LiPo, balance lead | Start with three [[22]](sources.md#source-22) |
 | 1 | Power connector lead | Genuine XT30 pigtail, 18 AWG silicone | Replace ESC's supplied XT60 lead | Buy from reputable distributor |
 | 1 | Input capacitor | 470 uF low-ESR, at least 25 V | Directly across ESC battery pads | Use ESC-supplied part only if rating is verified |
 | 1 | Buzzer | 5 V active piezo compatible with H7 buzzer pads | Audible fault/arming indication | Buy |
 | 1 | Receiver harness | JST-SH 1.0 mm 6-pin pigtail plus locking 4-pin receiver plug | Replaceable BLE/ELRS CRSF interface | Fabricate and continuity-test |
+| 1 | Range-hub harness | Locking UART plug plus four I2C/XSHUT branches | `TELEM2`, 3.3 V ToF rail, keyed sensor directions | Fabricate and test |
 | 1 | ESC harness | JST-SH 1.0 mm 8-pin pigtail | H7 signals to cross-vendor ESC wiring | Re-pin; never plug blindly |
 | 1 set | Wire | 30 AWG silicone signal, 18 AWG battery, motor wire matching motor leads | Flexible, heat resistant | Buy |
 | 1 set | Insulation and strain relief | Heat-shrink, fabric tape, cable ties, adhesive mounts | No exposed conductors or wire load at pads | Buy |
@@ -62,6 +66,25 @@ Before ordering, the body CAD must show:
 If the board does not fit, stop and select a currently stocked 3S-capable ESC
 with published dimensions and DShot compatibility. Do not change to an unknown
 marketplace ESC without a new electrical and thermal review.
+
+### Collision-sensor procurement gate
+
+Buy one VL53L1X, the RP2040 hub, and the 3.3 V regulator first. Buy the remaining
+four range sensors only after that bench unit demonstrates the required range,
+freshness, and failure signaling on the actual target materials and lighting.
+
+Before installing all four, the body CAD must show:
+
+- One rigid sensor mount at 0, 90, 180, and 270 degrees in the body frame.
+- A clear 27-degree cone from every optical aperture through the full body-flex
+  and propeller envelope.
+- Protected but unobstructed lenses outside the body skin.
+- A replaceable 21 x 17.8 mm RP2040 location and 13 x 18 mm envelope per sensor.
+- A short `TELEM2` UART route and a separate, strain-relieved I2C/XSHUT harness.
+
+The four-sensor build supports only axis-locked movement in measured directions.
+It is not acceptable for unrestricted diagonal or autonomous obstacle avoidance.
+See the [collision-prevention design](collision-prevention.md).
 
 ## Hand Controller BOM
 
@@ -132,19 +155,21 @@ different propeller. [[12]](sources.md#source-12)
 | ESC | 13 g |
 | Aircraft XIAO C3 and wiring | 4-7 g |
 | ARK SAM GPS Mini and wiring | about 8-10 g |
+| Four VL53L1X sensors, RP2040 hub, regulator, mounts, and wiring | 9-14 g planning allowance |
 | 3S 450 mAh battery | 42 g nominal [[22]](sources.md#source-22) |
 | Capacitor, connector, buzzer, hardware | 8-12 g |
 | Team body, guards, and props | 25-45 g target |
-| **Planned all-up range** | **130-160 g** |
+| **Planned base-aircraft range** | **130-160 g** |
+| **Planned range with collision hardware** | **140-175 g** |
 
 Weigh the assembled aircraft. Do not use this table as the final mass.
 
 ### Acceptance math
 
-At 160 g all-up weight:
+At the 175 g collision-hardware planning maximum:
 
-- Hover thrust is `160 / 4 = 40 g` per motor.
-- A minimum 2:1 static thrust ratio requires `80 g` per motor.
+- Hover thrust is `175 / 4 = 43.75 g` per motor.
+- A minimum 2:1 static thrust ratio requires `87.5 g` per motor.
 - The published four-motor peak is about `4 x 156.57 = 626 g` with the vendor
   prop, but that number is not transferable to the team's prop.
 - Published peak current is `4 x 5.63 = 22.52 A`.
@@ -157,7 +182,8 @@ The team's propeller must pass all conditions on one motor before four are
 installed:
 
 - Correct 1.5 mm shaft/hub fit with no slip or eccentricity.
-- At least 80 g static thrust for a 160 g aircraft.
+- At least half the measured all-up mass in static thrust per motor; 87.5 g at
+  the 175 g planning maximum.
 - No more than 6 A per motor in the approved operating range.
 - No visible cracking, hub deformation, or contact with guards.
 - No unsafe vibration in the motor mount or H7 log.
@@ -166,7 +192,7 @@ installed:
 - Measured RPM remains below the propeller's documented safe limit. If the team
   cannot state that limit, the propeller is not approved for free flight.
 
-If all-up mass exceeds 160 g, recompute the per-motor target and repeat testing.
+If all-up mass exceeds 175 g, recompute the per-motor target and repeat testing.
 Do not compensate for an underpowered combination by removing guards or raising
 software limits.
 
@@ -191,6 +217,8 @@ label capacity. Land before critical voltage and keep a per-pack cycle log.
 - A second aircraft IMU merely for a specification-sheet feature.
 - ExpressLRS hardware before BLE flight requirements are measured, unless the
   team wants it independently as a conventional backup development controller.
+- A LightWare SF45/B for the 2.5-inch prototype. Its 59 g mass and enclosure
+  require a new body, center-of-gravity, power, propulsion, and battery review.
 - Optical flow/UWB hardware without first defining the indoor coordinate frame,
   coverage, update rate, accuracy, latency, and loss behavior.
 - Camera/VTX equipment for the first hover; it adds mass, power, RF noise, and
