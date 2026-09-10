@@ -181,3 +181,5 @@ failsafe policy remain unchanged when ExpressLRS replaces BLE.
 8. Free flight begins only after every acceptance gate in the safety plan passes.
 
 Detailed implementation is in the [H7 BLE build specification](h7-ble/README.md).
+The authoritative board-pad, MCU-GPIO, sensor, and motor mapping is in the
+[pin-level architecture](h7-ble/pin-architecture.md).

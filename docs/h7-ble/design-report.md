@@ -34,6 +34,10 @@ Keep the ESP32-C3 boards outside the flight-control fault domain:
 Later, physically replace the BLE gateway with an ExpressLRS receiver on the
 same H7 CRSF port. This is a transport change, not a second architecture.
 
+The exact board pads, MCU GPIOs, peripheral instances, reset states, harness
+nets, and motor locations are controlled by the
+[pin-level MCU and electrical architecture](pin-architecture.md).
+
 ## Why This H7
 
 The H7 is not selected because basic stabilization requires 480 MHz. It is
@@ -228,9 +232,14 @@ The aircraft C3 emits standard CRSF RC_CHANNELS_PACKED frames on a full-duplex
 frame, CRC8 polynomial, and channel conversion. [[17]](sources.md#source-17)
 
 ```text
-BLE phase:   aircraft C3 TX/RX/GND ---- CRSF plug ---- H7 TELEM1
+BLE phase:   C3 D10 TX / D4 RX / GND -- CRSF plug ---- H7 R1 / T1 / GND
 ELRS phase:  ELRS RX TX/RX/GND/5V ----- same plug ---- H7 TELEM1
 ```
+
+The BLE gateway uses ESP32-C3 `UART_NUM_1` on `D10/GPIO10` TX and
+`D4/GPIO6` RX. It deliberately does not use `D6/GPIO21` because UART0 emits
+ROM/bootloader text there during reset; boot text must never enter PX4's RC
+input. [[50]](sources.md#source-50) [[51]](sources.md#source-51)
 
 One receiver is installed at a time. Never Y-connect both transmitter outputs.
 After a later ELRS swap, rerun every receiver-loss, reconnect, channel, mode,

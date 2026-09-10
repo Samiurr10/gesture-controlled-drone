@@ -22,6 +22,42 @@ PX4 documents the board target as `holybro_kakuteh7mini_default` and supports
 the board on PX4 v1.14 and newer. [[9]](h7-ble/sources.md#source-9)
 [[10]](h7-ble/sources.md#source-10)
 
+## Pin-Level Architecture Decision
+
+The prototype uses fixed peripheral ownership. The complete electrical
+schematic-level net map, reset behavior, harness definitions, and pin-by-pin
+tables are in the
+[Pin-Level MCU and Electrical Architecture](h7-ble/pin-architecture.md).
+
+| MCU interface | Exact pins | Revision A use | Why |
+|---|---|---|---|
+| H7 USART1 / `TELEM1` | TX `PA9/T1`, RX `PA10/R1` | Full-duplex CRSF to aircraft C3 | Dedicated receiver transport and later ELRS replacement path |
+| H7 USART2 / `TELEM2` | TX `PD5/T2`, RX `PD6/R2` | RP2040 range hub | Isolates experimental ToF sensing from the H7 I2C sensor bus |
+| H7 UART4 / `GPS1` | TX `PD1/T4`, RX `PD0/R4` | ARK GNSS | Pinned PX4 GNSS port |
+| H7 I2C1 | `PB6/SCL`, `PB7/SDA` | Onboard barometer plus ARK compass | Only external H7 I2C bus; no ToF devices are added here |
+| H7 SPI4 | `PE2/PE5/PE6`, CS `PE4`, DRDY `PE1` | Onboard ICM-42688-P-class IMU | Factory-routed, dedicated flight IMU bus |
+| H7 motor outputs | `PB0`, `PB1`, `PB3`, `PB10` | DShot300 outputs M1-M4 | PX4 timer/DMA-backed motor channels |
+| Hand C3 ADC1 | `GPIO3/D1`, `GPIO4/D2` | Vertical and yaw stick | Avoids strapping pins and unreliable ADC2 use |
+| Hand C3 UART0 RX | `GPIO20/D7` | BNO085 UART-RVC | One-way sensor data; no host TX required |
+| Gateway C3 UART1 | TX `GPIO10/D10`, RX `GPIO6/D4` | CRSF to/from H7 | Avoids `GPIO21/D6`, which emits ROM boot text |
+| Range RP2040 I2C0 | SDA `GPIO6/D4`, SCL `GPIO7/D5` | Four VL53L1X sensors | Native I2C pins, 3.3 V bus |
+| Range RP2040 UART0 | TX `GPIO0/D6`, RX `GPIO1/D7` | H7 `TELEM2` | Native UART pins and no flight authority |
+
+PX4 v1.17.0 maps M1-M4 to `PB0/TIM3_CH3`, `PB1/TIM3_CH4`,
+`PB3/TIM2_CH2`, and `PB10/TIM2_CH3`. The Generic Quadcopter X assignment is
+M1 front-right CCW, M2 rear-left CCW, M3 front-left CW, and M4 rear-right CW.
+All four mappings must still be identified props-off in QGroundControl before
+installation of propellers. [[45]](h7-ble/sources.md#source-45)
+[[46]](h7-ble/sources.md#source-46)
+[[48]](h7-ble/sources.md#source-48)
+
+The aircraft C3 deliberately does not use its labeled `D6/TX` for CRSF.
+`D6` is ESP32-C3 UART0 TX and emits bootloader text at reset. ESP-IDF routes
+`UART_NUM_1` to non-strapping `GPIO10` and `GPIO6` instead, so the H7 receiver
+line remains idle until the gateway intentionally sends frames.
+[[50]](h7-ble/sources.md#source-50)
+[[51]](h7-ble/sources.md#source-51)
+
 ## Why H7 Instead of F7
 
 An F7 can stabilize this aircraft. The reason to skip it is architectural, not

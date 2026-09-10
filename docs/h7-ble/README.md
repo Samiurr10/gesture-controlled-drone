@@ -55,11 +55,12 @@ the aircraft or directly controls an ESC.
 
 1. [Architecture and decisions](design-report.md)
 2. [Components, motors, and procurement](component-list.md)
-3. [Electronics, power, pinout, and wiring](electronics-design.md)
-4. [Firmware, BLE, CRSF, and PX4](firmware-design.md)
-5. [Collision sensing and prevention](collision-prevention.md)
-6. [Boundary safety and test gates](safety-and-test-plan.md)
-7. [Official research sources](sources.md)
+3. [Pin-level MCU and electrical architecture](pin-architecture.md)
+4. [Electronics, power, pinout, and wiring](electronics-design.md)
+5. [Firmware, BLE, CRSF, and PX4](firmware-design.md)
+6. [Collision sensing and prevention](collision-prevention.md)
+7. [Boundary safety and test gates](safety-and-test-plan.md)
+8. [Official research sources](sources.md)
 
 ## Baseline Assumptions
 

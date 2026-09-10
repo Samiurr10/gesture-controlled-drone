@@ -369,6 +369,81 @@ Pinned source evidence that the selected PX4 v1.17.0 tree contains the SF45/B
 serial-driver implementation even though it is not enabled in every default
 board build.
 
+## Source 45
+
+[PX4 v1.17.0: Kakute H7 Mini NuttX Board Pin Definitions](https://github.com/PX4/PX4-Autopilot/blob/v1.17.0/boards/holybro/kakuteh7mini/nuttx-config/include/board.h)
+
+Pinned source for the STM32H743 alternate-function assignments: USART1 on
+PA9/PA10, USART2 on PD5/PD6, UART4 on PD1/PD0, USART3 on PD8/PD9, USART6 on
+PC6/PC7, UART7 on PE7/PE8, I2C1 on PB6/PB7, SPI1, SPI2, SPI4, USB, and clock
+configuration.
+
+## Source 46
+
+[PX4 v1.17.0: Kakute H7 Mini Timer/Output Configuration](https://github.com/PX4/PX4-Autopilot/blob/v1.17.0/boards/holybro/kakuteh7mini/src/timer_config.cpp)
+
+Pinned source for motor output hardware: M1 PB0/TIM3_CH3, M2 PB1/TIM3_CH4,
+M3 PB3/TIM2_CH2, M4 PB10/TIM2_CH3, and the reserved M5-M8 channels.
+
+## Source 47
+
+[PX4 v1.17.0: Kakute H7 Mini SPI Devices](https://github.com/PX4/PX4-Autopilot/blob/v1.17.0/boards/holybro/kakuteh7mini/src/spi.cpp) and
+[board sensor startup](https://github.com/PX4/PX4-Autopilot/blob/v1.17.0/boards/holybro/kakuteh7mini/init/rc.board_sensors)
+
+Pinned evidence that the flight IMU is factory-routed on SPI4 with PE4 chip
+select and PE1 data-ready. Startup probes MPU6000, BMI270, then ICM-42688-P and
+probes BMP280 before SPA06 to cover Kakute hardware revisions.
+
+## Source 48
+
+[PX4 v1.17.0: Generic Quadcopter X Airframe](https://github.com/PX4/PX4-Autopilot/blob/v1.17.0/ROMFS/px4fmu_common/init.d/airframes/4001_quad_x) and
+[control-allocator rotor parameter definitions](https://github.com/PX4/PX4-Autopilot/blob/v1.17.0/src/modules/control_allocator/module.yaml)
+
+Pinned source for motor geometry and rotation: positive X is forward, positive
+Y is right, positive moment coefficient is CCW, and negative is CW. This yields
+Motor 1 front-right CCW, Motor 2 rear-left CCW, Motor 3 front-left CW, and
+Motor 4 rear-right CW.
+
+## Source 49
+
+[PX4 v1.17: Actuator Configuration and Testing](https://docs.px4.io/v1.17/en/config/actuators)
+
+Official workflow for defining geometry, assigning motor functions to physical
+outputs, using Identify & Assign Motors, and conducting props-off actuator
+tests.
+
+## Source 50
+
+[Seeed Studio: XIAO ESP32-C3 Pin Multiplexing and I/O Allocation](https://wiki.seeedstudio.com/XIAO_ESP32C3_Pin_Multiplexing/)
+
+Official board warning that D6/GPIO21 is UART0 TX and emits bootloader text at
+startup, plus boot/strapping cautions for D8/GPIO8 and D9/GPIO9. This supports
+moving the aircraft CRSF transport away from UART0 TX.
+
+## Source 51
+
+[Espressif ESP-IDF v5.4: ESP32-C3 UART Driver](https://docs.espressif.com/projects/esp-idf/en/v5.4/esp32c3/api-reference/peripherals/uart.html)
+
+Primary API reference for `uart_set_pin()`, `UART_NUM_1`, and routing UART
+signals through the ESP32-C3 GPIO matrix to selected non-strapping pins.
+
+## Source 52
+
+[ARK Electronics: ARK SAM GPS Pinout](https://docs.arkelectron.com/products/gps/ark-sam-gps)
+
+Manufacturer connector definition: pin 1 5 V, pin 2 RX, pin 3 TX, pin 4 SCL,
+pin 5 SDA, and pin 6 ground, with 3.3 V UART/I2C signaling.
+
+## Source 53
+
+[Holybro: Kakute H7 Mini Overview](https://docs.holybro.com/autopilot/kakute-h7-v1-v2-mini/kakute-h7-mini/overview) and
+[supported firmware](https://docs.holybro.com/autopilot/kakute-h7-v1-v2-mini/kakute-h7-mini/supported-firmware)
+
+Current manufacturer documentation for the v1.5 revision and PX4 support. The
+overview currently conflicts with Holybro's SKU 11082 store listing about the
+exact IMU/barometer names, so the design requires purchase by SKU and receiving
+verification using PX4-detected device IDs.
+
 ## Research Conclusions and Inferences
 
 The following are engineering inferences rather than manufacturer promises:

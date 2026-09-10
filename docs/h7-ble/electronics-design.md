@@ -5,7 +5,7 @@
 ```mermaid
 flowchart TB
     bat[3S LiPo / XT30] --> esc[T-Motor V45A Lite ESC]
-    bat --> h7sense[H7 B+ voltage sense]
+    bat --> h7input[H7 B+ regulator input and voltage sense]
     esc --> m1[Motor 1]
     esc --> m2[Motor 2]
     esc --> m3[Motor 3]
@@ -25,6 +25,10 @@ flowchart TB
 The flight battery connects directly to the ESC. The H7 receives battery
 voltage on `B+`, uses its onboard regulator for avionics, and drives the ESC
 with four DShot signals. No ESP32 pin ever connects to a motor output.
+
+The [pin-level MCU architecture](pin-architecture.md) is authoritative for all
+board-pad, MCU-GPIO, peripheral, harness, and motor mappings. This document
+explains the surrounding power and wiring design.
 
 ## Power Domains
 
@@ -70,12 +74,12 @@ The V45A is from a different manufacturer. Connector pin order is not assumed.
 
 | H7 signal | ESC connection | Rule |
 |---|---|---|
-| `B+` | ESC battery positive / VBAT sense | Verify 3S voltage before plugging H7 |
+| `B+` | ESC battery positive / VBAT | Powers the H7 regulator and its voltage divider; verify 3S voltage before plugging H7 |
 | `GND` | ESC signal/power ground | Required common reference |
-| `M1` | ESC channel for motor 1 | Verify against PX4 quad geometry |
-| `M2` | ESC channel for motor 2 | Verify against PX4 quad geometry |
-| `M3` | ESC channel for motor 3 | Verify against PX4 quad geometry |
-| `M4` | ESC channel for motor 4 | Verify against PX4 quad geometry |
+| `M1/PB0` | ESC `S1`, front-right motor, CCW | Assign PX4 Motor 1 and verify props-off |
+| `M2/PB1` | ESC `S2`, rear-left motor, CCW | Assign PX4 Motor 2 and verify props-off |
+| `M3/PB3` | ESC `S3`, front-left motor, CW | Assign PX4 Motor 3 and verify props-off |
+| `M4/PB10` | ESC `S4`, rear-right motor, CW | Assign PX4 Motor 4 and verify props-off |
 | `CURRENT` | Leave open unless V45A current output is documented and calibrated | Do not guess a scale or pin |
 | `R7` | Leave open | Selected ESC has no telemetry [[11]](sources.md#source-11) |
 
@@ -89,6 +93,12 @@ enough for this aircraft without selecting the highest mode. [[31]](sources.md#s
 Twist or route
 each signal with a nearby ground where practical. Keep DShot wires away from
 motor phases and the battery loop.
+
+PX4 v1.17.0 maps these outputs to TIM3 CH3, TIM3 CH4, TIM2 CH2, and
+TIM2 CH3 respectively. Use Generic Quadcopter X and confirm all four output
+functions, physical locations, and rotations with QGroundControl Identify &
+Assign Motors before fitting propellers. [[46]](sources.md#source-46)
+[[48]](sources.md#source-48) [[49]](sources.md#source-49)
 
 ### Battery input and capacitor
 
@@ -110,14 +120,21 @@ four-wire removable receiver cable.
 
 | Aircraft XIAO | H7 | Direction |
 |---|---|---|
-| `D6/GPIO21` TX | `R1` | C3 CRSF commands to H7 |
-| `D7/GPIO20` RX | `T1` | H7 CRSF telemetry to C3 |
+| `D10/GPIO10`, UART1 TX | `R1/PA10` | C3 CRSF commands to H7 through 100 ohm series resistor |
+| `D4/GPIO6`, UART1 RX | `T1/PA9` | H7 CRSF telemetry to C3 through 100 ohm series resistor |
 | `GND` | `GND` | Common reference |
 | `5V` through series Schottky diode | H7 `5V` pad | H7 powers C3 |
 
 For the external 5 V input, follow Seeed's recommended diode arrangement:
 source to diode anode, diode cathode to the XIAO 5 V pin. Add 100 uF bulk and
 100 nF ceramic decoupling at the C3. [[1]](sources.md#source-1)
+
+Configure `UART_NUM_1` with TX on GPIO10 and RX on GPIO6 using
+`uart_set_pin()`. Add 47 kohm from GPIO10 to the gateway's own 3.3 V rail to
+hold H7 `R1` at UART idle-high before application startup. Do not use
+`D6/GPIO21` for CRSF: it is UART0 TX and Seeed documents ROM boot text on that
+pin during reset. [[50]](sources.md#source-50)
+[[51]](sources.md#source-51)
 
 Leave `VTX+` and `R6` in the H7 VTX connector unconnected. `VTX+` is raw battery
 voltage and would destroy a 5 V-only load. Key the receiver plug so it cannot be
@@ -138,10 +155,10 @@ pin 1 on the delivered unit before cutting the flight-controller end.
 | ARK signal | H7 connection | Note |
 |---|---|---|
 | 5 V | `5V` | From H7 avionics rail |
-| RX | `T4` | H7 UART4 TX to GNSS RX |
-| TX | `R4` | GNSS TX to H7 UART4 RX / GPS1 |
-| SCL | `SCL` | H7 I2C clock |
-| SDA | `SDA` | H7 I2C data |
+| RX | `T4/PD1` | H7 UART4 TX to GNSS RX |
+| TX | `R4/PD0` | GNSS TX to H7 UART4 RX / GPS1 |
+| SCL | `SCL/PB6` | H7 I2C1 clock |
+| SDA | `SDA/PB7` | H7 I2C1 data |
 | GND | `GND` | Common reference |
 
 Mount the antenna face up and forward, as far as practical from the ESC,
@@ -156,8 +173,8 @@ separate from the CRSF receiver on `TELEM1` and GNSS on UART4.
 
 | XIAO RP2040 | Kakute H7 Mini | Direction |
 |---|---|---|
-| `D6/GPIO0` TX | `R2` | Range frames to H7 |
-| `D7/GPIO1` RX | `T2` | Configuration/heartbeat from H7 |
+| `D6/GPIO0` TX | `R2/PD6` | Range frames to H7 through 100 ohm series resistor |
+| `D7/GPIO1` RX | `T2/PD5` | Configuration/heartbeat from H7 through 100 ohm series resistor |
 | `GND` | `GND` | Common reference |
 | `5V` through series Schottky diode | H7 `5V` | Hub power |
 
@@ -208,7 +225,9 @@ For the Adafruit board, this requires the RVC mode strap. Wire:
 | `VIN` | `3V3` | Sensor power |
 | `GND` | `GND` | Common reference |
 | `SDA/TX` | `D7/GPIO20` RX | One-way UART-RVC data |
-| RVC mode strap | As documented by breakout | Select UART-RVC at reset |
+| `P0` | `3V3`, preferably using the solder jumper | High at reset |
+| `P1` | Breakout default pull-down | Low at reset |
+| `SCL/RX` | No connection | Host TX is unnecessary in UART-RVC |
 
 The XIAO TX line is not required for one-way RVC. Read packets as they arrive,
 validate framing, and feed the latest valid sample into the 100 Hz control tick.
@@ -217,24 +236,28 @@ validate framing, and feed the latest valid sample into the 100 Hz control tick.
 
 | XIAO pin | Function | Electrical detail |
 |---|---|---|
-| `D1/GPIO3` | Vertical stick ADC | Wiper; stick ends to 3.3 V and GND |
-| `D2/GPIO4` | Yaw stick ADC | Wiper; stick ends to 3.3 V and GND |
-| `D3/GPIO5` | Deadman | External 10 kohm pull to inactive state; switch to active state |
-| `D4/GPIO6` | ARM | External 10 kohm pull; momentary input |
-| `D5/GPIO7` | KILL | External 10 kohm pull; guarded momentary input |
+| `D1/GPIO3` | Vertical stick ADC1 | Wiper through 10 kohm/22 kohm scaling and 10 nF filter |
+| `D2/GPIO4` | Yaw stick ADC1 | Wiper through 10 kohm/22 kohm scaling and 10 nF filter |
+| `D3/GPIO5` | Deadman | Active-low; external 10 kohm pull-up, 1 kohm switch series, 10 nF filter |
+| `D4/GPIO6` | ARM | Active-low; external 10 kohm pull-up, 1 kohm switch series, 10 nF filter |
+| `D5/GPIO7` | KILL | Active-low; external 10 kohm pull-up, 1 kohm switch series, 10 nF filter |
 | `D7/GPIO20` | BNO085 UART RX | 115200 baud |
 | `D10/GPIO10` | Status LED | 1 kohm series resistor |
-| `D6/GPIO21` | Spare | Reserve for debug or optional haptic driver |
+| `D6/GPIO21` | No connection | UART0 boot-log output; never attach a haptic actuator or safety input |
 | `D0/GPIO2`, `D8/GPIO8`, `D9/GPIO9` | Reserved | ESP32-C3 strapping-related pins; do not use for safety controls |
 
-The thumb stick contains two self-centering 10 kohm potentiometers. Measure the
-actual center, minimum, and maximum at startup while disarmed. Add 10 nF from
-each ADC wiper to ground only if noise testing justifies it; too much filtering
-adds control lag. [[25]](sources.md#source-25)
+The thumb stick contains two self-centering 10 kohm potentiometers. Connect each
+wiper through 10 kohm to its ADC node, then add 22 kohm from that node to ground
+and 10 nF from the node to ground. This scales a possible 3.3 V wiper to about
+2.27 V before potentiometer loading. Measure the actual center, minimum, and
+maximum while disarmed and reject samples outside the calibrated window.
+[[25]](sources.md#source-25)
 
 Use external resistors so every switch has an inactive electrical state during
 reset. Firmware pullups are not sufficient as the only definition for safety
-inputs.
+inputs. The inactive state is high and the pressed state is low. Firmware must
+reject startup if ARM or KILL is already active and require a released-then-
+pressed transition.
 
 ### Hand battery
 

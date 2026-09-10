@@ -31,6 +31,8 @@ connector, dimensions, and stock.
 | 1 | Buzzer | 5 V active piezo compatible with H7 buzzer pads | Audible fault/arming indication | Buy |
 | 1 | Receiver harness | JST-SH 1.0 mm 6-pin pigtail plus locking 4-pin receiver plug | Replaceable BLE/ELRS CRSF interface | Fabricate and continuity-test |
 | 1 | Range-hub harness | Locking UART plug plus four I2C/XSHUT branches | `TELEM2`, 3.3 V ToF rail, keyed sensor directions | Fabricate and test |
+| 4 | UART series resistors | 100 ohm, 1% | Gateway CRSF TX/RX and range-hub TX/RX | Fit near transmit/receive interface |
+| 1 | Gateway UART pull-up | 47 kohm, 1% | Holds gateway CRSF TX/H7 RX idle-high during reset | Fit at gateway |
 | 1 | ESC harness | JST-SH 1.0 mm 8-pin pigtail | H7 signals to cross-vendor ESC wiring | Re-pin; never plug blindly |
 | 1 set | Wire | 30 AWG silicone signal, 18 AWG battery, motor wire matching motor leads | Flexible, heat resistant | Buy |
 | 1 set | Insulation and strain relief | Heat-shrink, fabric tape, cable ties, adhesive mounts | No exposed conductors or wire load at pads | Buy |
@@ -99,8 +101,12 @@ See the [collision-prevention design](collision-prevention.md).
 | 1 | Controller battery | Protected 3.7 V 500 mAh LiPo, Adafruit 1578 or equivalent | Verify polarity before adapting to XIAO pads [[24]](sources.md#source-24) |
 | 1 | Master power switch | Rated for battery current | Physically disconnects controller battery |
 | 1 | Status LED | High-efficiency LED plus 1 kohm resistor | Link/ready/fault patterns only |
-| 5 | Button resistors | 10 kohm, 1% | External defined-state pulls even if firmware is not running |
-| 2 | ADC capacitors | 10 nF ceramic | Optional joystick wiper filtering after response test |
+| 3 | Button pull-up resistors | 10 kohm, 1% | External inactive-high state for Deadman, ARM, and KILL |
+| 3 | Button series resistors | 1 kohm, 1% | Limits switch/input fault current |
+| 3 | Button filter capacitors | 10 nF ceramic | Hardware noise filtering; firmware still debounces |
+| 2 | ADC series resistors | 10 kohm, 1% | One per joystick wiper |
+| 2 | ADC divider resistors | 22 kohm, 1% | Scale each 3.3 V wiper below nominal ADC full scale |
+| 2 | ADC filter capacitors | 10 nF ceramic | One from each ADC node to ground |
 | 1 set | Connectors and enclosure | JST-PH polarity adapter, headers, strain relief, hand enclosure | No exposed cell or shortable contacts |
 
 Haptic feedback is optional after the basic controller works. If added, use a

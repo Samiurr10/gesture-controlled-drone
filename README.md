@@ -62,6 +62,7 @@ motion capture, or validated optical flow and range sensing.
 - [H7 MCU decision](docs/mcu-architecture-research.md)
 - [Direct H7 BLE build specification](docs/h7-ble/README.md)
 - [Component list and procurement gates](docs/h7-ble/component-list.md)
+- [Pin-level MCU and electrical architecture](docs/h7-ble/pin-architecture.md)
 - [Electronics and wiring](docs/h7-ble/electronics-design.md)
 - [Firmware and protocols](docs/h7-ble/firmware-design.md)
 - [Collision sensing and prevention](docs/h7-ble/collision-prevention.md)

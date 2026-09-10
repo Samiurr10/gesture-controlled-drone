@@ -93,6 +93,11 @@ Test duplicates, rollback, wrap from 65535 to 0, and a sender reboot.
 
 ## Hand Controller Firmware
 
+Pin constants and electrical reset states are fixed by the
+[pin-level MCU architecture](pin-architecture.md). The hand target uses D1/D2
+for scaled ADC1 inputs, D3/D4/D5 for active-low safety controls, D7 for BNO085
+UART-RVC RX, and D10 for the status LED. D6/UART0 TX remains unconnected.
+
 ### Task structure
 
 | Task | Rate/event | Priority intent |
@@ -263,8 +268,14 @@ The gateway does not automatically return from `Silent` to active command
 output. It requires a new neutral stream and low arm/kill channels. Once a valid
 KILL is accepted, the gateway repeatedly sends neutral axes, ARM low, and KILL
 high; this kill-only state is the sole exception to stale-command silence. If
-the C3 reboots, its default UART state is input/high impedance and PX4 detects
-RC loss.
+the C3 reboots, the selected D10 CRSF TX pin returns to input/high-impedance and
+its external 47 kohm pull-up holds the line idle-high. No valid CRSF frames are
+sent, so PX4 detects RC loss.
+
+Use `UART_NUM_1`, TX on `D10/GPIO10`, and RX on `D4/GPIO6`. Do not place CRSF
+on `D6/GPIO21`: UART0 emits ESP32-C3 ROM boot text there during reset. Configure
+the UART pins explicitly with `uart_set_pin()` before enabling the 100 Hz CRSF
+scheduler. [[50]](sources.md#source-50) [[51]](sources.md#source-51)
 
 ### Validation order
 
@@ -347,13 +358,14 @@ front/rear and right/left measurement slots, validates range status, and emits
 fixed `HubRangeFrameV1` messages at 50 Hz on H7 `TELEM2`.
 
 Every frame carries a sequence, four distances, a per-direction valid mask,
-sample span, supply voltage, and CRC16. A sample older than 100 ms loses its
-valid bit. Hub reset, bus recovery, or address reinitialization clears every
-valid bit before any sensor is restarted. Unknown/no-return is never converted
-to maximum range.
+hub state, sample span, aggregate sensor-error counter, and CRC16. A sample
+older than 100 ms loses its valid bit. Hub reset, bus recovery, or address
+reinitialization clears every valid bit before any sensor is restarted.
+Unknown/no-return is never converted to maximum range.
 
 Add a small PX4 `gesture_obstacle` serial driver to validate local receive age,
-frame structure, CRC, sequence, health, voltage, and range. It publishes one
+frame structure, CRC, sequence, reserved bits, hub state, sample span, and
+range. It publishes one
 oriented `distance_sensor` instance per fresh direction with the exact tested
 FoV. It stops publishing a direction immediately when the hub marks it invalid.
 
@@ -416,8 +428,8 @@ Archive for every flight-test release:
 | Range-hub port | Free `TELEM2` from MAVLink; start `gesture_obstacle` on `/dev/ttyS1` at 115200 |
 | GNSS | UART4 / `GPS1`, verified in QGroundControl |
 | External compass | Enable/detect external magnetometer and calibrate in final installed orientation |
-| ESC protocol | DShot300 on motor outputs M1-M4 |
-| Airframe | PX4 generic quad-X matching the physical motor geometry |
+| ESC protocol | DShot300 on M1 `PB0`, M2 `PB1`, M3 `PB3`, and M4 `PB10` |
+| Airframe | Generic quad-X: M1 front-right CCW, M2 rear-left CCW, M3 front-left CW, M4 rear-right CW |
 
 PX4 handles CRSF UART baud configuration after the port is assigned. If
 `TELEM1` is mapped to MAVLink, unmap that instance before selecting CRSF.

@@ -2,6 +2,10 @@
 
 Research and availability check: 2026-09-10
 
+The authoritative connector, board-pad, and MCU-GPIO allocation is the
+[pin-level MCU and electrical architecture](pin-architecture.md). This document
+defines the collision subsystem's behavior and validation requirements.
+
 ## Decision
 
 Add a low-mass, four-direction time-of-flight (ToF) sensing subsystem after the
@@ -213,8 +217,7 @@ operation. Brownout detection remains enabled.
 | `D1/GPIO27` | Right `XSHUT` | Drive low or high-impedance only |
 | `D2/GPIO28` | Rear `XSHUT` | Drive low or high-impedance only |
 | `D3/GPIO29` | Left `XSHUT` | Drive low or high-impedance only |
-| `D8/GPIO2` | Fault/status LED | Optional bench indication |
-| `D9/GPIO4`, `D10/GPIO3` | Reserved | Do not silently add flight functions |
+| `D8/GPIO2`, `D9/GPIO4`, `D10/GPIO3` | Reserved | Use the XIAO's onboard LEDs for diagnostics; do not silently add flight functions |
 
 The Pololu carrier's `XSHUT` pin is not 5 V tolerant. Configure the RP2040 pin
 as open-drain behavior: output-low to shut down and input/high-impedance to
@@ -229,10 +232,10 @@ selected bus speed with the final harness.
 Kakute H7 Mini exposes UART2 as `R2/T2`, mapped by PX4 as `TELEM2` and
 `/dev/ttyS1`. [[10]](sources.md#source-10) Wire:
 
-| Sensor hub | Kakute H7 Mini | Direction |
+| Sensor hub | Kakute H7 Mini | Direction/rule |
 |---|---|---|
-| TX | `R2` | Hub to H7 |
-| RX | `T2` | H7 to hub |
+| `D6/GPIO0` TX | `R2/PD6` | Hub to H7 through 100 ohm series resistor |
+| `D7/GPIO1` RX | `T2/PD5` | H7 to hub through 100 ohm series resistor |
 | GND | `GND` | Common reference |
 | 5 V through series Schottky diode | `5V` | H7 powers hub |
 

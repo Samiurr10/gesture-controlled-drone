@@ -159,6 +159,10 @@ safety parameters invalidates the affected downstream tests.
 - [ ] Battery/XT30 wire and capacitor ratings are documented.
 - [ ] Every button has a hardware-defined inactive state.
 - [ ] BLE, GNSS, and range-hub UART TX/RX directions are cross-checked.
+- [ ] Gateway CRSF uses `UART_NUM_1`: `D10/GPIO10` TX to `R1/PA10` and
+  `D4/GPIO6` RX from `T1/PA9`; `D6/GPIO21` is not connected to H7.
+- [ ] The gateway `D10` net has a 47 kohm pull-up to gateway 3.3 V and both
+  TELEM1 signal wires have 100 ohm series resistors.
 - [ ] The dedicated 3.3 V ToF rail and every `XSHUT` line are continuity-checked.
 - [ ] Props are physically stored away from the bench.
 
@@ -202,7 +206,7 @@ possible, an over-the-air BLE capture.
 | Duplicate/rollback | Replay old sequences | Rejected |
 | Sequence wrap | 65535 then 0 | Accepted exactly once |
 | Hand reboot | Reset while connected | Gateway goes silent; neutral handshake required |
-| Aircraft C3 reboot | Reset while active | UART silent by default; no automatic active state |
+| Aircraft C3 reboot | Scope `D10` while resetting in every boot mode | Line stays idle-high with no UART0 boot text or valid CRSF frame; no automatic active state |
 | Deadman release | Release during continuous stream | Gateway silent within 60 ms |
 | Notification stop | Keep BLE connected but stop writes | Gateway silent within 60 ms |
 | RF disconnect | Shield/power off hand | Gateway silent within 60 ms unless already in latched kill-only state |
@@ -246,6 +250,8 @@ boundary.
 - [ ] `TELEM1` freed from MAVLink and assigned to CRSF.
 - [ ] GNSS on GPS1 and external compass detected.
 - [ ] Correct airframe geometry selected.
+- [ ] Props-off motor identification is signed: M1 front-right CCW, M2
+  rear-left CCW, M3 front-left CW, and M4 rear-right CW.
 - [ ] Parameter export saved.
 
 ### Channel verification
