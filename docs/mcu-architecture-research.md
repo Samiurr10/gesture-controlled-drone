@@ -1,3 +1,5 @@
+> **Historical research:** this comparison informed the earlier H7 Mini design. The current parts and build order are in the [project README](../README.md) and [current architecture](architecture.md).
+
 # MCU Selection Research
 
 Research baseline: 2026-09-10

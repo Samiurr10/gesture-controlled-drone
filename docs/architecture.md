@@ -1,185 +1,126 @@
-# System Architecture
+# Current system architecture
 
-Research baseline: 2026-09-10
+Baseline: the September 14, 2026 [PalmPilot BOM](reference/PalmPilot_BOM.pdf).
+Build priority: qualify the two-hand controller and its ground hub on the bench,
+then integrate the aircraft. The [root README](../README.md) tracks completion.
 
-## Architecture Decision
+## First deliverable: a working controller
 
-Build the first flying prototype around three control processors, then add a
-fourth non-radio processor for collision sensing after the base aircraft flies:
+The controller consists of two Feather Sense hand nodes and one Feather Express
+ground hub. Start with one hand and one flex input. Progress to ten flex inputs,
+onboard motion sensing, calibrated mapping and two simultaneous BLE links.
+The hub first reports commands over USB and generates a scoped trainer signal
+with its output jumper open. Qualify the Pocket interface before connecting it.
 
-| Location | Processor | Purpose |
-|---|---|---|
-| Hand controller | XIAO ESP32-C3 | BNO085 acquisition, gesture mapping, physical safety inputs, BLE peripheral |
-| Aircraft receiver gateway | XIAO ESP32-C3 | BLE central, command validation, CRSF receiver emulation |
-| Flight controller | STM32H743 on Holybro Kakute H7 Mini v1.5 | PX4 estimation, safety, control, DShot, logging |
-| Aircraft range hub | XIAO RP2040 | Address and sample four VL53L1X sensors; send range-only frames to H7 |
-
-This is a direct H7 design. There is no F7 interim flight controller and no
-custom STM32H753 board in the critical path to first flight. The off-the-shelf
-H743 board provides the H7 headroom the project wants while avoiding a custom
-flight-control PCB bring-up.
-
-## End-to-End Design
+The initial controller milestone ends with verified inputs on the Pocket and
+measured manual takeover. The aircraft can remain unassembled for this work.
+Receiver/flight-controller channel checks follow as a separate bench stage.
 
 ```mermaid
 flowchart LR
-    bno[BNO085 in UART-RVC mode] --> hand[Hand ESP32-C3]
-    stick[Yaw and vertical stick] --> hand
-    switches[Deadman + ARM + KILL] --> hand
-    hand -->|BLE notification\n100 Hz| gateway[Aircraft ESP32-C3]
-    gateway -->|CRSF UART\n420000 baud| h7[STM32H743 / PX4]
-    gps[GNSS + external compass] --> h7
-    imu[ICM-42688-P + SPA06] --> h7
-    tof[4 x VL53L1X] --> hub[RP2040 range hub]
-    hub -->|range UART on TELEM2| h7
-    h7 -->|DShot300| esc[4-in-1 ESC]
-    esc --> motors[Four motors]
-    h7 -. telemetry .-> gateway
-    gateway -. BLE telemetry .-> hand
+    LF[Five left flex sensors] --> L[U6 Feather Sense]
+    RF[Five right flex sensors] --> R[U7 Feather Sense]
+    L -->|BLE| H[U8 Feather Express hub]
+    R -->|BLE| H
+    H -->|USB diagnostics during development| PC[Computer]
+    H --> BUF[U301 buffer and JP301]
+    BUF -->|Qualified PPM trainer cable| P[Pocket ELRS radio]
+    P -->|ELRS - later aircraft stage| RX[U3 RP1 V2]
+    RX -->|CRSF on UART3| FC[U1 Kakute H7 v1.5 / ArduPilot]
+    GPS[U4 Matek GNSS and compass] --> FC
+    FC -->|DShot| ESC[U2 Tekko AM32 ESC]
+    ESC --> M[Four motors]
 ```
 
-The laptop and QGroundControl are setup tools, not part of the live pilot path.
-Use USB for bootloader installation, calibration, parameter setup, log download,
-and props-off verification.
+## Hardware and ownership
 
-## Authority Boundaries
-
-| Subsystem | Owns | Must not own |
+| Location | Selected hardware | Responsibility |
 |---|---|---|
-| Hand C3 | Neutral calibration, BNO085 filtering, bounded pilot axes, buttons, BLE security and transmission | Aircraft attitude, position, arming decision, motor mixing |
-| Aircraft C3 | Bonding, allowlist, packet integrity and age, CRSF packing, limited telemetry forwarding | Stabilization, geofence, autonomous landing, direct ESC output |
-| H7/PX4 | Sensor fusion, prearm checks, flight modes, RC-loss behavior, geofence, control allocation, DShot | Gesture interpretation or BLE reconnection policy |
-| Range hub | ToF address assignment, sampling, validation, health flags, range UART | BLE, RC channels, arming, setpoints, motor output |
-| ESC | Motor commutation from H7 DShot commands | Flight policy, radio policy, or position safety |
+| Left hand | U6 Feather nRF52840 Sense #4516; five flex #1070; SW4 ENABLE | Acquire and validate A0-A4, onboard motion, battery and enable state; transmit new samples |
+| Right hand | U7 Feather nRF52840 Sense #4516; five flex #1070 | Acquire and validate independent A0-A4, onboard motion and battery; transmit new samples |
+| Ground hub | U8 Feather nRF52840 Express #4062; SW5 CALIBRATE | Validate both nodes, manage calibration/profiles, combine bounded pilot intent, generate trainer frames and health signals |
+| Trainer interface | SN74LVC1G125DBVR on carrier; series resistor; JP301 | Drive a proposed 3.3 V PPM signal with output disabled at reset; expose measurement points |
+| Operator radio | RadioMaster Pocket M2 ELRS/FCC | Physical sticks, deliberate arm/mode controls, gesture authority gate and independent manual takeover |
+| Aircraft | RP1 V2; full-size Kakute H7 v1.5; Tekko F4 50A AM32; 4S pack | Receive CRSF; run ArduPilot estimation, stabilization, arming and failsafes; command motor power |
 
-The gateway stops CRSF output when BLE commands are stale. PX4 independently
-detects receiver loss and executes the configured action. This gives two
-freshness checks without pretending that the ESP32-C3 is a second flight
-controller.
+The Sense boards contain the hand motion sensors. Their internal traces need no
+extra user wiring. No onboard XIAO gateway, BNO085 module or ToF hub belongs to
+this BOM. Dronetag and the Finder buzzer are aircraft support devices; they are
+not involved in wearable command generation.
 
-## Position and Boundary
+## Pin and power contract
 
-```mermaid
-flowchart TB
-    gnss[GNSS position and velocity] --> ekf[PX4 EKF]
-    compass[External compass] --> ekf
-    baro[Barometer] --> ekf
-    aircraftImu[Aircraft accel and gyro] --> ekf
-    ekf --> position[Position mode]
-    ekf --> fence[Geofence]
-    controls[CRSF pilot setpoints] --> position
-    position --> controller[Attitude and rate control]
-    fence -->|breach| hold[Hold]
-    loss[CRSF loss] --> land[Land]
-    hold --> controller
-    land --> controller
-```
-
-The first outdoor envelope has three different boundaries:
-
-| Boundary | Initial value | Meaning |
-|---|---:|---|
-| Pilot operating target | 10 m radius, 3 m high | Normal movement remains comfortably inside the fence |
-| PX4 geofence | 15 m radius, 5 m high | H7 commands Hold after a detected breach |
-| Physically clear test site | At least 25 m radius | Contains GPS error, stopping distance, wind, and fence overshoot |
-
-The geofence is not a hard wall. It reacts after the estimated position crosses
-the limit. It also requires valid position. Indoors, GNSS and BLE RSSI cannot
-enforce this boundary; use a netted physical enclosure and prop guards.
-
-The staged collision layer uses four narrow range sensors to let PX4 slow or
-stop Position-mode motion toward detected obstacles. It covers only forward,
-right, rear, and left. Initial collision-assisted commands are axis-locked,
-movement into sectors with no data is disabled, and the sensors do not replace
-the geofence or physical containment. See the
-[collision-prevention design](h7-ble/collision-prevention.md).
-
-## Control Contract
-
-The hand sends pilot intent, not motor values. Version 1 uses this fixed
-little-endian payload:
-
-```text
-CommandFrameV1 (18 bytes)
-offset  size  field
-0       1     protocol_version
-1       1     flags: deadman, arm, kill, calibrated, fault
-2       2     sequence_u16
-4       4     sender_tick_ms_u32 (diagnostics only)
-8       2     pitch_i16       -1000..1000
-10      2     roll_i16        -1000..1000
-12      2     vertical_i16    -1000..1000
-14      2     yaw_i16         -1000..1000
-16      2     CRC16-CCITT over bytes 0..15
-```
-
-The receiver uses its own monotonic clock to determine packet age. Clocks are
-not synchronized, so the sender timestamp is never used for the safety timeout.
-
-## CRSF Channel Contract
-
-| Channel | Meaning |
+| Interface | Connection |
 |---|---|
-| CH1 | Roll |
-| CH2 | Pitch |
-| CH3 | Vertical/throttle input |
-| CH4 | Yaw |
-| CH5 | Deliberate arm request |
-| CH6 | Position-mode selector |
-| CH7 | Link-valid diagnostic |
-| CH8 | Guarded kill switch |
+| Both hands | Thumb/index/middle/ring/little = A0/A1/A2/A3/A4 respectively |
+| Every flex input | Own-board 3V -> flex -> ADC node; 47k and 100nF from node to own-board GND |
+| Left enable | U6 D5 through the filtered SW4 circuit |
+| Hub calibration | U8 D6 through the filtered SW5 circuit |
+| Hub trainer | U8 D5 -> buffer A; U8 D9 -> active-low /OE |
+| Three power switches | Own-board EN to own-board GND when OFF; open when ON |
+| Trainer cable | Mono TS tip = buffered PPM through JP301; sleeve = hub/Pocket ground |
+| Aircraft receiver | RP1 TX -> FC R3; RP1 RX <- FC T3 |
+| Aircraft navigation | Matek TX -> R4; RX <- T4; CL -> SCL; DA -> SDA |
 
-Calibrate and verify every channel in QGroundControl with propellers removed.
-The exact switch thresholds are configuration, not assumptions embedded in a
-cable diagram.
+Each Feather has its own protected #1578 single-cell battery and onboard
+Micro-USB charger. Their battery and 3V rails are independent. The Pocket has
+its own radio cells. The hub and Pocket share only trainer signal ground;
+neither is wired to aircraft battery or ground. The aircraft 5V rail powers its
+peripherals, and the 4S pack powers the ESC.
 
-## Safety State
+Use the [Rev A schematics](../hardware/schematics/README.md) for resistor values,
+connector views and every terminal. GPIO names are not connector cavity numbers.
 
-```mermaid
-stateDiagram-v2
-    [*] --> Boot
-    Boot --> Disarmed: self-tests complete
-    Disarmed --> Pairing: physical pairing action
-    Pairing --> Disarmed: bond complete or timeout
-    Disarmed --> Ready: encrypted link + neutral stream + PX4 ready
-    Ready --> Armed: deadman held + deliberate ARM + PX4 prearm pass
-    Armed --> Armed: fresh bounded commands
-    Armed --> LinkLoss: command older than 60 ms
-    LinkLoss --> Landing: gateway silent and PX4 RC-loss timeout
-    Landing --> Disarmed: land detector disarms
-    Armed --> Killed: guarded KILL
-    Killed --> Disarmed: power cycle and explicit reset sequence
-```
+## Command and authority boundary
 
-Reconnection never restores an armed state. KILL is deliberately separate from
-deadman release: KILL immediately stops thrust and can make the vehicle fall;
-deadman release invokes a flight-stack-managed landing.
+The hand nodes send sensor state and health. The hub converts those states to
+pilot commands. The radio supplies aircraft arm and mode channels; the hub must
+not turn a finger gesture into an independent aircraft arming path.
 
-## ExpressLRS Upgrade
+The proposed eight-slot trainer frame has four command slots (TR1-TR4), a
+hand-data-valid slot (TR5), an application heartbeat (TR6), and two neutral
+reserved slots. These trainer slots are not the same namespace as final ELRS
+output channels. In particular, TR5 is not the aircraft arm channel.
 
-```text
-BLE phase:   aircraft C3 TX/RX/GND -- receiver plug -- H7 TELEM1
-ELRS phase:  ELRS RX TX/RX/GND/5V  -- same plug ----- H7 TELEM1
-```
+Gesture authority requires the physical Pocket enable, a present trainer stream,
+valid hand data, recent heartbeat changes and no latched fault. Release of the
+Pocket enable returns to manual sticks. Recovery requires a new deliberate
+enable action. A stopped or repeating stale hub stream must not preserve gesture
+authority simply because the ELRS radio link remains healthy.
 
-Only one receiver is connected at a time. Never Y-connect two TX outputs. PX4
-continues to receive CRSF, so channel mapping, geofence, position mode, and
-failsafe policy remain unchanged when ExpressLRS replaces BLE.
+The [firmware plan](controller/firmware-plan.md) defines implementation work and
+the [validation plan](controller/validation.md) defines the evidence required.
+No controller firmware or radio model has been implemented or tested in this
+repository yet.
 
-## Verification Strategy
+## Open design decisions
 
-1. Host tests cover frame encoding, CRC, sequence wrap, range checks, and state
-   transitions.
-2. Two C3 boards pass BLE latency, packet-loss, disconnect, and reconnect tests
-   without motors.
-3. PX4 SITL validates mapping, position-mode behavior, geofence, and link loss.
-4. The real H7 passes bootloader, sensor, UART, and output tests with props off.
-5. One motor and the actual team propeller pass a thrust-stand test.
-6. Enclosed tether-free hops precede outdoor GNSS Position-mode tests.
-7. Range sensors pass target, FoV, freshness, direction, and braking tests before
-   collision assistance is enabled.
-8. Free flight begins only after every acceptance gate in the safety plan passes.
+| Item | Present status | Evidence needed |
+|---|---|---|
+| Pocket trainer input voltage tolerance | Not established from the located Pocket documentation | Actual input specification or competent circuit-level verification; keep JP301 open meanwhile |
+| Hand sample freshness / loss thresholds | To be frozen during firmware work | Measured sampling, BLE and control latency, then fault-injection results |
+| Gesture-to-axis mapping | To be selected and tested | Explicit mode/throttle semantics, calibration and independent manual override |
+| Battery operating window | To be measured | Valid sensor/ADC behavior before regulator dropout; low-battery inhibition threshold |
+| Wearable fit and retention | Prototype work | Comfortable movement, sliding sensor guides and strain-relieved connectors |
+| Aircraft navigation and propulsion | Later stage | Sensor support, compass placement, measured current/thrust and structural qualification |
 
-Detailed implementation is in the [H7 BLE build specification](h7-ble/README.md).
-The authoritative board-pad, MCU-GPIO, sensor, and motor mapping is in the
-[pin-level architecture](h7-ble/pin-architecture.md).
+## Baseline changes from earlier work
+
+The [historical design](archive/README.md) used XIAO controllers, BLE directly to
+the aircraft, a Kakute H7 Mini, PX4 and 3S propulsion. The attached BOM selects
+Feather hand nodes, a trainer-connected ground hub, ELRS, the full-size Kakute
+H7, ArduPilot and 4S propulsion. The user now prioritizes the controller build.
+
+The Rev A schematic deliberately moves the BOM's provisional aircraft UART1/3
+allocation to exposed UART3/4 pads. This avoids the 9V VTX connector in the
+receiver harness. It does not affect the controller-first work.
+
+## Source evidence
+
+- [Baseline BOM and provenance](reference/README.md).
+- [Hand electronics research](schematic-research-hands.md).
+- [Trainer electrical and EdgeTX research](schematic-research-trainer.md).
+- [Aircraft pinout research](schematic-research-aircraft.md).
+
+Research findings specify interfaces. Completed hardware tests are recorded
+separately in [implementation records](implementation-records/README.md).

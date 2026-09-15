@@ -1,0 +1,4 @@
+# Preserve document/image bytes and avoid treating PDF syntax as source text.
+*.pdf binary
+*.xlsx binary
+*.jpg binary

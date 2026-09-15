@@ -1,3 +1,5 @@
+> **Historical design:** this 3S / XIAO / Kakute H7 Mini design predates the current 4S / Feather BOM. Use the [current architecture](../architecture.md) and [controller build guide](../controller/build-guide.md). Do not mix these pin assignments with the current schematic.
+
 # Direct H7 BLE Flight Architecture
 
 Research baseline: 2026-09-10

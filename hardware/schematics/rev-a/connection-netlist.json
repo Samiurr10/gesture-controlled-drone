@@ -1,0 +1,1285 @@
+{
+  "revision": "A",
+  "date": "2026-09-14",
+  "baseline": "PalmPilot_BOM.pdf 34 pages",
+  "connections": [
+    {
+      "id": "P01",
+      "net": "VBAT",
+      "source": "BT1 mating XT60 +",
+      "destination": "U2 VBAT large + pad",
+      "wire": "12 AWG red",
+      "notes": "One 4S pack; connector + mark controls polarity",
+      "status": "specified"
+    },
+    {
+      "id": "P02",
+      "net": "AIR_GND",
+      "source": "BT1 mating XT60 -",
+      "destination": "U2 GND large - pad",
+      "wire": "12 AWG black",
+      "notes": "Short return paired with P01",
+      "status": "specified"
+    },
+    {
+      "id": "P03",
+      "net": "VBAT",
+      "source": "C1 +",
+      "destination": "U2 VBAT large + pad",
+      "wire": "Capacitor lead",
+      "notes": "1000 uF / 35 V; short and insulated",
+      "status": "specified"
+    },
+    {
+      "id": "P04",
+      "net": "AIR_GND",
+      "source": "C1 - striped side",
+      "destination": "U2 GND large - pad",
+      "wire": "Capacitor lead",
+      "notes": "Secure capacitor body",
+      "status": "specified"
+    },
+    {
+      "id": "E01",
+      "net": "VBAT",
+      "source": "U2 harness VBAT",
+      "destination": "U1 ESC1 B+",
+      "wire": "Supplied 8-pin harness",
+      "notes": "RAW battery supply to FC, not 5 V",
+      "status": "specified"
+    },
+    {
+      "id": "E02",
+      "net": "ESC_TLM",
+      "source": "U2 harness TLM",
+      "destination": "U1 ESC1 R7",
+      "wire": "Supplied 8-pin harness",
+      "notes": "ESC UART telemetry; no TX7 connection",
+      "status": "specified"
+    },
+    {
+      "id": "E03",
+      "net": "AIR_GND",
+      "source": "U2 harness GND",
+      "destination": "U1 ESC1 GND",
+      "wire": "Supplied 8-pin harness",
+      "notes": "Common signal ground",
+      "status": "specified"
+    },
+    {
+      "id": "E04",
+      "net": "ESC_CURRENT",
+      "source": "U2 harness CURRENT",
+      "destination": "U1 ESC1 CURRENT",
+      "wire": "Supplied 8-pin harness",
+      "notes": "Analog current signal, not power",
+      "status": "specified"
+    },
+    {
+      "id": "E05",
+      "net": "MOTOR1",
+      "source": "U2 harness M1",
+      "destination": "U1 ESC1 M1",
+      "wire": "Supplied 8-pin harness",
+      "notes": "FC output -> ESC channel 1",
+      "status": "specified"
+    },
+    {
+      "id": "E06",
+      "net": "MOTOR2",
+      "source": "U2 harness M2",
+      "destination": "U1 ESC1 M2",
+      "wire": "Supplied 8-pin harness",
+      "notes": "FC output -> ESC channel 2",
+      "status": "specified"
+    },
+    {
+      "id": "E07",
+      "net": "MOTOR3",
+      "source": "U2 harness M3",
+      "destination": "U1 ESC1 M3",
+      "wire": "Supplied 8-pin harness",
+      "notes": "FC output -> ESC channel 3",
+      "status": "specified"
+    },
+    {
+      "id": "E08",
+      "net": "MOTOR4",
+      "source": "U2 harness M4",
+      "destination": "U1 ESC1 M4",
+      "wire": "Supplied 8-pin harness",
+      "notes": "FC output -> ESC channel 4",
+      "status": "specified"
+    },
+    {
+      "id": "A01",
+      "net": "AIR_5V",
+      "source": "U1 5V",
+      "destination": "U3 RP1 5V",
+      "wire": "26 AWG red",
+      "notes": "Receiver power",
+      "status": "specified"
+    },
+    {
+      "id": "A02",
+      "net": "AIR_GND",
+      "source": "U1 G",
+      "destination": "U3 RP1 GND",
+      "wire": "26 AWG black",
+      "notes": "Receiver reference",
+      "status": "specified"
+    },
+    {
+      "id": "A03",
+      "net": "CRSF_UP",
+      "source": "U3 RP1 TX",
+      "destination": "U1 R3",
+      "wire": "28 AWG white",
+      "notes": "Receiver commands -> FC",
+      "status": "specified"
+    },
+    {
+      "id": "A04",
+      "net": "CRSF_DOWN",
+      "source": "U1 T3",
+      "destination": "U3 RP1 RX",
+      "wire": "28 AWG blue",
+      "notes": "FC telemetry -> receiver",
+      "status": "specified"
+    },
+    {
+      "id": "A05",
+      "net": "AIR_5V",
+      "source": "U1 5V",
+      "destination": "U4 Matek 5V",
+      "wire": "26 AWG red",
+      "notes": "4-9 V allowed; use regulated 5 V",
+      "status": "specified"
+    },
+    {
+      "id": "A06",
+      "net": "AIR_GND",
+      "source": "U1 G",
+      "destination": "U4 Matek G",
+      "wire": "26 AWG black",
+      "notes": "GNSS and compass ground",
+      "status": "specified"
+    },
+    {
+      "id": "A07",
+      "net": "GPS_UP",
+      "source": "U4 Matek TX",
+      "destination": "U1 R4",
+      "wire": "Supplied blue",
+      "notes": "GNSS data -> FC; verify supplied color",
+      "status": "specified"
+    },
+    {
+      "id": "A08",
+      "net": "GPS_DOWN",
+      "source": "U1 T4",
+      "destination": "U4 Matek RX",
+      "wire": "Supplied yellow",
+      "notes": "FC configuration -> GNSS; verify supplied color",
+      "status": "specified"
+    },
+    {
+      "id": "A09",
+      "net": "I2C_SCL",
+      "source": "U1 SCL",
+      "destination": "U4 Matek CL",
+      "wire": "28 AWG green",
+      "notes": "Compass clock; do not add 5 V pull-ups",
+      "status": "specified"
+    },
+    {
+      "id": "A10",
+      "net": "I2C_SDA",
+      "source": "U1 SDA",
+      "destination": "U4 Matek DA",
+      "wire": "Supplied white",
+      "notes": "Compass data; 3.3 V logic; verify color",
+      "status": "specified"
+    },
+    {
+      "id": "A11",
+      "net": "AIR_5V",
+      "source": "U1 5V",
+      "destination": "U5 4-pin contact 1 VCC",
+      "wire": "26 AWG red",
+      "notes": "Standalone module power",
+      "status": "specified"
+    },
+    {
+      "id": "A12",
+      "net": "AIR_GND",
+      "source": "U1 G",
+      "destination": "U5 4-pin contact 4 GND",
+      "wire": "26 AWG black",
+      "notes": "Contacts 2/3 NC; leave 3-pin connector empty",
+      "status": "specified"
+    },
+    {
+      "id": "A13",
+      "net": "AIR_5V",
+      "source": "U1 5V",
+      "destination": "BZ1 Finder 2 5V",
+      "wire": "26 AWG red",
+      "notes": "Buzzer supply/charging",
+      "status": "specified"
+    },
+    {
+      "id": "A14",
+      "net": "AIR_GND",
+      "source": "U1 G",
+      "destination": "BZ1 Finder 2 GND",
+      "wire": "26 AWG black",
+      "notes": "Must connect real GND",
+      "status": "specified"
+    },
+    {
+      "id": "A15",
+      "net": "BUZZ_LOW",
+      "source": "U1 Z-",
+      "destination": "BZ1 Finder 2 BZ",
+      "wire": "28 AWG yellow",
+      "notes": "Switched negative trigger, not GND",
+      "status": "specified"
+    },
+    {
+      "id": "RF1",
+      "net": "ELRS_RF",
+      "source": "U3 RP1 U.FL",
+      "destination": "Supplied 2.4 GHz T antenna",
+      "wire": "Factory coax",
+      "notes": "Push straight down; strain-relieve coax",
+      "status": "specified"
+    },
+    {
+      "id": "RF2",
+      "net": "RID_BT",
+      "source": "U5 left U.FL (marked BT)",
+      "destination": "Short black Bluetooth antenna",
+      "wire": "Factory coax",
+      "notes": "Board view: RF sockets top, wire sockets bottom",
+      "status": "specified"
+    },
+    {
+      "id": "RF3",
+      "net": "RID_GNSS",
+      "source": "U5 right U.FL (marked GNSS)",
+      "destination": "Long grey GNSS antenna",
+      "wire": "Factory coax",
+      "notes": "Do not interchange with BT antenna",
+      "status": "specified"
+    },
+    {
+      "id": "M1U",
+      "net": "PHASE_1U",
+      "source": "U2 motor bank 1 phase 1",
+      "destination": "M1 rear-right lead U",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified"
+    },
+    {
+      "id": "M1V",
+      "net": "PHASE_1V",
+      "source": "U2 motor bank 1 phase 2",
+      "destination": "M1 rear-right lead V",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified"
+    },
+    {
+      "id": "M1W",
+      "net": "PHASE_1W",
+      "source": "U2 motor bank 1 phase 3",
+      "destination": "M1 rear-right lead W",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified"
+    },
+    {
+      "id": "M2U",
+      "net": "PHASE_2U",
+      "source": "U2 motor bank 2 phase 1",
+      "destination": "M2 front-right lead U",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified"
+    },
+    {
+      "id": "M2V",
+      "net": "PHASE_2V",
+      "source": "U2 motor bank 2 phase 2",
+      "destination": "M2 front-right lead V",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified"
+    },
+    {
+      "id": "M2W",
+      "net": "PHASE_2W",
+      "source": "U2 motor bank 2 phase 3",
+      "destination": "M2 front-right lead W",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified"
+    },
+    {
+      "id": "M3U",
+      "net": "PHASE_3U",
+      "source": "U2 motor bank 3 phase 1",
+      "destination": "M3 rear-left lead U",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified"
+    },
+    {
+      "id": "M3V",
+      "net": "PHASE_3V",
+      "source": "U2 motor bank 3 phase 2",
+      "destination": "M3 rear-left lead V",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified"
+    },
+    {
+      "id": "M3W",
+      "net": "PHASE_3W",
+      "source": "U2 motor bank 3 phase 3",
+      "destination": "M3 rear-left lead W",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified"
+    },
+    {
+      "id": "M4U",
+      "net": "PHASE_4U",
+      "source": "U2 motor bank 4 phase 1",
+      "destination": "M4 front-left lead U",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified"
+    },
+    {
+      "id": "M4V",
+      "net": "PHASE_4V",
+      "source": "U2 motor bank 4 phase 2",
+      "destination": "M4 front-left lead V",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified"
+    },
+    {
+      "id": "M4W",
+      "net": "PHASE_4W",
+      "source": "U2 motor bank 4 phase 3",
+      "destination": "M4 front-left lead W",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified"
+    },
+    {
+      "id": "L1a",
+      "net": "L_3V",
+      "source": "U6 3V",
+      "destination": "JL1.1 -> FL1 terminal 1",
+      "wire": "30 AWG red",
+      "notes": "Flex sensor is nonpolar",
+      "status": "specified"
+    },
+    {
+      "id": "L1b",
+      "net": "L_A0",
+      "source": "FL1 terminal 2 -> JL1.2",
+      "destination": "U6 A0",
+      "wire": "30 AWG signal",
+      "notes": "thumb; node NL1",
+      "status": "specified"
+    },
+    {
+      "id": "L1c",
+      "net": "L_A0",
+      "source": "U6 A0",
+      "destination": "RL1.1",
+      "wire": "Local trace/jumper",
+      "notes": "47 kohm, 1%, 0.125 W or higher",
+      "status": "specified"
+    },
+    {
+      "id": "L1d",
+      "net": "L_GND",
+      "source": "RL1.2",
+      "destination": "U6 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Divider lower leg",
+      "status": "specified"
+    },
+    {
+      "id": "L1e",
+      "net": "L_A0",
+      "source": "U6 A0",
+      "destination": "CL1.1",
+      "wire": "Local trace/jumper",
+      "notes": "100 nF, X7R, >=10 V",
+      "status": "specified"
+    },
+    {
+      "id": "L1f",
+      "net": "L_GND",
+      "source": "CL1.2",
+      "destination": "U6 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Place RC by ADC header",
+      "status": "specified"
+    },
+    {
+      "id": "L2a",
+      "net": "L_3V",
+      "source": "U6 3V",
+      "destination": "JL2.1 -> FL2 terminal 1",
+      "wire": "30 AWG red",
+      "notes": "Flex sensor is nonpolar",
+      "status": "specified"
+    },
+    {
+      "id": "L2b",
+      "net": "L_A1",
+      "source": "FL2 terminal 2 -> JL2.2",
+      "destination": "U6 A1",
+      "wire": "30 AWG signal",
+      "notes": "index; node NL2",
+      "status": "specified"
+    },
+    {
+      "id": "L2c",
+      "net": "L_A1",
+      "source": "U6 A1",
+      "destination": "RL2.1",
+      "wire": "Local trace/jumper",
+      "notes": "47 kohm, 1%, 0.125 W or higher",
+      "status": "specified"
+    },
+    {
+      "id": "L2d",
+      "net": "L_GND",
+      "source": "RL2.2",
+      "destination": "U6 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Divider lower leg",
+      "status": "specified"
+    },
+    {
+      "id": "L2e",
+      "net": "L_A1",
+      "source": "U6 A1",
+      "destination": "CL2.1",
+      "wire": "Local trace/jumper",
+      "notes": "100 nF, X7R, >=10 V",
+      "status": "specified"
+    },
+    {
+      "id": "L2f",
+      "net": "L_GND",
+      "source": "CL2.2",
+      "destination": "U6 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Place RC by ADC header",
+      "status": "specified"
+    },
+    {
+      "id": "L3a",
+      "net": "L_3V",
+      "source": "U6 3V",
+      "destination": "JL3.1 -> FL3 terminal 1",
+      "wire": "30 AWG red",
+      "notes": "Flex sensor is nonpolar",
+      "status": "specified"
+    },
+    {
+      "id": "L3b",
+      "net": "L_A2",
+      "source": "FL3 terminal 2 -> JL3.2",
+      "destination": "U6 A2",
+      "wire": "30 AWG signal",
+      "notes": "middle; node NL3",
+      "status": "specified"
+    },
+    {
+      "id": "L3c",
+      "net": "L_A2",
+      "source": "U6 A2",
+      "destination": "RL3.1",
+      "wire": "Local trace/jumper",
+      "notes": "47 kohm, 1%, 0.125 W or higher",
+      "status": "specified"
+    },
+    {
+      "id": "L3d",
+      "net": "L_GND",
+      "source": "RL3.2",
+      "destination": "U6 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Divider lower leg",
+      "status": "specified"
+    },
+    {
+      "id": "L3e",
+      "net": "L_A2",
+      "source": "U6 A2",
+      "destination": "CL3.1",
+      "wire": "Local trace/jumper",
+      "notes": "100 nF, X7R, >=10 V",
+      "status": "specified"
+    },
+    {
+      "id": "L3f",
+      "net": "L_GND",
+      "source": "CL3.2",
+      "destination": "U6 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Place RC by ADC header",
+      "status": "specified"
+    },
+    {
+      "id": "L4a",
+      "net": "L_3V",
+      "source": "U6 3V",
+      "destination": "JL4.1 -> FL4 terminal 1",
+      "wire": "30 AWG red",
+      "notes": "Flex sensor is nonpolar",
+      "status": "specified"
+    },
+    {
+      "id": "L4b",
+      "net": "L_A3",
+      "source": "FL4 terminal 2 -> JL4.2",
+      "destination": "U6 A3",
+      "wire": "30 AWG signal",
+      "notes": "ring; node NL4",
+      "status": "specified"
+    },
+    {
+      "id": "L4c",
+      "net": "L_A3",
+      "source": "U6 A3",
+      "destination": "RL4.1",
+      "wire": "Local trace/jumper",
+      "notes": "47 kohm, 1%, 0.125 W or higher",
+      "status": "specified"
+    },
+    {
+      "id": "L4d",
+      "net": "L_GND",
+      "source": "RL4.2",
+      "destination": "U6 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Divider lower leg",
+      "status": "specified"
+    },
+    {
+      "id": "L4e",
+      "net": "L_A3",
+      "source": "U6 A3",
+      "destination": "CL4.1",
+      "wire": "Local trace/jumper",
+      "notes": "100 nF, X7R, >=10 V",
+      "status": "specified"
+    },
+    {
+      "id": "L4f",
+      "net": "L_GND",
+      "source": "CL4.2",
+      "destination": "U6 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Place RC by ADC header",
+      "status": "specified"
+    },
+    {
+      "id": "L5a",
+      "net": "L_3V",
+      "source": "U6 3V",
+      "destination": "JL5.1 -> FL5 terminal 1",
+      "wire": "30 AWG red",
+      "notes": "Flex sensor is nonpolar",
+      "status": "specified"
+    },
+    {
+      "id": "L5b",
+      "net": "L_A4",
+      "source": "FL5 terminal 2 -> JL5.2",
+      "destination": "U6 A4",
+      "wire": "30 AWG signal",
+      "notes": "little; node NL5",
+      "status": "specified"
+    },
+    {
+      "id": "L5c",
+      "net": "L_A4",
+      "source": "U6 A4",
+      "destination": "RL5.1",
+      "wire": "Local trace/jumper",
+      "notes": "47 kohm, 1%, 0.125 W or higher",
+      "status": "specified"
+    },
+    {
+      "id": "L5d",
+      "net": "L_GND",
+      "source": "RL5.2",
+      "destination": "U6 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Divider lower leg",
+      "status": "specified"
+    },
+    {
+      "id": "L5e",
+      "net": "L_A4",
+      "source": "U6 A4",
+      "destination": "CL5.1",
+      "wire": "Local trace/jumper",
+      "notes": "100 nF, X7R, >=10 V",
+      "status": "specified"
+    },
+    {
+      "id": "L5f",
+      "net": "L_GND",
+      "source": "CL5.2",
+      "destination": "U6 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Place RC by ADC header",
+      "status": "specified"
+    },
+    {
+      "id": "R1a",
+      "net": "R_3V",
+      "source": "U7 3V",
+      "destination": "JR1.1 -> FR1 terminal 1",
+      "wire": "30 AWG red",
+      "notes": "Flex sensor is nonpolar",
+      "status": "specified"
+    },
+    {
+      "id": "R1b",
+      "net": "R_A0",
+      "source": "FR1 terminal 2 -> JR1.2",
+      "destination": "U7 A0",
+      "wire": "30 AWG signal",
+      "notes": "thumb; node NR1",
+      "status": "specified"
+    },
+    {
+      "id": "R1c",
+      "net": "R_A0",
+      "source": "U7 A0",
+      "destination": "RR1.1",
+      "wire": "Local trace/jumper",
+      "notes": "47 kohm, 1%, 0.125 W or higher",
+      "status": "specified"
+    },
+    {
+      "id": "R1d",
+      "net": "R_GND",
+      "source": "RR1.2",
+      "destination": "U7 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Divider lower leg",
+      "status": "specified"
+    },
+    {
+      "id": "R1e",
+      "net": "R_A0",
+      "source": "U7 A0",
+      "destination": "CR1.1",
+      "wire": "Local trace/jumper",
+      "notes": "100 nF, X7R, >=10 V",
+      "status": "specified"
+    },
+    {
+      "id": "R1f",
+      "net": "R_GND",
+      "source": "CR1.2",
+      "destination": "U7 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Place RC by ADC header",
+      "status": "specified"
+    },
+    {
+      "id": "R2a",
+      "net": "R_3V",
+      "source": "U7 3V",
+      "destination": "JR2.1 -> FR2 terminal 1",
+      "wire": "30 AWG red",
+      "notes": "Flex sensor is nonpolar",
+      "status": "specified"
+    },
+    {
+      "id": "R2b",
+      "net": "R_A1",
+      "source": "FR2 terminal 2 -> JR2.2",
+      "destination": "U7 A1",
+      "wire": "30 AWG signal",
+      "notes": "index; node NR2",
+      "status": "specified"
+    },
+    {
+      "id": "R2c",
+      "net": "R_A1",
+      "source": "U7 A1",
+      "destination": "RR2.1",
+      "wire": "Local trace/jumper",
+      "notes": "47 kohm, 1%, 0.125 W or higher",
+      "status": "specified"
+    },
+    {
+      "id": "R2d",
+      "net": "R_GND",
+      "source": "RR2.2",
+      "destination": "U7 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Divider lower leg",
+      "status": "specified"
+    },
+    {
+      "id": "R2e",
+      "net": "R_A1",
+      "source": "U7 A1",
+      "destination": "CR2.1",
+      "wire": "Local trace/jumper",
+      "notes": "100 nF, X7R, >=10 V",
+      "status": "specified"
+    },
+    {
+      "id": "R2f",
+      "net": "R_GND",
+      "source": "CR2.2",
+      "destination": "U7 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Place RC by ADC header",
+      "status": "specified"
+    },
+    {
+      "id": "R3a",
+      "net": "R_3V",
+      "source": "U7 3V",
+      "destination": "JR3.1 -> FR3 terminal 1",
+      "wire": "30 AWG red",
+      "notes": "Flex sensor is nonpolar",
+      "status": "specified"
+    },
+    {
+      "id": "R3b",
+      "net": "R_A2",
+      "source": "FR3 terminal 2 -> JR3.2",
+      "destination": "U7 A2",
+      "wire": "30 AWG signal",
+      "notes": "middle; node NR3",
+      "status": "specified"
+    },
+    {
+      "id": "R3c",
+      "net": "R_A2",
+      "source": "U7 A2",
+      "destination": "RR3.1",
+      "wire": "Local trace/jumper",
+      "notes": "47 kohm, 1%, 0.125 W or higher",
+      "status": "specified"
+    },
+    {
+      "id": "R3d",
+      "net": "R_GND",
+      "source": "RR3.2",
+      "destination": "U7 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Divider lower leg",
+      "status": "specified"
+    },
+    {
+      "id": "R3e",
+      "net": "R_A2",
+      "source": "U7 A2",
+      "destination": "CR3.1",
+      "wire": "Local trace/jumper",
+      "notes": "100 nF, X7R, >=10 V",
+      "status": "specified"
+    },
+    {
+      "id": "R3f",
+      "net": "R_GND",
+      "source": "CR3.2",
+      "destination": "U7 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Place RC by ADC header",
+      "status": "specified"
+    },
+    {
+      "id": "R4a",
+      "net": "R_3V",
+      "source": "U7 3V",
+      "destination": "JR4.1 -> FR4 terminal 1",
+      "wire": "30 AWG red",
+      "notes": "Flex sensor is nonpolar",
+      "status": "specified"
+    },
+    {
+      "id": "R4b",
+      "net": "R_A3",
+      "source": "FR4 terminal 2 -> JR4.2",
+      "destination": "U7 A3",
+      "wire": "30 AWG signal",
+      "notes": "ring; node NR4",
+      "status": "specified"
+    },
+    {
+      "id": "R4c",
+      "net": "R_A3",
+      "source": "U7 A3",
+      "destination": "RR4.1",
+      "wire": "Local trace/jumper",
+      "notes": "47 kohm, 1%, 0.125 W or higher",
+      "status": "specified"
+    },
+    {
+      "id": "R4d",
+      "net": "R_GND",
+      "source": "RR4.2",
+      "destination": "U7 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Divider lower leg",
+      "status": "specified"
+    },
+    {
+      "id": "R4e",
+      "net": "R_A3",
+      "source": "U7 A3",
+      "destination": "CR4.1",
+      "wire": "Local trace/jumper",
+      "notes": "100 nF, X7R, >=10 V",
+      "status": "specified"
+    },
+    {
+      "id": "R4f",
+      "net": "R_GND",
+      "source": "CR4.2",
+      "destination": "U7 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Place RC by ADC header",
+      "status": "specified"
+    },
+    {
+      "id": "R5a",
+      "net": "R_3V",
+      "source": "U7 3V",
+      "destination": "JR5.1 -> FR5 terminal 1",
+      "wire": "30 AWG red",
+      "notes": "Flex sensor is nonpolar",
+      "status": "specified"
+    },
+    {
+      "id": "R5b",
+      "net": "R_A4",
+      "source": "FR5 terminal 2 -> JR5.2",
+      "destination": "U7 A4",
+      "wire": "30 AWG signal",
+      "notes": "little; node NR5",
+      "status": "specified"
+    },
+    {
+      "id": "R5c",
+      "net": "R_A4",
+      "source": "U7 A4",
+      "destination": "RR5.1",
+      "wire": "Local trace/jumper",
+      "notes": "47 kohm, 1%, 0.125 W or higher",
+      "status": "specified"
+    },
+    {
+      "id": "R5d",
+      "net": "R_GND",
+      "source": "RR5.2",
+      "destination": "U7 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Divider lower leg",
+      "status": "specified"
+    },
+    {
+      "id": "R5e",
+      "net": "R_A4",
+      "source": "U7 A4",
+      "destination": "CR5.1",
+      "wire": "Local trace/jumper",
+      "notes": "100 nF, X7R, >=10 V",
+      "status": "specified"
+    },
+    {
+      "id": "R5f",
+      "net": "R_GND",
+      "source": "CR5.2",
+      "destination": "U7 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Place RC by ADC header",
+      "status": "specified"
+    },
+    {
+      "id": "LP1",
+      "net": "L_BAT",
+      "source": "BT2 +",
+      "destination": "U6 JST BAT +",
+      "wire": "Factory battery lead",
+      "notes": "Adafruit #1578, protected 1S 500 mAh",
+      "status": "specified"
+    },
+    {
+      "id": "LP2",
+      "net": "L_GND",
+      "source": "BT2 -",
+      "destination": "U6 JST BAT -",
+      "wire": "Factory battery lead",
+      "notes": "Check connector polarity; never series-connect cells",
+      "status": "specified"
+    },
+    {
+      "id": "LP3",
+      "net": "L_EN",
+      "source": "U6 EN",
+      "destination": "SWL common",
+      "wire": "28 AWG signal",
+      "notes": "SPDT slide used as SPST",
+      "status": "specified"
+    },
+    {
+      "id": "LP4",
+      "net": "L_GND",
+      "source": "SWL OFF throw",
+      "destination": "U6 GND",
+      "wire": "28 AWG black",
+      "notes": "Other throw NC; closed EN-GND means OFF",
+      "status": "specified"
+    },
+    {
+      "id": "RP1",
+      "net": "R_BAT",
+      "source": "BT3 +",
+      "destination": "U7 JST BAT +",
+      "wire": "Factory battery lead",
+      "notes": "Adafruit #1578, protected 1S 500 mAh",
+      "status": "specified"
+    },
+    {
+      "id": "RP2",
+      "net": "R_GND",
+      "source": "BT3 -",
+      "destination": "U7 JST BAT -",
+      "wire": "Factory battery lead",
+      "notes": "Check connector polarity; never series-connect cells",
+      "status": "specified"
+    },
+    {
+      "id": "RP3",
+      "net": "R_EN",
+      "source": "U7 EN",
+      "destination": "SWR common",
+      "wire": "28 AWG signal",
+      "notes": "SPDT slide used as SPST",
+      "status": "specified"
+    },
+    {
+      "id": "RP4",
+      "net": "R_GND",
+      "source": "SWR OFF throw",
+      "destination": "U7 GND",
+      "wire": "28 AWG black",
+      "notes": "Other throw NC; closed EN-GND means OFF",
+      "status": "specified"
+    },
+    {
+      "id": "HP1",
+      "net": "H_BAT",
+      "source": "BT4 +",
+      "destination": "U8 JST BAT +",
+      "wire": "Factory battery lead",
+      "notes": "Adafruit #1578, protected 1S 500 mAh",
+      "status": "specified"
+    },
+    {
+      "id": "HP2",
+      "net": "H_GND",
+      "source": "BT4 -",
+      "destination": "U8 JST BAT -",
+      "wire": "Factory battery lead",
+      "notes": "Check connector polarity; never series-connect cells",
+      "status": "specified"
+    },
+    {
+      "id": "HP3",
+      "net": "H_EN",
+      "source": "U8 EN",
+      "destination": "SWH common",
+      "wire": "28 AWG signal",
+      "notes": "SPDT slide used as SPST",
+      "status": "specified"
+    },
+    {
+      "id": "HP4",
+      "net": "H_GND",
+      "source": "SWH OFF throw",
+      "destination": "U8 GND",
+      "wire": "28 AWG black",
+      "notes": "Other throw NC; closed EN-GND means OFF",
+      "status": "specified"
+    },
+    {
+      "id": "SW4.1",
+      "net": "L_3V",
+      "source": "U6 3V",
+      "destination": "R201.1",
+      "wire": "28 AWG / local trace",
+      "notes": "10k external pull-up",
+      "status": "specified"
+    },
+    {
+      "id": "SW4.2",
+      "net": "left_enable",
+      "source": "R201.2",
+      "destination": "U6 D5",
+      "wire": "28 AWG / local trace",
+      "notes": "GPIO configured INPUT; active low",
+      "status": "specified"
+    },
+    {
+      "id": "SW4.3",
+      "net": "left_enable",
+      "source": "U6 D5",
+      "destination": "R202.1",
+      "wire": "28 AWG / local trace",
+      "notes": "1k in series toward button",
+      "status": "specified"
+    },
+    {
+      "id": "SW4.4",
+      "net": "SW4_LEAD",
+      "source": "R202.2",
+      "destination": "SW4 contact 1",
+      "wire": "28 AWG / local trace",
+      "notes": "Normally open pushbutton",
+      "status": "specified"
+    },
+    {
+      "id": "SW4.5",
+      "net": "L_GND",
+      "source": "SW4 contact 2",
+      "destination": "U6 GND",
+      "wire": "28 AWG / local trace",
+      "notes": "Opposite contacts; not joined same-side legs",
+      "status": "specified"
+    },
+    {
+      "id": "SW4.6",
+      "net": "left_enable",
+      "source": "U6 D5",
+      "destination": "C201.1",
+      "wire": "28 AWG / local trace",
+      "notes": "100nF X7R >=10 V",
+      "status": "specified"
+    },
+    {
+      "id": "SW4.7",
+      "net": "L_GND",
+      "source": "C201.2",
+      "destination": "U6 GND",
+      "wire": "28 AWG / local trace",
+      "notes": "Capacitor at MCU pin",
+      "status": "specified"
+    },
+    {
+      "id": "SW5.1",
+      "net": "H_3V",
+      "source": "U8 3V",
+      "destination": "R203.1",
+      "wire": "28 AWG / local trace",
+      "notes": "10k external pull-up",
+      "status": "specified"
+    },
+    {
+      "id": "SW5.2",
+      "net": "hub_calibration",
+      "source": "R203.2",
+      "destination": "U8 D6",
+      "wire": "28 AWG / local trace",
+      "notes": "GPIO configured INPUT; active low",
+      "status": "specified"
+    },
+    {
+      "id": "SW5.3",
+      "net": "hub_calibration",
+      "source": "U8 D6",
+      "destination": "R204.1",
+      "wire": "28 AWG / local trace",
+      "notes": "1k in series toward button",
+      "status": "specified"
+    },
+    {
+      "id": "SW5.4",
+      "net": "SW5_LEAD",
+      "source": "R204.2",
+      "destination": "SW5 contact 1",
+      "wire": "28 AWG / local trace",
+      "notes": "Normally open pushbutton",
+      "status": "specified"
+    },
+    {
+      "id": "SW5.5",
+      "net": "H_GND",
+      "source": "SW5 contact 2",
+      "destination": "U8 GND",
+      "wire": "28 AWG / local trace",
+      "notes": "Opposite contacts; not joined same-side legs",
+      "status": "specified"
+    },
+    {
+      "id": "SW5.6",
+      "net": "hub_calibration",
+      "source": "U8 D6",
+      "destination": "C202.1",
+      "wire": "28 AWG / local trace",
+      "notes": "100nF X7R >=10 V",
+      "status": "specified"
+    },
+    {
+      "id": "SW5.7",
+      "net": "H_GND",
+      "source": "C202.2",
+      "destination": "U8 GND",
+      "wire": "28 AWG / local trace",
+      "notes": "Capacitor at MCU pin",
+      "status": "specified"
+    },
+    {
+      "id": "H01",
+      "net": "H_3V",
+      "source": "U8 3V",
+      "destination": "U301 pin 5 VCC",
+      "wire": "Local wire",
+      "notes": "SN74LVC1G125DBVR; verify adapter map",
+      "status": "bench prototype; verify Pocket input before joining JP301"
+    },
+    {
+      "id": "H02",
+      "net": "H_GND",
+      "source": "U8 GND",
+      "destination": "U301 pin 3 GND",
+      "wire": "Local wire",
+      "notes": "Logic supply reference",
+      "status": "bench prototype; verify Pocket input before joining JP301"
+    },
+    {
+      "id": "H03",
+      "net": "PPM_A",
+      "source": "U8 D5 (P1.08)",
+      "destination": "U301 pin 2 A",
+      "wire": "Local wire",
+      "notes": "PPM waveform input",
+      "status": "bench prototype; verify Pocket input before joining JP301"
+    },
+    {
+      "id": "H04",
+      "net": "PPM_OEn",
+      "source": "U8 D9 (P0.26)",
+      "destination": "U301 pin 1 /OE",
+      "wire": "Local wire",
+      "notes": "LOW enables buffer; HIGH disables",
+      "status": "bench prototype; verify Pocket input before joining JP301"
+    },
+    {
+      "id": "H05",
+      "net": "H_3V",
+      "source": "U8 3V",
+      "destination": "R301.1",
+      "wire": "Local trace",
+      "notes": "10k pull-up",
+      "status": "bench prototype; verify Pocket input before joining JP301"
+    },
+    {
+      "id": "H06",
+      "net": "PPM_OEn",
+      "source": "R301.2",
+      "destination": "U301 pin 1 /OE",
+      "wire": "Local trace",
+      "notes": "Holds output disabled in reset",
+      "status": "bench prototype; verify Pocket input before joining JP301"
+    },
+    {
+      "id": "H07",
+      "net": "PPM_A",
+      "source": "U301 pin 2 A",
+      "destination": "R302.1",
+      "wire": "Local trace",
+      "notes": "100k input pull-down",
+      "status": "bench prototype; verify Pocket input before joining JP301"
+    },
+    {
+      "id": "H08",
+      "net": "H_GND",
+      "source": "R302.2",
+      "destination": "U8 GND",
+      "wire": "Local trace",
+      "notes": "Defines idle input",
+      "status": "bench prototype; verify Pocket input before joining JP301"
+    },
+    {
+      "id": "H09",
+      "net": "H_3V",
+      "source": "U301 pin 5 VCC",
+      "destination": "C301.1",
+      "wire": "Local trace",
+      "notes": "100nF, at IC",
+      "status": "bench prototype; verify Pocket input before joining JP301"
+    },
+    {
+      "id": "H10",
+      "net": "H_GND",
+      "source": "C301.2",
+      "destination": "U301 pin 3 GND",
+      "wire": "Local trace",
+      "notes": "Decoupling return",
+      "status": "bench prototype; verify Pocket input before joining JP301"
+    },
+    {
+      "id": "H11",
+      "net": "PPM_Y",
+      "source": "U301 pin 4 Y",
+      "destination": "R303.1",
+      "wire": "Local trace",
+      "notes": "1k series resistor",
+      "status": "bench prototype; verify Pocket input before joining JP301"
+    },
+    {
+      "id": "H12",
+      "net": "PPM_PRE",
+      "source": "R303.2",
+      "destination": "JP301.1 / TP301",
+      "wire": "Local trace",
+      "notes": "Test here with jumper removed",
+      "status": "bench prototype; verify Pocket input before joining JP301"
+    },
+    {
+      "id": "H13",
+      "net": "PPM_CABLE",
+      "source": "JP301.2 / TP302",
+      "destination": "J301 TS tip",
+      "wire": "Shielded signal",
+      "notes": "JP301 shunt OPEN until Pocket compatibility verified",
+      "status": "bench prototype; verify Pocket input before joining JP301"
+    },
+    {
+      "id": "H14",
+      "net": "H_GND",
+      "source": "U8 GND",
+      "destination": "J301 TS sleeve",
+      "wire": "Shield / return",
+      "notes": "Only shared ground between hub and Pocket",
+      "status": "bench prototype; verify Pocket input before joining JP301"
+    }
+  ]
+}
