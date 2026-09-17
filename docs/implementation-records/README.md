@@ -2,9 +2,9 @@
 
 **Latest tests:** [September 17 hand-controller readiness](2026-09-17_hand-controller-readiness.md): corrected ADC probe, full ESP-IDF ADC and timer tests, physical ADC limits and remaining one-hand work.
 
-**Earlier decision and tests:** [ESP32 controller migration and complete-drone feasibility](2026-09-16_esp32-full-drone-feasibility.md). The earlier nRF52840 audit is historical controller evidence; its passes and failures do not qualify ESP32. STM32 drone findings remain relevant to the current virtual candidate.
+**Earlier decision and tests:** [ESP32 controller migration and complete-drone feasibility](2026-09-16_esp32-full-drone-feasibility.md). STM32 drone findings remain relevant to the current virtual candidate.
 
-Scope: **controller simulation → physical hand-controller prototype → virtual drone hardware/MCU, mechanical simulation and display**. No physical drone build or flight results are required. The [September 16 runtime audit](2026-09-16_simantic-capability-audit.md) records passing diagnostic paths and specific model failures. Complete controller/flight firmware qualification and physical prototype results remain pending.
+Scope: **controller simulation → physical hand-controller prototype → virtual drone hardware/MCU, mechanical simulation and display**. No physical drone build or flight results are required. The [ESP32-S3 / STM32H7 runtime audit](../../simulation/simantic/capability-audit/README.md) records passing diagnostic paths and specific model failures. Complete controller/flight firmware qualification and physical prototype results remain pending.
 
 For each checkpoint, create a dated Markdown record using the [test record template](../controller/test-record-template.md). Include the milestone (S0–S3, C0–C7 or D1–D4) and exact test/scenario ID from [controller validation](../controller/validation.md) or the [drone simulation plan](../drone-simulation.md). Example: `YYYY-MM-DD_S1_CTRL-010_simulated-flex.md`.
 

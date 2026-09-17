@@ -4,7 +4,7 @@
 
 Scope updated **September 16, 2026**. This plan supersedes the earlier physical-aircraft build and flight plans, including the aircraft portions of the original BOM and Rev A schematics.
 
-**Controller decision:** use **ESP32-S3** for both hands and the controller hub. The bench target is **ESP32-S3-DevKitC-1 with ESP32-S3-WROOM-1-N8R2**, external motion sensors and USB power. This replaces the Feather nRF52840 selection. The old Rev A hand pins, onboard sensors and battery circuits are also superseded; use the [ESP32 migration record](docs/controller/esp32-migration.md) and current [BOM](docs/controller/bom.md).
+**Controller decision:** use **ESP32-S3** for both hands and the controller hub. The bench target is **ESP32-S3-DevKitC-1 with ESP32-S3-WROOM-1-N8R2**, external motion sensors and USB power. ESP32-S3 is the sole controller platform. The old Rev A hand pins, onboard sensors and battery circuits are superseded; use the [ESP32 migration record](docs/controller/esp32-migration.md) and current [BOM](docs/controller/bom.md).
 
 ## Goals and priority
 
@@ -18,7 +18,7 @@ The first priority is controller simulation, followed by its physical prototype.
 ## Start here
 
 1. Review the [ESP32 decision](docs/controller/esp32-migration.md) and [latest readiness record](docs/implementation-records/2026-09-17_hand-controller-readiness.md), then continue **S0** in the [controller Simantic plan](docs/controller/simantic-plan.md).
-2. Qualify the exact ESP32 model, ADC and sensor-driver path, then simulate one flex channel before adding sensors and the second hand. Earlier nRF52840 SAADC/TWIM results are historical evidence, not ESP32 requirements.
+2. Qualify the exact ESP32 model, ADC and sensor-driver path, then simulate one flex channel before adding sensors and the second hand.
 3. Complete S0–S3 with recorded simulation evidence. Then use the [controller build guide](docs/controller/build-guide.md) and [incremental parts list](docs/controller/bom.md) for C0–C7.
 4. After the controller works, follow the [drone simulation plan](docs/drone-simulation.md) for D1–D4.
 
@@ -63,7 +63,7 @@ The [architecture](docs/architecture.md) defines responsibilities and interfaces
 | Current scope, system boundaries and open decisions | [Architecture](docs/architecture.md) |
 | Latest ADC/timer results and remaining controller work | [September 17 readiness](docs/implementation-records/2026-09-17_hand-controller-readiness.md) |
 | ESP32 decision, simulation and model gaps | [ESP32 migration](docs/controller/esp32-migration.md), [Simantic plan](docs/controller/simantic-plan.md), [current assessment](docs/implementation-records/2026-09-16_esp32-full-drone-feasibility.md) |
-| Executed simulator tests and concrete platform requests | [Runtime audit](docs/implementation-records/2026-09-16_simantic-capability-audit.md), [Simantic handoff](simulation/simantic/capability-audit/SIMANTIC-REQUESTS.md) |
+| Executed simulator tests and concrete platform requests | [ESP32-S3 and STM32H7 audit](simulation/simantic/capability-audit/README.md), [Simantic handoff](simulation/simantic/capability-audit/SIMANTIC-REQUESTS.md) |
 | Controller stages and physical construction | [Controller overview](docs/controller/README.md), [BOM](docs/controller/bom.md), [build guide](docs/controller/build-guide.md) |
 | Controller software and acceptance | [Firmware plan](docs/controller/firmware-plan.md), [validation](docs/controller/validation.md) |
 | Drone MCU outputs, dynamics and display | [Drone simulation plan](docs/drone-simulation.md) |
@@ -81,7 +81,7 @@ Only check an implementation milestone when its exit criteria pass and link to a
 
 ### Goal 1A — Simulate the controller first
 
-- [ ] **S0 — ESP32 simulator baseline:** pin ESP32-S3 toolchain/model versions; boot the chosen framework; verify first-hand ADC, motion-sensor, GPIO and timer support. Record blocked/substituted features and the BLE/host-transport checks to complete in S2/S3. Retire nRF-specific gates from the active path.
+- [ ] **S0 — ESP32 simulator baseline:** pin ESP32-S3 toolchain/model versions; boot the chosen framework; verify first-hand ADC, motion-sensor, GPIO and timer support. Record blocked/substituted features and the BLE/host-transport checks to complete in S2/S3.
 - [ ] **S1 — One-hand sensing and calibration:** start with one flex channel, expand to five plus motion and enable; report explicit USB bench-power status and test calibration/sensor faults. Battery monitoring follows its new circuit design.
 - [ ] **S2 — Both hands and hub:** verify identities, two BLE links, acquisition progress, freshness and whole-command invalidation on faults.
 - [ ] **S3 — Controller simulation qualification:** validate bounded commands, enable/stop/recovery behavior and the host-output contract with repeatable normal and fault scenarios. Record unsupported coverage; mocked inputs alone do not qualify missing hardware paths.
@@ -93,7 +93,7 @@ Begin after the controller simulation exit criteria are met. Resolve missing req
 - [ ] **C0 — ESP32 bench preparation:** confirm DevKitC-1 N8R2 board revisions, external sensors, parts, toolchain, inspection and USB diagnostics; publish/review the ESP32 schematic revision before wearable assembly.
 - [ ] **C1 — One physical flex input:** assemble left ESP32 GPIO1 / ADC1_CH0 with 47 kΩ and 100 nF, validate ADC attenuation/calibration, measure readings and test open/short behavior.
 - [ ] **C2 — Complete left-hand sensing:** verify five flex channels, motion axes, calibration and filtering.
-- [ ] **C3 — Left wearable:** qualify the new charger/regulator/battery-monitor design, enable, power switch, fit and strain relief; measure the valid operating range. The DevKit has no Feather-style charger or BAT connector.
+- [ ] **C3 — Left wearable:** qualify the new charger/regulator/battery-monitor design, enable, power switch, fit and strain relief; measure the valid operating range. The DevKit requires an external battery charger and power circuit.
 - [ ] **C4 — Right wearable:** repeat sensing, power, fit and independent calibration with a distinct hand identity.
 - [ ] **C5 — Hub and BLE:** validate both physical links, calibration control, mapping and stale-data handling.
 - [ ] **C6 — Controller-to-computer bridge:** validate serialized commands, session/sequence/freshness, bounds, disconnection and deliberate recovery on the host.

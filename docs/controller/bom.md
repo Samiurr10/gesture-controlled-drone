@@ -1,6 +1,6 @@
 # ESP32-S3 controller BOM
 
-**Supersedes the Feather controller BOM for the active build.** Reference board:
+**Active controller platform: ESP32-S3 only.** Reference board:
 ESP32-S3-DevKitC-1-N8R2 with ESP32-S3-WROOM-1-N8R2. Start with one USB-powered
 board. These quantities are required items, not a statement of parts on hand.
 The final wearable power circuit and revised ESP schematic are still pending.
@@ -47,7 +47,7 @@ heading quality need separate evidence.
 
 ## Power and mechanics — design before purchase/assembly
 
-USB powers the initial bench. DevKitC-1 is not a Feather battery board.
+USB powers the initial bench. DevKitC-1 needs an external wearable power circuit.
 The later wearable design must specify a protected cell/pack, charger, power-path
 behavior, regulator sized for actual ESP/radio peaks, disconnect switch,
 low-battery measurement and mechanical protection. Record schematics, current
@@ -56,13 +56,12 @@ budget, USB coexistence and charging procedure before selecting these parts.
 Do not connect the old 1S pack directly to 3V3, GPIO10 or a supposed BAT pin.
 GPIO10 is only a reserved future ADC input. No divider values or charger model
 are selected in this BOM. An existing #1578 cell may be considered only after
-that design review; its former Feather connection is not transferable.
+that design review; its wiring must follow the new power design.
 
-## No longer required by this active BOM
+## Scope of purchases
 
-Feather Sense #4516, Feather Express #4062, their factory A6 monitoring and EN
-power-switch wiring belong to the historical design. Do not buy them for the
-ESP implementation. The trainer buffer/Pocket and all aircraft hardware remain
-outside the active controller purchase list. Historical totals are retained in
-[the original source BOM](../reference/README.md) and
-[Rev A package](../../hardware/schematics/README.md), not merged into this list.
+Buy ESP32-S3 controller parts from this list. The trainer buffer/Pocket and all
+aircraft hardware are outside the active controller purchase list. The
+[original source BOM](../reference/README.md) and
+[Rev A package](../../hardware/schematics/README.md) are archived documents and
+do not define current controller purchases or wiring.

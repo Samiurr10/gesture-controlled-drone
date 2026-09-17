@@ -1,84 +1,54 @@
-# Requests for Simantic — PalmPilot runtime audit
+# Simantic requirements — ESP32-S3 controller, then STM32H7 drone
 
-> **Report snapshot:** this documentation package includes audit reports and concise results. Test sources, setup scripts and detailed traces referenced below remain local bench material; reproduction commands require that separate harness and are not runnable from this documentation checkout alone.
+**Updated September 17, 2026.** The only hand-controller platform is ESP32-S3.
+The later drone target is STM32H743 (STM32H7). The project supplies sensor inputs,
+controller logic, transport integration, dynamics and display.
+See the [current readiness record](../../../docs/implementation-records/2026-09-17_hand-controller-readiness.md)
+for versions, expected/observed values and evidence limits.
 
-> **September 17 follow-up:** see the [current hand-controller readiness record](../../../docs/implementation-records/2026-09-17_hand-controller-readiness.md). ADC passes with corrected clock setup and PR #168; full ESP-IDF boot and `esp_timer` now pass. GPTimer remains a confirmed model gap. Earlier measurements below retain their original scope.
+## ESP-01 — Integrate the tested ADC1 one-shot implementation
 
-**Active controller changed to ESP32-S3 on September 16, 2026.** Use the [current ESP32/full-drone assessment](../../../docs/implementation-records/2026-09-16_esp32-full-drone-feasibility.md) first. **SIM-01, SIM-02, SIM-05 and SIM-06 below concern the retired nRF52840 design; they no longer block our controller.** SIM-03/SIM-04 remain relevant to the STM32 drone candidate. SIM-07 concerns ADC fidelity if that drone path uses it. The [ESP32 audit](esp32s3/README.md) and [extended drone tests](full-drone/README.md) contain the new runtime evidence.
+The corrected register probe and full ESP-IDF v5.5.2 public-driver application
+pass with [ADC PR #168](https://github.com/simantic-dev/renode-infrastructure/pull/168).
+At test time it was unmerged; stock engine 0.5.7 still lacks conversion behavior.
+Integrate the change and rerun the ten-channel/four-attenuation matrix without
+the temporary overlay. Five flex inputs use ADC1 channels 0/1/3/4/5.
+The original probe omitted a SENS clock enable; that test bug was corrected.
 
-## Active ESP32-S3 work
+The model uses an ideal synchronous voltage curve. Measured-voltage accuracy,
+noise, calibration and conversion timing remain unqualified. Continuous/DMA
+sampling is not required for the initial hand firmware.
 
-Target: `ESP32-S3-WROOM-1-N8R2`, CLI/engine 0.5.7. See the [ESP32 reproduction package](esp32s3/README.md) for exact source, model hashes, commands and assertion results.
+## ESP-02 — Complete GPTimer/TIMG behavior when required
 
-### ESP-01 — Implement ADC conversion and channel stimulus
+Public driver clock/reset/configuration succeeds, but no alarm callbacks occur
+and `gptimer_get_raw_count` stalls waiting for snapshot UPDATE to clear.
+`Timers.ESP32C3_Timg`, selected by the S3 platform, only stores the main-timer
+registers. Implement counting, capture completion, alarm flags, interrupts and
+routing; qualify any required watchdog behavior separately.
 
-**Independently confirmed in the installed backend:** [ADC/input review](esp32s3/adc-review/README.md). SENS writes store register words; reads have no ADC conversion/DONE behavior. Read-only DONE/DATA incorrectly accept writes. No compatible per-channel analog input exists. The fresh CLI and SDK use the same backend assembly and reproduce the same firmware output; STM32 analog injection/conversion succeeds as a positive control. The earlier ADC probe did not inject explicit analog voltages, so it does not establish an accuracy failure.
+SYSTIMER-backed `esp_timer` and FreeRTOS work. Use those for initial hand
+sampling, then measure deadlines/jitter. TIMG does not block that first step.
 
-The firmware selects the five ADC1 channels used by the hands (0, 1, 3, 4, 5). Control-register readback works, but conversion DONE never arrives and data remain zero in the bounded RTC-path test. The APB SARADC region is plain mapped memory rather than a converter.
+## ESP-03 — Correct high-bank GPIO behavior
 
-Implement the ESP32-S3 ADC path required by the pinned ESP-IDF driver, conversion completion/data and channel selection, with a documented per-channel voltage API. Include attenuation/calibration behavior or explicitly document supported approximations. We supply voltages and sensor scenarios. Acceptance must use the real ADC driver across GPIO1/2/4/5/6, not digital pin reads or application-variable injection.
+GPIO43 SET/readback fails and host injection reports pin 43 out of range in
+the diagnostic. GPIO1/2/4/5/6/7 input tests pass. GPIO43 is reserved for UART0,
+whose byte transport passes; full pin-matrix routing still needs validation.
+Use the [ESP32 diagnostic record](esp32s3/README.md) for the bounded results.
 
-First implement **ADC1 RTC one-shot in SENS**, including read-only data/status semantics. Replacing the APB SARADC memory region alone will not implement this separate path. Continuous/DMA conversion is not a prerequisite for the first hand. The linked review defines the input and driver acceptance tests.
+## Controller qualification still required
 
-### ESP-02 — Qualify/fix TIMG0 snapshot and alarm behavior
+- Project: exact LSM6DS3TR-C/LIS3MDL fixtures and actual I2C driver transactions.
+- Project: GPIO7 public driver/debounce, filters, calibration and fault handling.
+- Qualify NVS persistence and watchdog reset/recovery with the selected firmware.
+- Later: selected ESP BLE stack with two simultaneous hands and hub freshness.
+- Qualify the host command transport and receiver expiry; native USB requires
+  separate driver/model tests if selected.
 
-The follow-up inspected the loaded `ESP32C3_Timg` implementation used by the S3 model: it stores registers and supplies RTC calibration responses, without the tested general-purpose timer counting/snapshot/alarm behavior. This is now an implementation-backed gap, not solely an ambiguous timeout. Required interrupt routing and the production framework's timer/watchdog behavior still need qualification after implementation.
+These untested paths are not automatically confirmed simulator defects.
 
-The tightened TIMG0 probe follows the HAL divider-reset and UPDATE-wait sequence. Enable/configuration readback passes, but UPDATE bit31 stays set and the alarm flag remains zero. Since the snapshot never becomes ready, its zero count is not proof that the underlying counter never advances. The separate SYSTIMER snapshot/advancing-counter test passes. Investigate the exact reproduction, then qualify timer/interrupt/watchdog paths used by the actual ESP-IDF build. Do not interpret this as every timing source being absent.
-
-### ESP-03 — Correct ESP32-S3 GPIO width and routing
-
-GPIO43 output/readback fails, and host input injection reports GPIO43 out of range. High-bank GPIO input offset 0x40 is unhandled in the tested model. Low-bank GPIO1/2/4/5/6/7 injection succeeds. Correct S3 high-bank width/register semantics and verify GPIO matrix routes used by UART/I²C as part of board fidelity. A UART model's byte stream can pass while physical pin routing remains unqualified.
-
-### ESP validation request — Production framework and two BLE peers
-
-Bare-metal Xtensa diagnostic boot, UART echo, selected GPIO, SYSTIMER and repeated-start I²C pass. Full ROM/bootloader/ESP-IDF application boot, selected BLE stack with two simultaneous peers, NVS persistence and watchdog recovery have not been qualified. Provide or qualify a pinned reproducible ESP-IDF application image through these paths; untested stack compatibility is not an established radio defect.
-
-## Earlier Nordic and STM32 audit requests
-
-Tested release: **CLI/engine 0.5.7; SDK 0.3.1; macOS arm64**. Models:
-`NRF52840QIAA` and `STM32H743ZI`; exact hashes and repro fixtures are in the
-[audit groups](README.md). These requests come from runtime probes. They are
-not a request to build our sensor-input generator, physics, UI or integration
-application; those remain project-owned.
-
-## 1. Historical nRF52840 hand-controller driver requests
-
-### SIM-01 — Add/register the nRF52840 SAADC
-
-**Observed:** the supplied platform has no SAADC. ENABLE reads zero, and
-STARTED/CALIBRATEDONE do not arrive in the diagnostic.
-
-**Need:** SAADC at `0x40007000`, input selection, conversion configuration,
-START/SAMPLE/STOP/calibration tasks and events, EasyDMA result writes and counts,
-and the interrupt/event behavior the selected driver uses. Provide a documented
-way to assign each AIN voltage; we will generate those voltages ourselves.
-
-**Acceptance:** run our actual driver sequence across the five finger inputs
-and battery input, verify result values, completion order, event clearing and
-DMA guard bytes. Details are in the [SAADC handoff](../../../docs/controller/simantic-saadc-handoff.md)
-and [nRF runtime evidence](nrf52/README.md).
-
-### SIM-02 — Complete TWIM/EasyDMA transaction lifecycle
-
-**Correction:** TWIM is partially implemented in the shipped engine. Basic DMA
-transfer/count and NACK/STOP handling exist; a wholly new I2C controller is not
-the required change.
-
-**Observed:** `TXSTARTED`, `LASTTX`, `RXSTARTED`, `LASTRX` and `SUSPENDED` stay
-zero in the tested transactions. The SUSPEND/RESUME repeated-start register read
-returns `0x00` where the fixed fixture returns `0x60` using STOP-separated
-transactions. RXSTARTED/TXSTARTED reads produce unhandled-offset warnings.
-
-**Need:** implement the relevant task/event/SHORTS state machine, repeated-start
-and SUSPEND/RESUME behavior, including EasyDMA boundary/count semantics. Our
-Adafruit Wire driver polls these events, so partial data movement is insufficient.
-
-**Acceptance:** firmware performs write-register-pointer + repeated-start read,
-multibyte RX with guard bytes, write/readback, NACK, STOP and event/IRQ clearing.
-Use [the nRF probe](nrf52/README.md) and then the real Adafruit Wire driver.
-
-## 2. Required for the selected drone output path
+## Later STM32H7 output requirements
 
 ### SIM-03 — STM32 TIM1 complementary PWM outputs
 
@@ -111,36 +81,6 @@ initial virtual aircraft deliberately avoids that particular requirement.
 the correct element; timed output reproduces the encoded motor frame. Transfer
 completion by itself is not a passing DShot test.
 
-## 3. Historical Nordic USB/reset requests and STM32 ADC fidelity
-
-### SIM-05 — Complete nRF USBD transfers used by CDC/TinyUSB
-
-**Observed in direct register/host-pipe probes:** USB power-ready/enable events
-and an exact 23-byte IN payload work; no compiled USB driver is qualified here.
-`EPIN[2].AMOUNT` remains zero instead of 23. Host `ConnectEndpointWrite()` returns
-null for every bulk OUT endpoint even after EPOUTEN configuration.
-
-**Need:** correct transfer counts, usable bulk OUT path and the remaining
-endpoint/event behavior needed by the selected USB stack. These tests do not yet
-establish full enumeration or CDC class behavior.
-
-**Acceptance:** real TinyUSB CDC enumeration, host-to-device and device-to-host
-data, exact DMA counts and endpoint completion events. UART/TCP already works
-as an integration transport while this is resolved. [USB evidence](transport/README.md)
-
-### SIM-06 — Reset, GPIOTE and flash semantics
-
-The nRF tests also reproduce:
-
-- Watchdog reset occurs, but RESETREAS reports `0x1` rather than watchdog/DOG
-  `0x2` in the isolated case.
-- GPIOTE task-mode OUTINIT=0 does not clear a previously-high output.
-- NVMC permits flash writes while in read-only mode and permits programming
-  zero bits back to one without erasing.
-
-These can give false confidence in recovery and calibration-storage tests.
-Correct the semantics and preserve the positive cases for ordinary erase/write,
-event clearing and reset. [nRF evidence](nrf52/README.md)
 
 ### SIM-07 — Preserve voltage precision in STM32H7 ADC conversion
 
@@ -158,23 +98,10 @@ code-level cause has not been inspected.
 **Acceptance:** sweep sub-millivolt and multi-millivolt inputs against the stated
 resolution/reference and declared rounding rule. [Precision sweep](stm32h7/README.md)
 
-## 4. Validation requests, not established missing features
 
-- **Historical nRF two-link/stack test:** one real Zephyr link
-  passes. Three uniquely identified nodes start, but the supplied central fixture
-  selects only one peripheral. Provide/run a central supporting at least two
-  simultaneous peers; test S140/Adafruit SoftDevice if that remains our firmware
-  choice for another project. Current results do not establish a BLE engine defect, nor do they qualify the new ESP32 BLE stack. ESP32 needs a separate two-peer test.
-- **Complete ArduCopter operation:** the [extended run](full-drone/README.md) now reaches IMU initialization, FIFO transactions and repeated vehicle-loop execution with explicit fixtures. The optional OSD is rejected normally using a pulled-high absent-device response; no execution path is patched. Next qualify sensor scaling/timing, estimator health, command input, configured motor outputs and sustained feedback. These remaining tests are not a claim that the flight firmware cannot run.
+## Later complete-drone qualification
 
-## 5. Existing integration capabilities and useful API improvements
-
-Already runtime-tested: controlled virtual-time steps; GPIO input injection;
-UART DMA and TCP command/response; timestamped UART/frames; Python-scripted SPI
-and I2C slaves; mutable input-provider data; H7 ADC microvolt injection; and
-GPIO output hooks through the underlying Renode API.
-
-We can build the integration layer using these. A documented stable SDK surface
-for per-channel voltage input, scripted-bus attachment/state, and timestamped
-pin transitions would reduce version-specific reflection. This is an API
-maintenance request, not a request for Simantic to build our physics or UI.
+The [extended ArduCopter run](full-drone/README.md) reaches IMU/FIFO startup and
+vehicle-loop execution with explicit fixtures. Sensor scaling/timing, estimator
+health, command input, configured motor outputs and sustained feedback remain
+open. Drone implementation is deferred while the hand controller is built.

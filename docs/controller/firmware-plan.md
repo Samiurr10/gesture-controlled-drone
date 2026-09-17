@@ -12,8 +12,7 @@ Use **ESP32-S3-DevKitC-1-N8R2 / ESP32-S3-WROOM-1-N8R2** as the working reference
 before flashing hardware. ESP-IDF is the initial driver/simulation baseline;
 its exact release, Xtensa toolchain, BLE stack and dependencies must be pinned
 at S0. An Arduino-ESP32/Adafruit library adapter is an optional later choice
-requiring its own compatibility checks; Adafruit nRF52 firmware is not portable
-by a board-name substitution.
+requiring its own compatibility checks on ESP32-S3.
 
 - [ ] Pin ESP-IDF, compiler, build tools, bootloader/partition table, flash mode,
   PSRAM configuration and each used library. The prior ARM compiler does not
@@ -31,13 +30,13 @@ by a board-name substitution.
 
 | Baseline item | Current value / evidence needed |
 |---|---|
-| Three controller MCUs | ESP32-S3 working target; exact physical PCB revisions unrecorded |
+| Three controller MCUs | ESP32-S3; first physical bench is Freenove WROOM N8R8; confirm each deployed PCB revision |
 | Hand inputs | Five flex dividers and external Adafruit #5543 per hand |
-| Board configuration | N8R2 reference; delivered module and memory setup to confirm |
+| Board configuration | N8R2 simulation reference; N8R8 physical bench, PSRAM disabled in diagnostic firmware |
 | Framework/toolchain/BLE version | ESP-IDF baseline; exact versions and stack to pin at S0/S2 |
 | Controller firmware | Not implemented by this migration |
 | Full ESP schematic and wearable power | Pending; current guide is a bench pin plan |
-| Peripheral and BLE support | Fresh ESP tests required; nRF audit passes do not transfer |
+| Peripheral and BLE support | Use the current ESP32-S3 readiness record; complete driver/stack qualification remains open |
 | Host command schema | Proposed below; serialization and timing limits to freeze |
 
 ## 2. One-hand acquisition and diagnostics — FW-02
@@ -63,7 +62,7 @@ assumed.
 - [ ] Use ESP ADC calibration support and verify its calibration availability
   and conversion path. Arduino's documented ESP32-S3 `ADC_11db` measurement span
   is 0–3100 mV; the selected ESP-IDF release may use a different attenuation enum
-  name. Never reuse nRF `raw × 3.6 / 4096`, `AR_INTERNAL` or acquisition APIs.
+  name. Match the selected ESP32-S3 driver and calibration contract.
 - [ ] Begin with a provisional 50 ms post-supply settling interval; validate the
   actual circuit. Exercise alternating low/high channels, repeated reads,
   channel identity, saturation, timeouts and scan noise, later under BLE load.
@@ -154,7 +153,7 @@ links using the actual project firmware.
 Acquisition/notification rates, maximum age `T_hand`, left/right skew, watchdog
 period and fault-to-invalid limits are **unset**. Select numeric test limits
 before qualification and freeze them from measured behavior and the accepted
-stale-command policy, not from the historical nRF configuration.
+stale-command policy.
 
 ## 5. Hub mapping and control state — FW-05
 
@@ -207,68 +206,6 @@ Goal 1 ends at the accepted host command boundary. Goal 2 then feeds the
 [STM32 drone simulation](../drone-simulation.md): drone firmware motor/actuator
 outputs drive dynamics and rendering. The bridge must not set displayed pose
 directly from gestures and label that drone-MCU validation.
-
-## Optional historical trainer extension — nRF Rev A only
-
-**Legacy reference, outside the ESP baseline.** D5/D9/JP301 and the electrical
-instructions below refer to the old Feather schematic. No ESP PPM or buffer
-pins are assigned. A future trainer implementation needs a separate ESP circuit
-revision and qualification; these details must not be wired to ESP headers by
-position.
-
-
-The following packages preserve the existing circuit/protocol design. They are
-not required by S3/C7; any future use requires all its own electrical and radio
-tests. The old FW-06/FW-07 trainer work is now named **FW-T01/FW-T02** so the
-required host interface has an unambiguous identifier.
-
-### Finite PPM generation and application heartbeat — FW-T01
-
-Implement exactly **eight slots per 22,500 µs frame**, with **300 µs markers** and 1000–2000 µs channel edge intervals. Start with positive markers. Actual radio decoding and electrical compatibility are separate gates.
-
-| Trainer slot | Meaning | Encoding |
-|---|---|---|
-| TR1 | Aileron / roll | 1000–2000 µs; neutral 1500 µs |
-| TR2 | Elevator / pitch | 1000–2000 µs; neutral 1500 µs |
-| TR3 | Throttle | 1000–2000 µs; transfer/start behavior explicitly qualified |
-| TR4 | Rudder / yaw | 1000–2000 µs; neutral 1500 µs |
-| TR5 | Validated hand data / local permission | 1000 µs invalid; 2000 µs valid; **not aircraft arm** |
-| TR6 | Application-health heartbeat | Alternate 1000/2000 µs every two freshly generated valid frames |
-| TR7 | Reserved | Fixed 1500 µs |
-| TR8 | Reserved | Fixed 1500 µs |
-
-For each channel, drive HIGH for 300 µs and LOW for `channel_us − 300`. After the eight channels, emit the final marker and complete the sync interval so that the last marker to the next frame start equals `22,500 − sum(channel_us)`. With TR7/TR8 fixed neutral, the actual sync edge interval spans 7500–13,500 µs; the broader eight-variable-channel calculation in the research is a decoder check, not a change to these reserved slots.
-
-- [ ] Use hardware timing for individual edges and bounded, complete frame submission. Do not continuously loop a DMA/PWM buffer of old commands.
-- [ ] Generate the heartbeat in the checked application-data path. Advance it only after two fresh, valid frames built from newly validated samples from **both** hands; timer interrupts alone do not prove live acquisition or mapping.
-- [ ] Sustain the expected heartbeat half-cycle of 45 ms when data are fresh each frame. If new validated samples are unavailable for a frame, mark output invalid and stop advancing the heartbeat.
-- [ ] On stale/invalid input, publish TR5 invalid in the next complete frame while freezing TR6, if execution is still running; then stop or disable according to the tested takeover design. Do not depend on sending this frame after a total MCU freeze.
-- [ ] Implement a watchdog serviced only when acquisition/communications validation, mapping and bounded output submission have progressed. A timer-only watchdog feed cannot demonstrate application health.
-- [ ] Initialize D9 HIGH before configuring D5; keep `/OE` disabled until a complete invalid frame stream is ready. Resets must return to disabled/invalid behavior through the external pull-up.
-- [ ] Measure timing, levels, startup/reset transients and behavior after frozen tasks at TP301 with JP301 open. Store scope captures and logs.
-
-### Pocket authority and recovery — FW-T02
-
-Complete electrical qualification before closing JP301. Then implement and export the tested EdgeTX **Master/Jack** model, mapping TR1–TR4 explicitly to Ail/Ele/Thr/Rud. Keep physical radio arm and mode switches independent of TR5/TR6.
-
-Required authority expression:
-
-```text
-gesture_authority = SE_held
-                 AND trainer_link_active
-                 AND TR5_valid
-                 AND heartbeat_changed_recently
-                 AND NOT latched_fault
-```
-
-- [ ] Gate trainer replacement with this complete condition. Release of the Pocket SE momentary switch must always restore manual authority.
-- [ ] Implement a fault latch so a recovered stream cannot restore gestures while SE remains held. Require release followed by a deliberate re-enable.
-- [ ] Validate startup, held-SE reboot, cable reinsertion and invalid-to-valid recovery. A recovered signal alone must not be treated as operator consent.
-- [ ] Test the proposed TR6 stuck-high/stuck-low logical-switch delays. The research suggests 0.1 s delayed level tests, but the final setting and measured response are **not yet qualified** for the actual EdgeTX version.
-- [ ] Measure manual-throttle steps during transfer at matched and deliberately mismatched positions; define an acceptable transfer procedure and limits before controller qualification.
-- [ ] Export the final radio model, record its hash and firmware version, and link fault-injection evidence.
-
-The inspected EdgeTX source can retain trainer validity for approximately one second after pulses stop. A valid-looking repeated PPM frame can persist longer. Therefore stopped PPM alone is insufficient; test the TR5/heartbeat gate and latch together. Do not claim a 100 ms fallback guarantee from the proposed 0.1 s logical-switch setting.
 
 ## Completion evidence
 

@@ -3,7 +3,7 @@
 **Migration pin plan — September 16, 2026.** Use ESP32-S3-DevKitC-1-N8R2 as the
 working board, USB powered at first. Simulate and validate drivers before the
 physical C0–C7 stages. This document supplies the new bench assignments; the
-Feather Rev A PDF is not the schematic for this board. A reviewed ESP schematic,
+historical Rev A PDF is not the schematic for this board. A reviewed ESP schematic,
 connection list and wearable power circuit remain required before permanent
 assembly.
 
@@ -92,8 +92,7 @@ must be selected from the pinned release, not copied blindly between cores.
 Keep the signal within local GND–3V3 electrically. The 3.1 V measurement span
 is distinct from that electrical boundary. A flex short can push the node to
 3V3 and saturate the ADC; treat near-rail readings as faults, not a command.
-Never connect 5 V or a LiPo directly to any ADC pin. Do not apply the old nRF
-`raw × 3.6 / 4096`, `analogReference(AR_INTERNAL)` or `analogSampleTime()` setup.
+Never connect 5 V or a LiPo directly to any ADC pin. Use the ESP32-S3 driver and calibration configuration for the pinned firmware release.
 
 Disable GPIO pulls on flex inputs. Allow a provisional 50 ms settling interval
 after the supply becomes stable, then validate settling and channel switching.
@@ -128,7 +127,7 @@ Configure SDA/SCL explicitly and begin at 100 kHz. Verify sensor identity
 registers using the exact selected drivers before trusting data. Record board
 mounting axes. Accelerometer/gyro alone do not establish absolute yaw; magnetic
 heading also needs calibration and interference checks. No sensor fixture or
-historic Feather result counts as this physical test.
+test on another platform counts as this physical test.
 
 ## C3 — ENABLE, then reviewed wearable power
 
@@ -148,7 +147,7 @@ BOOT/GPIO0 is not the gesture-enable button. RIGHT has no extra ENABLE button.
 
 Remain USB powered until a new wearable power schematic is reviewed. DevKitC-1
 has no assumed LiPo charger, BAT socket or factory battery divider. Its RST/EN
-resets/disables the ESP chip; it is not the Feather regulator-EN switch and is
+resets/disables the ESP chip; it is
 not a battery disconnect. GPIO10 remains disconnected until a correctly scaled
 external battery monitor is designed. Review charging, regulation/current peaks,
 USB coexistence, switch placement and low-battery behavior before fitting a cell.
@@ -174,8 +173,8 @@ are actually qualified.
 
 ## Superseded wiring
 
-Do not translate Feather A0/D5/A6 labels by position. The historical
+Use the GPIO assignments above and the received board pinout. The historical
 [Rev A PDF/SVG/netlist](../../hardware/schematics/README.md) remains a record of
-the nRF circuit only. Its battery/charger/EN and onboard IMU connections do not
+the superseded design. Its battery/charger/EN and onboard IMU connections do not
 apply to these ESP boards. Optional PPM/Pocket circuitry has no assigned ESP
 pins in this baseline and is outside C7.

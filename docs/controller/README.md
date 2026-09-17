@@ -25,7 +25,7 @@ BLE remains the selected topology; Wi-Fi/ESP-NOW is not part of this migration.
 | Exact proposed bench pin assignments | [Build guide](build-guide.md) |
 | Drivers, calibration, BLE and host contract | [Firmware plan](firmware-plan.md) |
 | Acceptance and evidence | [Validation](validation.md), [record template](test-record-template.md) |
-| Previous platform findings | [Historical nRF/H7 audit](../../simulation/simantic/capability-audit/README.md) |
+| Current runtime findings | [ESP32-S3 / STM32H7 audit](../../simulation/simantic/capability-audit/README.md) |
 
 ## Build sequence
 
@@ -46,11 +46,10 @@ BLE remains the selected topology; Wi-Fi/ESP-NOW is not part of this migration.
 
 ## Current limits and historical material
 
-- ESP32-S3 is the working migration target; the earlier nRF52840 tests are not
-  ESP32-S3 passes. No full ESP controller firmware or qualified board has been
-  established by these documentation changes.
+- ESP32-S3 is the sole controller platform. The ADC and timer diagnostic results
+  support starting one-hand firmware; full controller qualification is pending.
 - The [Rev A schematic package](../../hardware/schematics/README.md) contains
-  Feather wiring. Its A0–A4/D5/D6/A6 labels, factory battery divider, charger,
+  superseded wiring. Its old analog/digital labels, factory battery divider, charger,
   regulator-EN switch and onboard IMU assumptions are superseded for this build.
 - The new build guide is a sourced **bench pin plan**, not a newly verified full
   ESP schematic. A revised schematic/netlist and wearable power design are

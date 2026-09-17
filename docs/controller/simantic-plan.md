@@ -26,7 +26,7 @@ the complete controller stack is not yet qualified.**
 | GPIO7 ENABLE | Register-level firmware follows injected levels. Test the public GPIO driver, debounce and held-at-boot behavior in the hand application. |
 | External motion sensors | Basic I2C repeated-start/NACK tests pass with a BME280 fixture. Exact LSM6DS3TR-C/LIS3MDL behavior and actual driver initialization/burst reads remain project work and validation. |
 | Calibration storage / recovery | NVS persistence and watchdog recovery are not qualified. Successful boot does not prove watchdog behavior. |
-| ESP32 BLE / hub | Selected stack and two concurrent hand links remain untested. Previous Nordic BLE tests do not qualify ESP32. |
+| ESP32 BLE / hub | Selected stack and two concurrent hand links remain untested. |
 
 The historical [ESP audit](../../simulation/simantic/capability-audit/esp32s3/README.md)
 records earlier diagnostic results. Its ADC probe omitted a SENS clock-enable bit;
@@ -69,7 +69,7 @@ identify APIs but do not automatically validate every ESP bus or GPIO binding.
 Use ESP-IDF as the initial driver baseline and pin the exact release/toolchain
 at S0. Evaluate the intended BLE stack with the real board/engine, then freeze
 it. An Arduino-ESP32/Adafruit sensor adapter is optional and needs explicit
-version/driver tests. Neither nRF SoftDevice nor old Feather pin constants apply.
+version/driver tests. Use ESP32-S3 pin definitions.
 
 ```text
 S1: one ESP hand
@@ -94,7 +94,7 @@ Later STM32 drone
 - [ ] Prove ADC1 one-shot reads through the intended driver: GPIO1 first, then
   channels 0/1/3/4/5. Assert changing calibrated values, completion/timeouts,
   channel selection and rail faults. Use 12-bit high attenuation configured by
-  the pinned release; never reuse nRF SAADC conversion formulas.
+  the pinned release; use the selected ESP32-S3 attenuation/calibration contract.
 - [ ] Verify GPIO7 input and intended output observations, monotonic timing,
   reset/watchdog and calibration-storage operations through required drivers.
 - [ ] Attach the exact external sensor fixture and assert driver initialization,
@@ -159,7 +159,7 @@ whole-command invalidation. A raw-radio pass or one example link does not pass S
 
 **Exit:** repeatable controller output behavior at the sink with the required
 peripheral paths exercised. Full project qualification cannot be inferred from
-narrow boot/GPIO/I2C or historical nRF results.
+narrow boot/GPIO/I2C results.
 
 ## C0–C7 — Build and qualify the physical controller
 
@@ -171,7 +171,7 @@ Repeat on RIGHT; add the USB-powered ESP hub and physical serial bridge. Freeze
 operating limits from actual measurements and rerun related simulation cases.
 
 C7 establishes the physical controller command boundary. Optional historical
-Pocket/PPM wiring and its old nRF pin names are not ESP assignments or milestones.
+Pocket/PPM wiring is outside the active controller assignments and milestones.
 
 ## Later — STM32 drone, dynamics and display
 
@@ -191,7 +191,7 @@ DMA or feedback behavior remains a separate unresolved dependency.
 - [ESP32-S3 ADC API and calibrated millivolts](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/adc.html).
 - [Selected Adafruit motion module](https://www.adafruit.com/product/5543).
 - [Official Simantic Python SDK](https://github.com/simantic-dev/pippy).
-- [Historical nRF/H7 audit](../../simulation/simantic/capability-audit/README.md), retained with its original platform limitations.
+- [ESP32-S3 / STM32H7 audit](../../simulation/simantic/capability-audit/README.md), retained with its original platform limitations.
 
 The next required firmware milestone is still **S0 for ESP32-S3**. No S0–S3 or
 C0–C7 checkbox is completed merely by selecting the replacement board.

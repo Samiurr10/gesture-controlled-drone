@@ -3,8 +3,8 @@
 **Current full ESP controller acceptance: NOT RUN.** Narrow executed diagnostic
 results are linked in the [Simantic plan](simantic-plan.md); they do not pass
 complete firmware/driver or physical acceptance. This migration defines the
-working board and tests. The earlier nRF52840/H7 capability audit remains evidence only for its recorded
-platforms and fixtures. Reusing a CTRL ID does not transfer a prior result to ESP.
+working board and tests. Reusing a CTRL ID does not transfer a prior result
+to a different ESP32-S3 build or fixture.
 
 Order: **S0–S3 ESP controller simulation → C0–C7 physical controller → later STM32
 virtual drone**. No physical drone is planned. Use the [bench plan](build-guide.md),
@@ -94,8 +94,7 @@ open until that power design and the actual assembly pass the following tests.
 - [ ] **CTRL-031 — Reviewed power circuit.** Before a cell is connected, record
   charger/protection, regulator/current budget, disconnect and USB coexistence.
   Measure switching, charging, rail transients, reset and USB insertion/removal
-  against that design. RST/EN is not a battery disconnect; old Feather EN wiring
-  does not apply. **Pending design; no default BAT/charger assumed.**
+  against that design. RST/EN is not a battery disconnect. **Pending design; no default BAT/charger assumed.**
 - [ ] **CTRL-032 — Battery monitor and operating range.** After selecting an
   external monitor, verify scaled ADC voltage and calibration against a meter.
   GPIO10 remains disconnected until that revision exists. Characterize battery,
@@ -158,60 +157,6 @@ open until that power design and the actual assembly pass the following tests.
   are reproducible from the archived procedure.
 - [ ] Accept the controller boundary for the later [STM32 virtual drone](../drone-simulation.md).
   Pocket/PPM and physical aircraft/flight work are not prerequisites.
-
-## Optional historical trainer validation — nRF Rev A only
-
-**Legacy pin/circuit reference.** D5/D9/U301/JP301/TP301 below belong to the old
-Feather package. No ESP trainer wiring has been assigned or qualified; do not
-apply these pad names to the ESP board. These tests remain outside S3/C7 and
-would need a reviewed ESP extension schematic before future implementation.
-
-
-The following retained CTRL IDs apply only if the trainer extension is pursued.
-Mark them **NOT APPLICABLE (optional extension)** for the active project; they do
-not block controller or drone-simulation completion. The electrical gates remain
-mandatory before connecting this optional circuit to a real radio.
-
-### Trainer buffer and PPM with JP301 open
-
-Keep the shunt **removed** and radio disconnected throughout these tests. Use HUB_GND as the instrument reference. TP301 is the hub side of JP301; TP302 is the radio side.
-
-- [ ] **CTRL-060 — Buffer assembly and reset state.** Check U301 legs and carrier continuity: five-pin IC pin 5 VCC lands on the six-pad carrier's pad 6. Confirm decoupling, 10 kΩ `/OE` pull-up, 100 kΩ input pull-down, 1 kΩ output series resistor and tip/sleeve cable continuity. Measure VCC, D9 and output around boot/reset/power loss. Disabled output is high impedance; do not assume its voltage must be zero.
-- [ ] **CTRL-061 — Complete PPM frame.** Capture eight slots, 22,500 µs frame period, 300 µs markers, 1000–2000 µs channel edge intervals and fixed TR7/TR8 = 1500 µs. Check neutral/endpoints, sync interval and both initial and sustained operation. Record actual timing errors, high/low voltage and overshoot against predeclared limits.
-- [ ] **CTRL-062 — Validity and fresh-data heartbeat.** Verify TR1–TR4 AETR, TR5 invalid/valid encoding, and TR6 toggling every two newly generated valid frames (nominal 45 ms half-cycle at uninterrupted frame rate). Freeze one hand's data; TR5 must become invalid by the next complete frame after detection and TR6 must stop advancing. A timer or repeated buffer must not maintain an apparently healthy heartbeat.
-- [ ] **CTRL-063 — Frozen hub, watchdog and malformed frames.** Stall acquisition, BLE handling and mapping separately; freeze the application while the timer remains active. Check bounded output submission, no endless replay of a valid frame, watchdog recovery and disabled/invalid boot. Inject truncated frames and restart at awkward phases. Record detection/reset times and scope traces, including failure cases where firmware cannot emit a final invalid frame.
-
-### Actual Pocket electrical compatibility gate
-
-- [ ] **CTRL-070 — Input compatibility established; JP301 still open.** Obtain the actual Pocket trainer-input limits from manufacturer evidence or competent circuit-level examination/measurement: permitted signal range, input thresholds, loading and power-off behavior. Record the source and actual board revision. The researched family tip/sleeve pinout and a 3.3 V starting waveform do not establish these limits. Idle voltage from a DMM, successful decode or observing the radio's Slave/Jack output alone is insufficient proof of input tolerance.
-- [ ] **CTRL-071 — First loaded connection.** Only after CTRL-070 establishes compatibility with the measured hub output, power both devices off, close JP301 and connect TS TIP signal / SLEEVE ground to the **DSC Trainer Port**. Set Pocket to Master/Jack. Measure TP302 loaded levels, transients and timing, then decoded slot values. If the input does not decode, investigate the circuit/format; do not simply increase the signal to 5 V.
-
-If CTRL-070 cannot be resolved, record it as **blocked** and keep JP301 open. Only this optional trainer extension remains blocked; the active controller prototype and drone simulation can still be completed.
-
-### Radio authority, dropout and deliberate recovery
-
-Use radio channel monitoring or a suitably instrumented receiver bench setup. Motors/propellers are not needed for this stage. Freeze and export the tested model only after the following pass.
-
-- [ ] **CTRL-080 — Explicit trainer mapping.** Verify TR1/2/3/4 → Ail/Ele/Thr/Rud, signs, neutral and endpoints. Confirm TR5/TR6 health slots cannot arm or change flight modes; physical radio switches retain those functions. Account for actual EdgeTX scaling rather than assuming 1000/2000 µs equals exact ±100%.
-- [ ] **CTRL-081 — Physical takeover and throttle mismatch.** Release SE during each gesture direction. Measure time to manual authority and the output step with matching throttle, then deliberately mismatched manual/gesture throttle positions. Record the chosen permitted transfer conditions and operating procedure. The left ENABLE button is a gesture permission input, not a direct motor-power cutoff.
-- [ ] **CTRL-082 — Fault matrix and latency.** Run every fault in the matrix below while SE is held. Record failure onset, TR5/TR6 response, radio gate state, output change and time to manual authority. Compare against the predeclared end-to-end limit; repeated old commands must not remain authoritative merely because PPM edges continue.
-- [ ] **CTRL-083 — Latched loss and recovery.** Recover each hand/hub/cable while SE stays held; gestures must remain unavailable. Verify release and deliberate re-enable, including boot with held controls, Pocket restart, new BLE sessions, recalibration and return from low battery. Ensure fault latching also covers startup qualification and does not clear itself on a healthy heartbeat.
-- [ ] **CTRL-084 — Sustained optional trainer run.** Run the controller with the optional trainer extension through the declared battery range and representative motion/interference for a recorded duration. Repeat critical takeover tests near the low-battery boundary. Save logs, model export, firmware commit, calibration and unresolved issues. Duration and pass limits must be selected before this run.
-
-| Required fault injection | Verify and record |
-|---|---|
-| Either hand off, disconnected, delayed or battery-invalid | All gesture axes lose authority; no partial one-hand continuation |
-| Duplicate/old packet, stale acquisition with live BLE | Invalid data does not refresh sample age or heartbeat |
-| Sensor open, near-rail reading or failed IMU | Fault becomes invalid permission; normal-looking stuck-sensor detection limits documented |
-| Left ENABLE release or broken button lead | Gesture authority ends; new deliberate enable required |
-| Hub off, reset, frozen application or watchdog expiry | Output cannot preserve valid authority indefinitely |
-| Stopped PPM or cable removed | Radio fallback and measured delay; no reliance on the built-in trainer timeout alone |
-| Repeated valid old frame / stuck-high TR6 / stuck-low TR6 | Radio heartbeat gate removes authority and latches the fault |
-| Malformed, incomplete or wrong-channel-count PPM | Decoder/gate behavior recorded; no unexpected output accepted |
-| SE release / radio restart / reconnect with SE held | Manual takeover independent of hub; no automatic gesture re-entry |
-| Manual/gesture throttle mismatch | Output step measured and transfer procedure qualified |
-
-The researched EdgeTX implementation may retain trainer validity for about one second after pulses stop. The proposed 0.1 s heartbeat level-delay setting is a bench candidate, **not a guaranteed 100 ms end-to-end response**. Measure the actual installed version and exported model.
 
 ## Retired physical-aircraft test ID
 

@@ -8,34 +8,41 @@ Use **ESP32-S3-DevKitC-1 carrying ESP32-S3-WROOM-1-N8R2** for USB-powered bench 
 
 Use GPIO1/2/4/5/6 for flex inputs, GPIO7 for left ENABLE or hub CALIBRATE, and GPIO8/9 for SDA/SCL. Reserve GPIO10 for a reviewed battery divider. Avoid GPIO3, a strapping pin, and preserve USB GPIO19/20 and UART0 GPIO43/44. Each hand uses an external Adafruit #5543 LSM6DS3TR-C + LIS3MDL motion-sensor breakout. Exact header positions and assembly instructions are in the [build guide](build-guide.md).
 
-The DevKit has no integrated hand IMU or Feather-style LiPo charger/connector. A smaller wearable board is a later design decision; battery power must be designed and reviewed before wearable assembly.
+The DevKit has no integrated hand IMU or LiPo charger/connector. A smaller wearable board is a later design decision; battery power must be designed and reviewed before wearable assembly.
 
-## What changes
+## Active controller configuration
 
-| Item | Previous design | Active ESP32 work |
-|---|---|---|
-| Hands | Feather nRF52840 Sense | ESP32-S3 plus external motion sensors |
-| Hub | Feather nRF52840 Express | ESP32-S3, planned two-peer BLE central |
-| ADC | Nordic SAADC/EasyDMA and A0–A4 | ESP32 ADC1 mapping, attenuation and calibration |
-| Motion driver | Adafruit onboard IMU through Nordic TWIM | External sensor through ESP32 I²C driver |
-| Framework | Proposed Adafruit nRF52 core / SoftDevice | ESP-IDF baseline; pin release/toolchain in S0 |
-| Power | Feather charger, JST battery, A6 divider and EN switch | USB bench first; new wearable power and monitoring design |
-| Host connection | Proposed Feather USB CDC | DevKit USB-to-UART bench path; production transport qualified separately |
-| Drawings | Rev A Feather pins and power | New ESP32 revision required |
+| Item | ESP32-S3 implementation |
+|---|---|
+| Hands | ESP32-S3 plus five flex channels and external motion sensors per hand |
+| Hub | ESP32-S3, planned two-peer BLE central |
+| ADC | ADC1 one-shot, attenuation and calibration through ESP-IDF |
+| Motion driver | LSM6DS3TR-C/LIS3MDL through ESP32 I2C |
+| Framework | ESP-IDF v5.5.2 diagnostic baseline; pin the production build at S0 |
+| Power | USB bench first; reviewed wearable power and monitoring design required |
+| Host connection | UART0 through the onboard USB-to-UART bridge for bench work |
+| Drawings | New ESP32-S3 schematic revision required before permanent assembly |
 
-The logical two-hand → BLE hub → computer topology remains planned. Wi-Fi and ESP-NOW are possible later choices, not part of this migration decision.
+The physical ADC bench board is **Freenove ESP32-S3 WROOM N8R8** (8 MB flash,
+8 MB PSRAM). Validation firmware disables PSRAM. The N8R2 remains the simulation
+reference; record the exact deployed memory and header configuration.
 
-## Evidence does not transfer across MCUs
+The planned topology is two ESP32-S3 hands → BLE → ESP32-S3 hub → computer.
+Start with one hand. Wi-Fi/ESP-NOW is not selected.
 
-The [nRF52840 audit](../../simulation/simantic/capability-audit/nrf52/README.md) remains historical evidence. Its SAADC, TWIM, NVMC, watchdog and USB issues no longer gate the ESP32 controller. A successful nRF Zephyr BLE connection also does not qualify ESP32 BLE.
+## Current evidence
 
-The [ESP32/full-drone assessment](../implementation-records/2026-09-16_esp32-full-drone-feasibility.md) records actual runtime results. Hardware selection and simulator support are separate decisions. Application mocks cannot qualify missing hardware paths.
+The [September 17 readiness record](../implementation-records/2026-09-17_hand-controller-readiness.md)
+records corrected ADC and full ESP-IDF driver tests, working `esp_timer`, the
+TIMG gap and remaining validation. Exact IMU fixtures, NVS, watchdog recovery
+and ESP BLE require further work. Production controller firmware is pending.
+Only tests on the selected ESP32-S3 driver/model qualify this controller.
 
 ## Migration checkpoints
 
 - [x] Record ESP32-S3 controller/hub decision and USB bench target.
 - [x] Update active architecture, controller guides, shopping guidance and inventory semantics.
-- [x] Mark nRF-specific wiring, research and simulator requests as historical.
+- [x] Remove retired controller simulations, model requests and inventory entries.
 - [ ] Qualify ESP32-S3 runtime and real firmware framework.
 - [ ] Confirm external sensor revision and required driver transactions.
 - [ ] Publish/review the new ESP32 schematic revision and wearable power design.

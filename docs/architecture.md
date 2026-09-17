@@ -2,7 +2,7 @@
 
 **Decision — September 16, 2026:** use **ESP32-S3 hands and hub**, with an **STM32H743 virtual drone candidate**. Physically build the controller only. The sequence is **controller simulation in Simantic → physical controller prototype → drone hardware/MCU simulation → mechanical simulation and screen display**. Drone feasibility tests may run now without marking controller milestones complete. The [project checkpoints](../README.md#full-implementation-checkpoints) govern execution.
 
-The original BOM and Rev A drawings are historical, including their nRF52840 hand pins, onboard sensors and battery circuits. Active ESP32 parts and wiring are in the [controller guides](controller/README.md) and [migration record](controller/esp32-migration.md). No physical drone is part of the current deliverable.
+The original BOM and Rev A drawings are historical, including their superseded controller pins, onboard sensors and battery circuits. Active ESP32 parts and wiring are in the [controller guides](controller/README.md) and [migration record](controller/esp32-migration.md). No physical drone is part of the current deliverable.
 
 ## Goal 1: a working controller
 
@@ -75,9 +75,9 @@ Freeze motor order, rotation, signal units, coordinate frames, simulation time s
 
 | Decision | Required evidence |
 |---|---|
-| ESP32-S3 runtime, ADC, external IMU/I²C and chosen BLE stack | New firmware-driven tests; see [Simantic plan](controller/simantic-plan.md). nRF results do not transfer to ESP32 |
+| ESP32-S3 runtime, ADC, external IMU/I²C and chosen BLE stack | New firmware-driven tests; see [Simantic plan](controller/simantic-plan.md) |
 | Gesture mapping, transport and freshness limits | Versioned interface specification, deterministic traces and measured prototype behavior |
-| Controller power and fit | New wearable power schematic, measured battery/ADC range, runtime and fit; DevKit has no Feather charger |
+| Controller power and fit | New wearable power schematic, measured battery/ADC range, runtime and fit; DevKit requires an external charger |
 | Drone MCU/firmware and actuator output protocol | Reproducible boot, supported peripherals, command input and observable outputs |
 | Mechanical model, renderer and feedback fidelity | Declared model assumptions, reference scenarios, clock and coordinate tests |
 

@@ -23,8 +23,6 @@ Test environment: CLI/engine **0.5.7**, SDK **0.3.1**, macOS arm64. Exact model,
 | ESP32-S3 selected model and executable diagnostic | [ESP32 runtime audit](../../simulation/simantic/capability-audit/esp32s3/README.md) | CPU/framework boot, ADC conversion, motion-driver I²C, timers, storage and communications |
 | Stock STM32 drone firmware with sensor fixtures | [Extended drone audit](../../simulation/simantic/capability-audit/full-drone/README.md) | Healthy startup, steady sensor acquisition, command processing and changing motor outputs |
 | STM32 timer/DMA/bus behavior | [Earlier H7 audit](../../simulation/simantic/capability-audit/stm32h7/README.md) | Four correctly routed outputs; request-paced DMA if DShot is selected |
-| Project input/output attachment mechanisms | [SDK audit](../../simulation/simantic/capability-audit/sdk/README.md) | Wire real project providers into these mechanisms and verify time/coordinate contracts |
-| Historical Nordic probes | [nRF audit](../../simulation/simantic/capability-audit/nrf52/README.md), [transport audit](../../simulation/simantic/capability-audit/transport/README.md) | Retained as history; no ESP32 compatibility claim |
 
 ## Work order
 
@@ -64,9 +62,9 @@ Drone feasibility tests are authorized now, while the delivery priority remains 
 
 ## Documentation changed
 
-The root checklist, architecture, controller BOM/build/firmware/validation guides and Simantic inventory now target ESP32-S3. The inventory preserves all 142 original Rev A connections as historical data and stores the new controller baseline separately. Old Nordic drawings and SAADC/TWIM requests are explicitly superseded.
+The root checklist, architecture, controller BOM/build/firmware/validation guides and Simantic inventory now target ESP32-S3. The September 17 cleanup replaces the mixed historical inventory with active ESP32-S3 and STM32H7 entries only. Retired controller simulations and model requests were removed. Original Rev A drawings remain archived source material, outside the simulation configuration.
 
-The existing Gantt workbook contains generic controller/drone stages with no Nordic part or pin assignments. Its schedule remains applicable; the schedule README links the additional ESP32 migration checkpoints. No dates or completed milestone claims were invented.
+The existing Gantt workbook contains generic controller/drone stages without MCU-specific part or pin assignments. Its schedule remains applicable; the schedule README links the additional ESP32 migration checkpoints. No dates or completed milestone claims were invented.
 
 ## Verification of this update
 

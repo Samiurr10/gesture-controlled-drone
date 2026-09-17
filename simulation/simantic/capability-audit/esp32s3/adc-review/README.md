@@ -56,7 +56,7 @@ Full decoded method inspection remains in ignored `tmp/simantic/audit/adc-review
 
 The diagnostic is still bare metal, with the second CPU parked. It does not run the complete ESP-IDF reset/ROM/RTOS path, pad initialization, analog calibration, or the intended high-attenuation setup. Matching its basic handshake to LL source does not qualify the entire production driver.
 
-After Simantic implements ADC1, the required acceptance test must run a pinned ESP-IDF application using `adc_oneshot_new_unit`, `adc_oneshot_config_channel` and `adc_oneshot_read`. Test actual analog input values and the agreed conversion/calibration model. Do not assume a Nordic 3.6 V scale or invent exact ESP raw counts from an unspecified reference. [Espressif driver guide](https://docs.espressif.com/projects/esp-idf/en/v5.5.2/esp32s3/api-reference/peripherals/adc_oneshot.html)
+After Simantic implements ADC1, the required acceptance test must run a pinned ESP-IDF application using `adc_oneshot_new_unit`, `adc_oneshot_config_channel` and `adc_oneshot_read`. Test actual analog input values and the agreed conversion/calibration model. Use the selected ESP32-S3 reference/attenuation contract when calculating expected raw counts. [Espressif driver guide](https://docs.espressif.com/projects/esp-idf/en/v5.5.2/esp32s3/api-reference/peripherals/adc_oneshot.html)
 
 ## Simantic bring-up request
 

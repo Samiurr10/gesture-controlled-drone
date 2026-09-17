@@ -2,8 +2,8 @@
 
 Copy this file for each test, execution environment and hardware/firmware variant. Keep simulation and physical records separate even when they share a CTRL test ID. Leave measurements blank until observed. Use **NOT RUN**, **PASS**, **FAIL**, **BLOCKED**, **MOCKED-INPUT-ONLY**, or **NOT APPLICABLE (optional extension)**. Use MOCKED-INPUT-ONLY when application inputs bypass the required hardware/peripheral path; record the assertions' actual results separately. Only mark the corresponding checklist after a supported PASS. Store supporting captures and logs in the repository with relative links and avoid committing credentials or BLE bonding secrets.
 
-The active controller is ESP32-S3. Historical nRF results qualify only their
-original board/fixture; a matching CTRL ID is not an ESP pass. Start with USB
+The only controller platform is ESP32-S3. Record its exact board, model and
+firmware; a matching CTRL ID alone does not qualify a new build. Start with USB
 bench power. Full ESP wiring/power revision and wearable qualification remain
 required before reporting a complete physical-controller result.
 
