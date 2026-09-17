@@ -1,0 +1,391 @@
+{
+  "date": "2026-09-16",
+  "status": "partial_support_confirmed_model_gaps",
+  "scope": "Runtime diagnostic firmware plus bounded stock ArduCopter boot; not a complete Kakute, drone, flight-control or electrical simulation.",
+  "versions": {
+    "cli": "0.5.7",
+    "sdk": "0.3.1",
+    "engine": "0.5.7",
+    "compiler": "arm-none-eabi-gcc (GCC) 16.2.0"
+  },
+  "model": {
+    "file": "tmp/simantic/models/STM32H743ZI.repl",
+    "sha256": "07d5144b65b4aedce597ced80e6541b82db9c783aefc643297cfd8c925c68ab1",
+    "fixture_sha256": "fb3c5500f406d7869a076d57b568fd99f8a1258d4f346efb7d849f5dd08ed7d3"
+  },
+  "source_sha256": {
+    "adc_precision_probe.py": "ef08987c02fecb961e87edb9b3735081c411d7675c64d1afa05967492f247378",
+    "ardupilot_boot_probe.py": "b77d169fc19400b44dda39a1f463ed03fd2abf7ea496234111ad2298f2a92502",
+    "build.py": "8d4f66977faa135872f0282e4a851202860990ca8f781400c01961261ce08f24",
+    "io_probes.c": "e3d62ff1659fbba1a0982159402cae6721cb650fcbb74dddaca773b3f7706a39",
+    "link.ld": "4fb130037f635801da05e3751bb33f56e44980f1984464ecac96ce0a29498727",
+    "probe.c": "625d39437de8e6a79bfb437a5614dae1c62381c684535bc199031acdc092628b",
+    "run_cli.py": "f633b343919667bbc8a4e556d58bcc890012fcd657f456c41959695575731093",
+    "sdk_adc_probe.py": "7c54689f32a52d30585a8cc60c172c88e40c96f9cb1d536e6a658c82852bfb1f",
+    "summarize.py": "1457f4ab9d63ffde2c324034724f199ef1d9bc137e84b84b325aafdcb6335c6d"
+  },
+  "firmware_sha256": {
+    "full-probe.elf": "2c505c7cb3120738aeb54f363fe8470e923c6be4868d7c6ce398dbca9c221c7b",
+    "main-control.elf": "4dcf68364a537a6852154c9f6bf7ae81507d1451a023d5a518806d1178fd6921"
+  },
+  "passed_narrow_checks": [
+    "CPU_FPU",
+    "SYSTICK_IRQ",
+    "TIM2_UPDATE_IRQ",
+    "PWM_M3",
+    "PWM_M4",
+    "DMA_MEM2MEM",
+    "SPI4_LOOPBACK",
+    "I2C1_FIXTURE_ID",
+    "ADC1_CONVERSION",
+    "UART_RX_HOST_COMMAND",
+    "ADC1_ZERO_QUARTER_HALF_FULL_SCALE"
+  ],
+  "failed_narrow_checks": [
+    "TIM1_CH2N_PB0_PWM",
+    "TIM1_CH3N_PB1_PWM",
+    "TIMER_REQUEST_PACED_DMA"
+  ],
+  "motor_output_measurements": [
+    {
+      "motor": 1,
+      "rising_edges": 0,
+      "width_timer_ticks_us": 0,
+      "dwt_width_cycles": 0,
+      "dwt_period_cycles": 0,
+      "width_from_480mhz_dwt_us": 0.0,
+      "period_from_480mhz_dwt_us": 0.0
+    },
+    {
+      "motor": 2,
+      "rising_edges": 0,
+      "width_timer_ticks_us": 0,
+      "dwt_width_cycles": 0,
+      "dwt_period_cycles": 0,
+      "width_from_480mhz_dwt_us": 0.0,
+      "period_from_480mhz_dwt_us": 0.0
+    },
+    {
+      "motor": 3,
+      "rising_edges": 7,
+      "width_timer_ticks_us": 1500,
+      "dwt_width_cycles": 720017,
+      "dwt_period_cycles": 4799520,
+      "width_from_480mhz_dwt_us": 1500.0354166666666,
+      "period_from_480mhz_dwt_us": 9999.0
+    },
+    {
+      "motor": 4,
+      "rising_edges": 7,
+      "width_timer_ticks_us": 1750,
+      "dwt_width_cycles": 839959,
+      "dwt_period_cycles": 4799523,
+      "width_from_480mhz_dwt_us": 1749.9145833333334,
+      "period_from_480mhz_dwt_us": 9999.00625
+    }
+  ],
+  "timing": {
+    "sys_tick_count": 70,
+    "uart_pass_virtual_seconds": 0.0699998,
+    "configured_pwm_period_us": 10000,
+    "gpio_loopback": "PB0->PC0, PB1->PC1, PB3->PC2, PB10->PC3",
+    "measurement_note": "TIM2 counter checks plus independent DWT model at480MHz; these are virtual timing observations."
+  },
+  "complementary_pwm_control": {
+    "correct_ccer": "0xCC0 (CC2NE/CC2NP/CC3NE/CC3NP)",
+    "correct_bdtr": "0x8000 (MOE)",
+    "result": "Zero M1/M2 edges with proper complementary enables; main-output control0x110 yields inverted edges on same routes. Model logs CC2NE,CC3NE and MOE as unhandled.",
+    "control_assertions": [
+      "TIM1_MAIN_CONTROL_M1_INVERTED",
+      "TIM1_MAIN_CONTROL_M2_INVERTED"
+    ]
+  },
+  "dma_pacing": {
+    "source_words": [
+      11,
+      12,
+      13,
+      14
+    ],
+    "request": 22,
+    "request_source": "TIM2 update",
+    "stream": "DMA1 stream0",
+    "target": "TIM2_CCR2",
+    "expected_before_timer_start": {
+      "NDTR": 4,
+      "CCR2": 0
+    },
+    "actual_before_timer_start": {
+      "NDTR": 0,
+      "CCR2": 14
+    },
+    "result": "Transfer completes immediately at stream enable before timer starts; DIER.UDE is logged unhandled. A transfer-complete flag alone does not demonstrate timer-paced DMA or DShot."
+  },
+  "spi_fixture": {
+    "type": "SPI.SPILoopback",
+    "bus": "spi4",
+    "mosi_hex": "a5",
+    "miso_hex": "a5",
+    "scope": "One byte master loopback only. SSM/SSI register semantics logged unhandled; actual IMU,CS/DRDY,FIFO,DMA and error behavior not qualified."
+  },
+  "i2c_fixture": {
+    "type": "I2C.BME280",
+    "bus": "i2c1",
+    "address": "0x76",
+    "register": "0xD0",
+    "readback": "0x60",
+    "scope": "Write+repeated-start+read+AUTOEND controller transaction. Fixture is deliberately not the selected SPA06 barometer."
+  },
+  "adc_stimulus": {
+    "api": "Antmicro.Renode.Peripherals.Sensor.IADCExtensions.SetVoltage(adc,UInt32(microvolts),Int32(channel))",
+    "model": "sysbus.adcM1S2",
+    "channel": 10,
+    "resolution_bits": 16,
+    "samples": [
+      {
+        "set_voltage_argument": 0,
+        "get_voltage": 0,
+        "uart": "UART_RX=0x00000041\nADC_COMMAND_DATA=0x00000000\nPASS ADC_COMMAND_EOC\n",
+        "virtual_time": 0.093,
+        "adc_code": 0
+      },
+      {
+        "set_voltage_argument": 1650,
+        "get_voltage": 1650,
+        "uart": "UART_RX=0x00000041\nADC_COMMAND_DATA=0x00000014\nPASS ADC_COMMAND_EOC\n",
+        "virtual_time": 0.096,
+        "adc_code": 20
+      },
+      {
+        "set_voltage_argument": 825000,
+        "get_voltage": 825000,
+        "uart": "UART_RX=0x00000041\nADC_COMMAND_DATA=0x00004000\nPASS ADC_COMMAND_EOC\n",
+        "virtual_time": 0.099,
+        "adc_code": 16384
+      },
+      {
+        "set_voltage_argument": 1650000,
+        "get_voltage": 1650000,
+        "uart": "UART_RX=0x00000041\nADC_COMMAND_DATA=0x00008000\nPASS ADC_COMMAND_EOC\n",
+        "virtual_time": 0.102,
+        "adc_code": 32768
+      },
+      {
+        "set_voltage_argument": 3300000,
+        "get_voltage": 3300000,
+        "uart": "UART_RX=0x00000041\nADC_COMMAND_DATA=0x0000ffff\nPASS ADC_COMMAND_EOC\n",
+        "virtual_time": 0.105,
+        "adc_code": 65535
+      }
+    ],
+    "assertions": [
+      {
+        "microvolts": 0,
+        "expected": 0,
+        "actual": 0,
+        "pass": true
+      },
+      {
+        "microvolts": 825000,
+        "expected": 16384,
+        "actual": 16384,
+        "pass": true
+      },
+      {
+        "microvolts": 1650000,
+        "expected": 32768,
+        "actual": 32768,
+        "pass": true
+      },
+      {
+        "microvolts": 3300000,
+        "expected": 65535,
+        "actual": 65535,
+        "pass": true
+      }
+    ],
+    "precision_observation": "Ten-point sweep confirms integer-millivolt granularity in the observed conversion path; broad-scale assertions remain passed. See precision_diagnostic.",
+    "scope": "Single channel software-triggered conversion and UART command input only; scan,DMA,oversampling,calibration,noise andelectrical settling not qualified.",
+    "precision_diagnostic": {
+      "rows": [
+        {
+          "input_microvolts": 0,
+          "retained_input_microvolts": 0,
+          "observed_code": 0,
+          "ideal_16bit_3v3_code": 0,
+          "integer_millivolt_prediction": 0,
+          "uart": "UART_RX=0x00000041\nADC_COMMAND_DATA=0x00000000\nPASS ADC_COMMAND_EOC\n"
+        },
+        {
+          "input_microvolts": 500,
+          "retained_input_microvolts": 500,
+          "observed_code": 0,
+          "ideal_16bit_3v3_code": 10,
+          "integer_millivolt_prediction": 0,
+          "uart": "UART_RX=0x00000041\nADC_COMMAND_DATA=0x00000000\nPASS ADC_COMMAND_EOC\n"
+        },
+        {
+          "input_microvolts": 999,
+          "retained_input_microvolts": 999,
+          "observed_code": 0,
+          "ideal_16bit_3v3_code": 20,
+          "integer_millivolt_prediction": 0,
+          "uart": "UART_RX=0x00000041\nADC_COMMAND_DATA=0x00000000\nPASS ADC_COMMAND_EOC\n"
+        },
+        {
+          "input_microvolts": 1000,
+          "retained_input_microvolts": 1000,
+          "observed_code": 20,
+          "ideal_16bit_3v3_code": 20,
+          "integer_millivolt_prediction": 20,
+          "uart": "UART_RX=0x00000041\nADC_COMMAND_DATA=0x00000014\nPASS ADC_COMMAND_EOC\n"
+        },
+        {
+          "input_microvolts": 1500,
+          "retained_input_microvolts": 1500,
+          "observed_code": 20,
+          "ideal_16bit_3v3_code": 30,
+          "integer_millivolt_prediction": 20,
+          "uart": "UART_RX=0x00000041\nADC_COMMAND_DATA=0x00000014\nPASS ADC_COMMAND_EOC\n"
+        },
+        {
+          "input_microvolts": 1650,
+          "retained_input_microvolts": 1650,
+          "observed_code": 20,
+          "ideal_16bit_3v3_code": 33,
+          "integer_millivolt_prediction": 20,
+          "uart": "UART_RX=0x00000041\nADC_COMMAND_DATA=0x00000014\nPASS ADC_COMMAND_EOC\n"
+        },
+        {
+          "input_microvolts": 1999,
+          "retained_input_microvolts": 1999,
+          "observed_code": 20,
+          "ideal_16bit_3v3_code": 40,
+          "integer_millivolt_prediction": 20,
+          "uart": "UART_RX=0x00000041\nADC_COMMAND_DATA=0x00000014\nPASS ADC_COMMAND_EOC\n"
+        },
+        {
+          "input_microvolts": 2000,
+          "retained_input_microvolts": 2000,
+          "observed_code": 40,
+          "ideal_16bit_3v3_code": 40,
+          "integer_millivolt_prediction": 40,
+          "uart": "UART_RX=0x00000041\nADC_COMMAND_DATA=0x00000028\nPASS ADC_COMMAND_EOC\n"
+        },
+        {
+          "input_microvolts": 2500,
+          "retained_input_microvolts": 2500,
+          "observed_code": 40,
+          "ideal_16bit_3v3_code": 50,
+          "integer_millivolt_prediction": 40,
+          "uart": "UART_RX=0x00000041\nADC_COMMAND_DATA=0x00000028\nPASS ADC_COMMAND_EOC\n"
+        },
+        {
+          "input_microvolts": 10000,
+          "retained_input_microvolts": 10000,
+          "observed_code": 199,
+          "ideal_16bit_3v3_code": 199,
+          "integer_millivolt_prediction": 199,
+          "uart": "UART_RX=0x00000041\nADC_COMMAND_DATA=0x000000c7\nPASS ADC_COMMAND_EOC\n"
+        }
+      ],
+      "all_match_integer_millivolt_prediction": true,
+      "all_inputs_retained_exactly": true,
+      "virtual_seconds": 0.12,
+      "interpretation": "All ten tested codes match input truncation to integer millivolts before 16-bit conversion; input getter retains exact microvolts. Root cause not source-inspected."
+    }
+  },
+  "diagnostic_model_warnings": [
+    {
+      "t": 0.0,
+      "level": "Warning",
+      "source": "",
+      "message": "Translation cache size 536870912 is larger than maximum allowed 134217728. It will be clamped to maximum"
+    },
+    {
+      "t": 9e-07,
+      "level": "Warning",
+      "source": "timer1",
+      "message": "Unhandled write to offset 0x20. Unhandled bits: [6, 10] when writing value 0xCC0. Tags: Capture/Compare 2 complementary output enable (CC2NE) (0x1), Capture/Compare 3 complementary output enable (CC3NE) (0x1)."
+    },
+    {
+      "t": 9e-07,
+      "level": "Warning",
+      "source": "timer1",
+      "message": "Unhandled write to offset 0x44. Unhandled bits: [15] when writing value 0x8000. Tags: Main Output Enable (MOE) (0x1)."
+    },
+    {
+      "t": 0.0730019,
+      "level": "Warning",
+      "source": "timer2",
+      "message": "Unhandled write to offset 0xC. Unhandled bits: [8] when writing value 0x100. Tags: Update DMA request enable (UDE) (0x1)."
+    },
+    {
+      "t": 0.0780027,
+      "level": "Warning",
+      "source": "spi4",
+      "message": "Unhandled write to offset 0xC. Unhandled bits: [26] when writing value 0x4400000. Tags: SSM (0x1)."
+    },
+    {
+      "t": 0.0780027,
+      "level": "Warning",
+      "source": "spi4",
+      "message": "Unhandled write to offset 0x0. Unhandled bits: [12] when writing value 0x1001. Tags: SSI (0x1)."
+    }
+  ],
+  "ardupilot_boot": {
+    "version": "4.7.1-FIRMWARE_VERSION_TYPE_OFFICIAL",
+    "source_url": "https://firmware.ardupilot.org/Copter/stable/KakuteH7/arducopter.elf",
+    "firmware_commit": "dbe792162d06cab66c3475fd5556bf7a120f119e",
+    "elf_sha256": "f748b43edb69b8eda6df100acdede72bfe2982d1cbcf109f35c5f872256ebf99",
+    "virtual_seconds": 2.0,
+    "wall_seconds": 4.144400833640248,
+    "reached_symbols": [
+      "Reset_Handler",
+      "__early_init",
+      "stm32_clock_init",
+      "halInit",
+      "chSysInit",
+      "main"
+    ],
+    "last_cpu": {
+      "virtual_time": 2.0,
+      "pc": "0x813c160",
+      "vtor": "0x8020000",
+      "cfsr": "0x0",
+      "hfsr": "0x0"
+    },
+    "last_pc_function": "__idle_thread (ChibiOS), from arm-none-eabi-addr2line",
+    "uart3_output": "",
+    "warning_count_by_source": {
+      "": 1,
+      "nvic": 1721,
+      "cpu": 1,
+      "sysbus": 4,
+      "rcc": 727,
+      "bdma": 10,
+      "dma1": 2773,
+      "dma2": 2,
+      "dwt": 1,
+      "usb_otg_fs": 42,
+      "adcM1S2": 2,
+      "adc3": 1227,
+      "flashController": 44,
+      "spi1": 1637,
+      "usart1": 3,
+      "usart2": 3,
+      "usart3": 3,
+      "uart4": 3,
+      "uart7": 3,
+      "timer3": 1,
+      "timer8": 4,
+      "timer4": 3,
+      "timer2": 3,
+      "timer1": 5,
+      "timer5": 3
+    },
+    "status": "partial_boot_reached_main_no_cpu_fault_observed",
+    "limits": "No SPI/I2C/SD sensor slaves attached; 2 virtual seconds only. Idle-thread samples are not proof of stall. Sensor initialization, arming, command handling, estimator/control loop and motor outputs remain unqualified. ADC3 repeated-start andSPI1/DMA/clock/cache/flash warnings need isolated follow-up."
+  },
+  "reproduction": "See README.md,build.py,run_cli.py,sdk_adc_probe.py,ardupilot_boot_probe.py. CLI exit0 means run completed, not that all assertions passed."
+}

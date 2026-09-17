@@ -1,0 +1,100 @@
+{
+  "cli": "0.5.7",
+  "sdk": "0.3.1",
+  "model_downloads": [
+    {
+      "model": "ESP32-S3-WROOM-1-N8R2",
+      "status": "downloaded",
+      "bytes": 6146,
+      "sha256": "7215de036ce4bd6df989e3f522eb82249f9ed51c4b1d8a4d3813f5d77d99630e"
+    },
+    {
+      "model": "ESP32S3FN8",
+      "status": "downloaded",
+      "bytes": 6058,
+      "sha256": "1e21629f2aa50f5e4a49a0c714dfbdfc81009af55a7d5768f252e1832daf6986"
+    }
+  ],
+  "toolchain": {
+    "manifest": "https://raw.githubusercontent.com/espressif/esp-idf/v5.5.2/tools/tools.json",
+    "version": "esp-14.2.0_20251107",
+    "sha256": "cffc8213e8e5fea03d12e027868d743ff4d23263e6d45a98b03d18adec6454de",
+    "size": 168886320,
+    "url": "https://github.com/espressif/crosstool-NG/releases/download/esp-14.2.0_20251107/xtensa-esp-elf-14.2.0_20251107-aarch64-apple-darwin.tar.xz",
+    "unpacked_bytes": 1113468958
+  },
+  "register_sources": [
+    {
+      "file": "gpio_reg.h",
+      "url": "https://raw.githubusercontent.com/espressif/esp-idf/v5.5.2/components/soc/esp32s3/register/soc/gpio_reg.h",
+      "sha256": "f8302ac3dffdf5d4b4f987ac76aec780c5130b489529b22d8f59f371b552df3f"
+    },
+    {
+      "file": "uart_reg.h",
+      "url": "https://raw.githubusercontent.com/espressif/esp-idf/v5.5.2/components/soc/esp32s3/register/soc/uart_reg.h",
+      "sha256": "eef72592d7949e641faf7c1d153a8bb0eb0e851619a5f579b4a3c3c663d67e07"
+    },
+    {
+      "file": "i2c_reg.h",
+      "url": "https://raw.githubusercontent.com/espressif/esp-idf/v5.5.2/components/soc/esp32s3/register/soc/i2c_reg.h",
+      "sha256": "42ff10628e96e3ee0a66b10aea8a504deb9bfa42c89f4a3c1fd1c003dd57c203"
+    },
+    {
+      "file": "sens_reg.h",
+      "url": "https://raw.githubusercontent.com/espressif/esp-idf/v5.5.2/components/soc/esp32s3/register/soc/sens_reg.h",
+      "sha256": "3113e9fbcc92c629edcc748baac4ca16c4e66b4e9cac8672cc9162212715c41c"
+    },
+    {
+      "file": "timer_group_reg.h",
+      "url": "https://raw.githubusercontent.com/espressif/esp-idf/v5.5.2/components/soc/esp32s3/register/soc/timer_group_reg.h",
+      "sha256": "079e24c84f1723ec60bd3cd31c612656364a5b0233ddab01a8ca131cab74b03e"
+    },
+    {
+      "file": "system_reg.h",
+      "url": "https://raw.githubusercontent.com/espressif/esp-idf/v5.5.2/components/soc/esp32s3/register/soc/system_reg.h",
+      "sha256": "83439de5edf634caa160c8ca925cc0867f04faa9b01ac3ef5d7970bba2ac6f3c"
+    },
+    {
+      "file": "systimer_reg.h",
+      "url": "https://raw.githubusercontent.com/espressif/esp-idf/v5.5.2/components/soc/esp32s3/register/soc/systimer_reg.h",
+      "sha256": "c18a5985596df1aa0b5ad106c9b32bb27a6da8070b0376150e7154aa375987ee"
+    },
+    {
+      "file": "apb_saradc_reg.h",
+      "url": "https://raw.githubusercontent.com/espressif/esp-idf/v5.5.2/components/soc/esp32s3/register/soc/apb_saradc_reg.h",
+      "sha256": "d39f695cd6b65bd4500502f85d1e154ac3f5c8e2f8ed5c66325af107689b1a35"
+    },
+    {
+      "file": "adc_ll.h",
+      "url": "https://raw.githubusercontent.com/espressif/esp-idf/v5.5.2/components/hal/esp32s3/include/hal/adc_ll.h",
+      "sha256": "e6fb68fe4695647bdf0cd61040948925da3dc98ca71fe572681bf805e6597c9c"
+    },
+    {
+      "file": "i2c_ll.h",
+      "url": "https://raw.githubusercontent.com/espressif/esp-idf/v5.5.2/components/hal/esp32s3/include/hal/i2c_ll.h",
+      "sha256": "9800ec1a82e801d198f7de26e0cde030fdae93a10e450f5e4118ed893270cdfd"
+    },
+    {
+      "file": "timer_ll.h",
+      "url": "https://raw.githubusercontent.com/espressif/esp-idf/v5.5.2/components/hal/esp32s3/include/hal/timer_ll.h",
+      "sha256": "a9a9fafe4696d4dc42e6abb2fc54349a88b63c36c2a3e608ec5817399ef04cf7"
+    },
+    {
+      "file": "timer_group_struct.h",
+      "url": "https://raw.githubusercontent.com/espressif/esp-idf/v5.5.2/components/soc/esp32s3/register/soc/timer_group_struct.h",
+      "sha256": "2692cfdea63b689d4993d0b64a1bc514891d8744b5a3a02f130b41f35fa52bc0"
+    }
+  ],
+  "audit_script_sha256": {
+    "run.py": "218c5962a9145c5b9831b7834434a22d5421b1529dc3667665721ba1096cab1e",
+    "fetch_headers.py": "ae612474166c191c26152aa02f5dc0875636a98b8f5ec53c1f7c60690cd3ba1a",
+    "fetch_toolchain.py": "a5b88d6fdcf74e294aaa72313b73cf1a567d3cf6cf413ed4386e5afbe001b25f",
+    "inspect_platform.py": "4018577b519e50c18afadc20418b1925ff39fe8ec475b69f1c0bcf4a647f6d2f",
+    "fetch_models.py": "12d079142c07e4bc3bb8d93ae3be6f970e7ff364cdd17c829c57e0ec6ef2b7e7",
+    "audit_sdk.py": "c809b3da6026b029145d4a1be85da33b2f875511697549b421992c7685487966"
+  },
+  "source_snapshots": {
+    "ac7fd9aa450cf82e271b104e70e8799489c95bb37f708de5f9903b7e1d22157c": "probe.c",
+    "ff1aa7c7a2c606bbbc8a5953296e797f6d83340876a073c5892e233ddb49173a": "evidence/probe-before-adc-timer-review.c"
+  }
+}

@@ -1,0 +1,4395 @@
+{
+  "schema_version": 3,
+  "project": "PalmPilot / Gesture Controlled Drone",
+  "inventory_date": "2026-09-16",
+  "schematic_revision": "A",
+  "purpose": "Active ESP32-S3 controller baseline plus historical Rev A assembly/wire coverage. Original 142 connections are legacy nRF52840/physical-aircraft references, not ESP32 wiring or an executable scenario.",
+  "current_scope": {
+    "decision_date": "2026-09-16",
+    "authoritative_plan": "README.md",
+    "execution_order": [
+      "S0-S3: Simantic controller simulation",
+      "C0-C7: physical hand-controller prototype and computer bridge",
+      "D1-D4: Simantic drone MCU/hardware -> actuator outputs -> mechanics -> screen, with sensor feedback"
+    ],
+    "physical_drone_build": false,
+    "physical_radio_trainer_required": false,
+    "legacy_field_semantics": "All original assemblies, components, pins, power_domains, connection IDs and required_validation lists describe historical Rev A, including superseded nRF52840 hand/hub wiring. active_controller defines the new baseline; consult its linked guides before purchases or assembly.",
+    "procurement_source": "docs/controller/bom.md",
+    "drone_simulation_plan": "docs/drone-simulation.md",
+    "controller_family": "ESP32-S3",
+    "controller_migration": "docs/controller/esp32-migration.md"
+  },
+  "path_convention": "All source paths are relative to repository root.",
+  "baseline": {
+    "source_netlist": "hardware/schematics/rev-a/connection-netlist.json",
+    "sha256": "d60ab0095f798fb04237fb4e04ea3370ae8e134c2c6cbde54e380f8523f8ddb6",
+    "connection_count": 142,
+    "source_bom": "docs/reference/PalmPilot_BOM.pdf"
+  },
+  "simulation_status": {
+    "assembly_models": "ESP32-S3 qualification underway; STM32H743 diagnostic and stock-boot evidence exists; see capability-audit group reports",
+    "hardware_tests": "not run by this inventory",
+    "application_firmware": "see current firmware plan; MCU simulation does not establish implementation or physical qualification"
+  },
+  "model_candidates": [
+    {
+      "model": "ESP32-S3-WROOM-1-N8R2",
+      "intended_instances": [
+        "left",
+        "right",
+        "hub"
+      ],
+      "catalog_observation": "authenticated CLI/SDK catalog on 2026-09-16",
+      "verified_scope": "see capability-audit/esp32s3; catalog inclusion does not qualify ADC/I2C/BLE or full firmware"
+    },
+    {
+      "model": "STM32H743ZI",
+      "intended_instances": [
+        "virtual drone MCU candidate"
+      ],
+      "verified_scope": "Diagnostic MCU/bus/PWM evidence plus stock ArduCopter IMU FIFO transactions and vehicle-loop execution with explicit fixtures. Four alternate main PWM routes pass diagnostically; estimator health, flight-firmware motor control and closed feedback remain unqualified. See capability-audit/full-drone."
+    },
+    {
+      "model": "NRF52840QIAA",
+      "intended_instances": [],
+      "status": "historical superseded controller candidate",
+      "verified_scope": "earlier diagnostic results retained under capability-audit/nrf52 and transport; not ESP32 evidence"
+    }
+  ],
+  "power_domains": [
+    {
+      "id": "left",
+      "supply": "BT2 / U6 USB and onboard 3V",
+      "ground": "L_GND"
+    },
+    {
+      "id": "right",
+      "supply": "BT3 / U7 USB and onboard 3V",
+      "ground": "R_GND"
+    },
+    {
+      "id": "hub",
+      "supply": "BT4 / U8 USB and onboard 3V",
+      "ground": "H_GND"
+    },
+    {
+      "id": "radio",
+      "supply": "Pocket own pair of radio-compatible 18650 cells",
+      "ground": "radio ground joins H_GND only at trainer sleeve"
+    },
+    {
+      "id": "aircraft",
+      "supply": "BT1 4S -> U2 VBAT -> U1 regulators",
+      "ground": "AIR_GND"
+    },
+    {
+      "id": "wireless",
+      "supply": "endpoint domains only",
+      "ground": "no wire across BLE/ELRS links"
+    },
+    {
+      "id": "mechanical",
+      "supply": null,
+      "ground": null
+    },
+    {
+      "id": "external",
+      "supply": "bench equipment own supply",
+      "ground": "per selected bench test; do not collapse wearable domains implicitly"
+    }
+  ],
+  "protocol_requirements": {
+    "trainer": {
+      "slots": 8,
+      "frame_us": 22500,
+      "marker_us": 300,
+      "slot_mapping": {
+        "TR1": "roll / aileron",
+        "TR2": "pitch / elevator",
+        "TR3": "throttle",
+        "TR4": "yaw / rudder",
+        "TR5": "hand validity: 1000 invalid / 2000 valid",
+        "TR6": "heartbeat: 1000 / 2000, advance every two freshly generated frames with fresh both-hand data",
+        "TR7": "neutral 1500",
+        "TR8": "neutral 1500"
+      },
+      "lifecycle": "Finite frame generation, independent watchdog, no indefinitely replayed DMA frames",
+      "authority": "SE held AND trainer present AND TR5 valid AND recent heartbeat change AND no latched fault; deliberate release/re-enable after fault",
+      "electrical_gate": "Keep physical JP301 open until actual Pocket input compatibility has been established",
+      "current_applicability": "Optional legacy experiment only; not a required controller interface or completion gate."
+    },
+    "aircraft": {
+      "firmware_target": "ArduCopter KakuteH7, received hardware/firmware support verification required",
+      "receiver": "UART3 CRSF",
+      "GNSS": "UART4",
+      "compass": "I2C SCL/SDA",
+      "ESC_telemetry": "UART7 RX",
+      "motor_control": "M1-M4 DShot configuration to be validated",
+      "frame_class": 1,
+      "frame_type": 12,
+      "current_applicability": "Historical hardware/firmware candidate; exact Simantic target/peripheral support unverified. No physical purchase/build requirement."
+    },
+    "controller_host": {
+      "status": "planned, not implemented",
+      "transport": "USB-to-UART bench path for ESP32 DevKit; production host transport and modeled UART adapter require qualification",
+      "record_fields": [
+        "protocol_version",
+        "session",
+        "sequence",
+        "acquisition_progress",
+        "sample_freshness",
+        "roll",
+        "pitch",
+        "yaw",
+        "throttle",
+        "enable",
+        "valid",
+        "fault"
+      ],
+      "planning_ranges": {
+        "roll_pitch_yaw": [
+          -1,
+          1
+        ],
+        "throttle": [
+          0,
+          1
+        ]
+      },
+      "semantics": "Freeze gesture mapping, serialization, timing and throttle interpretation in S3; measure actual physical transport in C6.",
+      "authority": "Host explicit start/stop/reset; invalid required hand or stale record inhibits commands. Fresh data and deliberate recovery required; held enable alone cannot restart/arm virtual drone."
+    }
+  },
+  "assemblies": [
+    {
+      "id": "left_board",
+      "name": "Left controller board",
+      "power_domain": "left",
+      "components": [
+        {
+          "ref": "U6",
+          "part": "Adafruit Feather nRF52840 Sense #4516",
+          "quantity": 1,
+          "board_revision": "received revision pending"
+        },
+        {
+          "ref": "U6.MCU",
+          "part": "Nordic nRF52840",
+          "quantity": 1,
+          "included_in": "U6",
+          "simulation_model_candidate": "NRF52840QIAA"
+        },
+        {
+          "ref": "U6.BLE",
+          "part": "Onboard 2.4 GHz BLE radio and antenna",
+          "quantity": 1,
+          "included_in": "U6"
+        },
+        {
+          "ref": "U6.SUPPORT",
+          "part": "Onboard clocks, bootloader/USB, external flash, reset/user controls and status LEDs",
+          "quantity": 1,
+          "included_in": "U6",
+          "internal_pin_mapping": "Use matching board revision schematic; not all internals are exposed by Rev A wiring list"
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "U6 A6",
+          "role": "Factory battery divider midpoint",
+          "gpio": "P0.29",
+          "arduino_pin": 20
+        },
+        {
+          "endpoint": "U6 3V",
+          "role": "Own regulated sensor/logic supply"
+        },
+        {
+          "endpoint": "U6 GND",
+          "role": "Own signal/power return"
+        },
+        {
+          "endpoint": "U6 EN",
+          "role": "Regulator disable when grounded"
+        },
+        {
+          "endpoint": "U6 A0",
+          "role": "Flex ADC",
+          "gpio": "P0.04",
+          "arduino_pin": 14
+        },
+        {
+          "endpoint": "U6 A1",
+          "role": "Flex ADC",
+          "gpio": "P0.05",
+          "arduino_pin": 15
+        },
+        {
+          "endpoint": "U6 A2",
+          "role": "Flex ADC",
+          "gpio": "P0.30",
+          "arduino_pin": 16
+        },
+        {
+          "endpoint": "U6 A3",
+          "role": "Flex ADC",
+          "gpio": "P0.28",
+          "arduino_pin": 17
+        },
+        {
+          "endpoint": "U6 A4",
+          "role": "Flex ADC",
+          "gpio": "P0.02",
+          "arduino_pin": 18
+        },
+        {
+          "endpoint": "U6 D5",
+          "role": "Active-low ENABLE button",
+          "gpio": "P1.08",
+          "arduino_pin": 5
+        }
+      ],
+      "connection_ids": [],
+      "model_verification": "pending",
+      "required_validation": [
+        "Verify board revision and pin mapping",
+        "Firmware boot/reset and watchdog behavior",
+        "ADC acquisition settings and alternate-channel settling",
+        "USB, flash and battery monitoring",
+        "Two real BLE links and RF coexistence"
+      ],
+      "source_ids": [
+        "architecture",
+        "hands_research",
+        "sense_variant"
+      ],
+      "current_scope_class": "historical_controller_reference",
+      "current_validation": "Superseded nRF52840 Rev A wiring and power. Functional sensing/button roles inform active_controller, but pins and battery circuits do not transfer; use current ESP32 guides."
+    },
+    {
+      "id": "left_sensors",
+      "name": "Left onboard sensors",
+      "power_domain": "left",
+      "components": [
+        {
+          "ref": "U6.IMU",
+          "part": "LSM6DS3TR-C accelerometer/gyro",
+          "quantity": 1,
+          "included_in": "U6",
+          "revision_note": "Current Sense Rev C; older LSM6DS33 requires matching driver"
+        },
+        {
+          "ref": "U6.MAG",
+          "part": "LIS3MDL magnetometer",
+          "quantity": 1,
+          "included_in": "U6"
+        },
+        {
+          "ref": "U6.AUX",
+          "part": "APDS9960, PDM microphone, SHT humidity sensor, BMP280 pressure/temperature sensor",
+          "quantity": 1,
+          "included_in": "U6",
+          "quantity_description": "one of each function per Sense",
+          "control_usage": "Present on board; not selected as extra command inputs"
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "U6 onboard sensor buses",
+          "role": "Factory-routed; no external sensor wires"
+        }
+      ],
+      "connection_ids": [],
+      "model_verification": "pending",
+      "required_validation": [
+        "Driver identity and units",
+        "Axis orientation and mounting",
+        "Calibration, saturation, timestamp/freshness and sensor-stall handling",
+        "Measure real noise/drift and motion response"
+      ],
+      "source_ids": [
+        "hands_research",
+        "sense_overview",
+        "sense_pcb"
+      ],
+      "current_scope_class": "historical_controller_reference",
+      "current_validation": "Superseded nRF52840 Rev A wiring and power. Functional sensing/button roles inform active_controller, but pins and battery circuits do not transfer; use current ESP32 guides."
+    },
+    {
+      "id": "left_power",
+      "name": "Left battery, USB charger and EN switch",
+      "power_domain": "left",
+      "components": [
+        {
+          "ref": "BT2",
+          "part": "Adafruit #1578 protected 1S 500 mAh LiPo",
+          "quantity": 1
+        },
+        {
+          "ref": "SWL",
+          "part": "Maintained SPST or SPDT used as SPST",
+          "quantity": 1
+        },
+        {
+          "ref": "U6.CHARGER",
+          "part": "Onboard MCP73831 with 4.7 kohm PROG resistor in researched revision",
+          "quantity": 1,
+          "included_in": "U6",
+          "nominal_charge_current_ma": 213,
+          "calculated_not_measured": true
+        },
+        {
+          "ref": "U6.REGULATOR",
+          "part": "Onboard regulator and battery-monitor divider",
+          "quantity": 1,
+          "included_in": "U6"
+        },
+        {
+          "ref": "U6.USB",
+          "part": "Native Micro-USB power/data receptacle",
+          "quantity": 1,
+          "included_in": "U6"
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "U6 JST BAT +",
+          "role": "Cell positive"
+        },
+        {
+          "endpoint": "U6 JST BAT -",
+          "role": "Cell negative"
+        },
+        {
+          "endpoint": "U6 EN -> switch common",
+          "role": "Disable control; not battery current"
+        },
+        {
+          "endpoint": "Switch OFF throw -> U6 GND",
+          "role": "Closed = OFF; unused throw NC"
+        }
+      ],
+      "connection_ids": [
+        "LP1",
+        "LP2",
+        "LP3",
+        "LP4"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "Cell connector polarity",
+        "3V rail through usable battery range",
+        "Low-battery inhibit threshold and hysteresis",
+        "USB charging current/temperature and power transition",
+        "EN shutdown leaves BAT/USB present",
+        "Runtime and enclosure/strain relief"
+      ],
+      "source_ids": [
+        "hands_research",
+        "controller_tests"
+      ],
+      "current_scope_class": "historical_controller_reference",
+      "current_validation": "Superseded nRF52840 Rev A wiring and power. Functional sensing/button roles inform active_controller, but pins and battery circuits do not transfer; use current ESP32 guides."
+    },
+    {
+      "id": "right_board",
+      "name": "Right controller board",
+      "power_domain": "right",
+      "components": [
+        {
+          "ref": "U7",
+          "part": "Adafruit Feather nRF52840 Sense #4516",
+          "quantity": 1,
+          "board_revision": "received revision pending"
+        },
+        {
+          "ref": "U7.MCU",
+          "part": "Nordic nRF52840",
+          "quantity": 1,
+          "included_in": "U7",
+          "simulation_model_candidate": "NRF52840QIAA"
+        },
+        {
+          "ref": "U7.BLE",
+          "part": "Onboard 2.4 GHz BLE radio and antenna",
+          "quantity": 1,
+          "included_in": "U7"
+        },
+        {
+          "ref": "U7.SUPPORT",
+          "part": "Onboard clocks, bootloader/USB, external flash, reset/user controls and status LEDs",
+          "quantity": 1,
+          "included_in": "U7",
+          "internal_pin_mapping": "Use matching board revision schematic; not all internals are exposed by Rev A wiring list"
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "U7 A6",
+          "role": "Factory battery divider midpoint",
+          "gpio": "P0.29",
+          "arduino_pin": 20
+        },
+        {
+          "endpoint": "U7 3V",
+          "role": "Own regulated sensor/logic supply"
+        },
+        {
+          "endpoint": "U7 GND",
+          "role": "Own signal/power return"
+        },
+        {
+          "endpoint": "U7 EN",
+          "role": "Regulator disable when grounded"
+        },
+        {
+          "endpoint": "U7 A0",
+          "role": "Flex ADC",
+          "gpio": "P0.04",
+          "arduino_pin": 14
+        },
+        {
+          "endpoint": "U7 A1",
+          "role": "Flex ADC",
+          "gpio": "P0.05",
+          "arduino_pin": 15
+        },
+        {
+          "endpoint": "U7 A2",
+          "role": "Flex ADC",
+          "gpio": "P0.30",
+          "arduino_pin": 16
+        },
+        {
+          "endpoint": "U7 A3",
+          "role": "Flex ADC",
+          "gpio": "P0.28",
+          "arduino_pin": 17
+        },
+        {
+          "endpoint": "U7 A4",
+          "role": "Flex ADC",
+          "gpio": "P0.02",
+          "arduino_pin": 18
+        }
+      ],
+      "connection_ids": [],
+      "model_verification": "pending",
+      "required_validation": [
+        "Verify board revision and pin mapping",
+        "Firmware boot/reset and watchdog behavior",
+        "ADC acquisition settings and alternate-channel settling",
+        "USB, flash and battery monitoring",
+        "Two real BLE links and RF coexistence"
+      ],
+      "source_ids": [
+        "architecture",
+        "hands_research",
+        "sense_variant"
+      ],
+      "current_scope_class": "historical_controller_reference",
+      "current_validation": "Superseded nRF52840 Rev A wiring and power. Functional sensing/button roles inform active_controller, but pins and battery circuits do not transfer; use current ESP32 guides."
+    },
+    {
+      "id": "right_sensors",
+      "name": "Right onboard sensors",
+      "power_domain": "right",
+      "components": [
+        {
+          "ref": "U7.IMU",
+          "part": "LSM6DS3TR-C accelerometer/gyro",
+          "quantity": 1,
+          "included_in": "U7",
+          "revision_note": "Current Sense Rev C; older LSM6DS33 requires matching driver"
+        },
+        {
+          "ref": "U7.MAG",
+          "part": "LIS3MDL magnetometer",
+          "quantity": 1,
+          "included_in": "U7"
+        },
+        {
+          "ref": "U7.AUX",
+          "part": "APDS9960, PDM microphone, SHT humidity sensor, BMP280 pressure/temperature sensor",
+          "quantity": 1,
+          "included_in": "U7",
+          "quantity_description": "one of each function per Sense",
+          "control_usage": "Present on board; not selected as extra command inputs"
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "U7 onboard sensor buses",
+          "role": "Factory-routed; no external sensor wires"
+        }
+      ],
+      "connection_ids": [],
+      "model_verification": "pending",
+      "required_validation": [
+        "Driver identity and units",
+        "Axis orientation and mounting",
+        "Calibration, saturation, timestamp/freshness and sensor-stall handling",
+        "Measure real noise/drift and motion response"
+      ],
+      "source_ids": [
+        "hands_research",
+        "sense_overview",
+        "sense_pcb"
+      ],
+      "current_scope_class": "historical_controller_reference",
+      "current_validation": "Superseded nRF52840 Rev A wiring and power. Functional sensing/button roles inform active_controller, but pins and battery circuits do not transfer; use current ESP32 guides."
+    },
+    {
+      "id": "right_power",
+      "name": "Right battery, USB charger and EN switch",
+      "power_domain": "right",
+      "components": [
+        {
+          "ref": "BT3",
+          "part": "Adafruit #1578 protected 1S 500 mAh LiPo",
+          "quantity": 1
+        },
+        {
+          "ref": "SWR",
+          "part": "Maintained SPST or SPDT used as SPST",
+          "quantity": 1
+        },
+        {
+          "ref": "U7.CHARGER",
+          "part": "Onboard MCP73831 with 4.7 kohm PROG resistor in researched revision",
+          "quantity": 1,
+          "included_in": "U7",
+          "nominal_charge_current_ma": 213,
+          "calculated_not_measured": true
+        },
+        {
+          "ref": "U7.REGULATOR",
+          "part": "Onboard regulator and battery-monitor divider",
+          "quantity": 1,
+          "included_in": "U7"
+        },
+        {
+          "ref": "U7.USB",
+          "part": "Native Micro-USB power/data receptacle",
+          "quantity": 1,
+          "included_in": "U7"
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "U7 JST BAT +",
+          "role": "Cell positive"
+        },
+        {
+          "endpoint": "U7 JST BAT -",
+          "role": "Cell negative"
+        },
+        {
+          "endpoint": "U7 EN -> switch common",
+          "role": "Disable control; not battery current"
+        },
+        {
+          "endpoint": "Switch OFF throw -> U7 GND",
+          "role": "Closed = OFF; unused throw NC"
+        }
+      ],
+      "connection_ids": [
+        "RP1",
+        "RP2",
+        "RP3",
+        "RP4"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "Cell connector polarity",
+        "3V rail through usable battery range",
+        "Low-battery inhibit threshold and hysteresis",
+        "USB charging current/temperature and power transition",
+        "EN shutdown leaves BAT/USB present",
+        "Runtime and enclosure/strain relief"
+      ],
+      "source_ids": [
+        "hands_research",
+        "controller_tests"
+      ],
+      "current_scope_class": "historical_controller_reference",
+      "current_validation": "Superseded nRF52840 Rev A wiring and power. Functional sensing/button roles inform active_controller, but pins and battery circuits do not transfer; use current ESP32 guides."
+    },
+    {
+      "id": "hub_board",
+      "name": "Hub controller board",
+      "power_domain": "hub",
+      "components": [
+        {
+          "ref": "U8",
+          "part": "Adafruit Feather nRF52840 Express #4062",
+          "quantity": 1,
+          "board_revision": "received revision pending"
+        },
+        {
+          "ref": "U8.MCU",
+          "part": "Nordic nRF52840",
+          "quantity": 1,
+          "included_in": "U8",
+          "simulation_model_candidate": "NRF52840QIAA"
+        },
+        {
+          "ref": "U8.BLE",
+          "part": "Onboard 2.4 GHz BLE radio and antenna",
+          "quantity": 1,
+          "included_in": "U8"
+        },
+        {
+          "ref": "U8.SUPPORT",
+          "part": "Onboard clocks, bootloader/USB, external flash, reset/user controls and status LEDs",
+          "quantity": 1,
+          "included_in": "U8",
+          "internal_pin_mapping": "Use matching board revision schematic; not all internals are exposed by Rev A wiring list"
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "U8 A6",
+          "role": "Factory battery divider midpoint",
+          "gpio": "P0.29",
+          "arduino_pin": 20
+        },
+        {
+          "endpoint": "U8 3V",
+          "role": "Own regulated sensor/logic supply"
+        },
+        {
+          "endpoint": "U8 GND",
+          "role": "Own signal/power return"
+        },
+        {
+          "endpoint": "U8 EN",
+          "role": "Regulator disable when grounded"
+        },
+        {
+          "endpoint": "U8 D5",
+          "role": "PPM source to U301.2",
+          "gpio": "P1.08",
+          "arduino_pin": 5
+        },
+        {
+          "endpoint": "U8 D6",
+          "role": "Active-low CALIBRATE button",
+          "gpio": "P0.07",
+          "arduino_pin": 6
+        },
+        {
+          "endpoint": "U8 D9",
+          "role": "Active-low buffer /OE to U301.1",
+          "gpio": "P0.26",
+          "arduino_pin": 9
+        }
+      ],
+      "connection_ids": [],
+      "model_verification": "pending",
+      "required_validation": [
+        "Verify board revision and pin mapping",
+        "Firmware boot/reset and watchdog behavior",
+        "ADC acquisition settings and alternate-channel settling",
+        "USB, flash and battery monitoring",
+        "Two real BLE links and RF coexistence"
+      ],
+      "source_ids": [
+        "architecture",
+        "hands_research",
+        "express_variant"
+      ],
+      "current_scope_class": "historical_controller_reference",
+      "current_validation": "Superseded nRF52840 Rev A wiring and power. Functional sensing/button roles inform active_controller, but pins and battery circuits do not transfer; use current ESP32 guides."
+    },
+    {
+      "id": "hub_power",
+      "name": "Hub battery, USB charger and EN switch",
+      "power_domain": "hub",
+      "components": [
+        {
+          "ref": "BT4",
+          "part": "Adafruit #1578 protected 1S 500 mAh LiPo",
+          "quantity": 1
+        },
+        {
+          "ref": "SWH",
+          "part": "Maintained SPST or SPDT used as SPST",
+          "quantity": 1
+        },
+        {
+          "ref": "U8.CHARGER",
+          "part": "Onboard MCP73831 with 4.7 kohm PROG resistor in researched revision",
+          "quantity": 1,
+          "included_in": "U8",
+          "nominal_charge_current_ma": 213,
+          "calculated_not_measured": true
+        },
+        {
+          "ref": "U8.REGULATOR",
+          "part": "Onboard regulator and battery-monitor divider",
+          "quantity": 1,
+          "included_in": "U8"
+        },
+        {
+          "ref": "U8.USB",
+          "part": "Native Micro-USB power/data receptacle",
+          "quantity": 1,
+          "included_in": "U8"
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "U8 JST BAT +",
+          "role": "Cell positive"
+        },
+        {
+          "endpoint": "U8 JST BAT -",
+          "role": "Cell negative"
+        },
+        {
+          "endpoint": "U8 EN -> switch common",
+          "role": "Disable control; not battery current"
+        },
+        {
+          "endpoint": "Switch OFF throw -> U8 GND",
+          "role": "Closed = OFF; unused throw NC"
+        }
+      ],
+      "connection_ids": [
+        "HP1",
+        "HP2",
+        "HP3",
+        "HP4"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "Cell connector polarity",
+        "3V rail through usable battery range",
+        "Low-battery inhibit threshold and hysteresis",
+        "USB charging current/temperature and power transition",
+        "EN shutdown leaves BAT/USB present",
+        "Runtime and enclosure/strain relief"
+      ],
+      "source_ids": [
+        "hands_research",
+        "controller_tests"
+      ],
+      "current_scope_class": "historical_controller_reference",
+      "current_validation": "Superseded nRF52840 Rev A wiring and power. Functional sensing/button roles inform active_controller, but pins and battery circuits do not transfer; use current ESP32 guides."
+    },
+    {
+      "id": "left_flex_1",
+      "name": "Left thumb flex channel",
+      "power_domain": "left",
+      "components": [
+        {
+          "ref": "FL1",
+          "part": "Adafruit short flex sensor #1070",
+          "quantity": 1,
+          "resistance_ohm_examples": [
+            25000,
+            100000
+          ],
+          "examples_not_calibration": true
+        },
+        {
+          "ref": "RL1",
+          "part": "47 kohm 1% resistor",
+          "quantity": 1,
+          "value_ohm": 47000,
+          "power_min_w": 0.125
+        },
+        {
+          "ref": "CL1",
+          "part": "100 nF X7R capacitor",
+          "quantity": 1,
+          "value_f": 1e-07,
+          "voltage_min_v": 10
+        },
+        {
+          "ref": "JL1",
+          "part": "Keyed two-contact mating pair",
+          "quantity": 1
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "JL1.1",
+          "role": "U6 3V -> flex terminal 1"
+        },
+        {
+          "endpoint": "JL1.2",
+          "role": "Flex terminal 2 -> U6 A0"
+        },
+        {
+          "endpoint": "RL1.1 and CL1.1",
+          "role": "ADC node U6 A0"
+        },
+        {
+          "endpoint": "RL1.2 and CL1.2",
+          "role": "U6 GND"
+        }
+      ],
+      "connection_ids": [
+        "L1a",
+        "L1b",
+        "L1c",
+        "L1d",
+        "L1e",
+        "L1f"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "RC response and ADC voltage sweep",
+        "Open/short faults and in-range stuck/adjacent-channel faults",
+        "Measured finger calibration and mechanical strain relief"
+      ],
+      "source_ids": [
+        "hands_research",
+        "controller_bom"
+      ],
+      "current_scope_class": "historical_controller_reference",
+      "current_validation": "Superseded nRF52840 Rev A wiring and power. Functional sensing/button roles inform active_controller, but pins and battery circuits do not transfer; use current ESP32 guides."
+    },
+    {
+      "id": "left_flex_2",
+      "name": "Left index flex channel",
+      "power_domain": "left",
+      "components": [
+        {
+          "ref": "FL2",
+          "part": "Adafruit short flex sensor #1070",
+          "quantity": 1,
+          "resistance_ohm_examples": [
+            25000,
+            100000
+          ],
+          "examples_not_calibration": true
+        },
+        {
+          "ref": "RL2",
+          "part": "47 kohm 1% resistor",
+          "quantity": 1,
+          "value_ohm": 47000,
+          "power_min_w": 0.125
+        },
+        {
+          "ref": "CL2",
+          "part": "100 nF X7R capacitor",
+          "quantity": 1,
+          "value_f": 1e-07,
+          "voltage_min_v": 10
+        },
+        {
+          "ref": "JL2",
+          "part": "Keyed two-contact mating pair",
+          "quantity": 1
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "JL2.1",
+          "role": "U6 3V -> flex terminal 1"
+        },
+        {
+          "endpoint": "JL2.2",
+          "role": "Flex terminal 2 -> U6 A1"
+        },
+        {
+          "endpoint": "RL2.1 and CL2.1",
+          "role": "ADC node U6 A1"
+        },
+        {
+          "endpoint": "RL2.2 and CL2.2",
+          "role": "U6 GND"
+        }
+      ],
+      "connection_ids": [
+        "L2a",
+        "L2b",
+        "L2c",
+        "L2d",
+        "L2e",
+        "L2f"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "RC response and ADC voltage sweep",
+        "Open/short faults and in-range stuck/adjacent-channel faults",
+        "Measured finger calibration and mechanical strain relief"
+      ],
+      "source_ids": [
+        "hands_research",
+        "controller_bom"
+      ],
+      "current_scope_class": "historical_controller_reference",
+      "current_validation": "Superseded nRF52840 Rev A wiring and power. Functional sensing/button roles inform active_controller, but pins and battery circuits do not transfer; use current ESP32 guides."
+    },
+    {
+      "id": "left_flex_3",
+      "name": "Left middle flex channel",
+      "power_domain": "left",
+      "components": [
+        {
+          "ref": "FL3",
+          "part": "Adafruit short flex sensor #1070",
+          "quantity": 1,
+          "resistance_ohm_examples": [
+            25000,
+            100000
+          ],
+          "examples_not_calibration": true
+        },
+        {
+          "ref": "RL3",
+          "part": "47 kohm 1% resistor",
+          "quantity": 1,
+          "value_ohm": 47000,
+          "power_min_w": 0.125
+        },
+        {
+          "ref": "CL3",
+          "part": "100 nF X7R capacitor",
+          "quantity": 1,
+          "value_f": 1e-07,
+          "voltage_min_v": 10
+        },
+        {
+          "ref": "JL3",
+          "part": "Keyed two-contact mating pair",
+          "quantity": 1
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "JL3.1",
+          "role": "U6 3V -> flex terminal 1"
+        },
+        {
+          "endpoint": "JL3.2",
+          "role": "Flex terminal 2 -> U6 A2"
+        },
+        {
+          "endpoint": "RL3.1 and CL3.1",
+          "role": "ADC node U6 A2"
+        },
+        {
+          "endpoint": "RL3.2 and CL3.2",
+          "role": "U6 GND"
+        }
+      ],
+      "connection_ids": [
+        "L3a",
+        "L3b",
+        "L3c",
+        "L3d",
+        "L3e",
+        "L3f"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "RC response and ADC voltage sweep",
+        "Open/short faults and in-range stuck/adjacent-channel faults",
+        "Measured finger calibration and mechanical strain relief"
+      ],
+      "source_ids": [
+        "hands_research",
+        "controller_bom"
+      ],
+      "current_scope_class": "historical_controller_reference",
+      "current_validation": "Superseded nRF52840 Rev A wiring and power. Functional sensing/button roles inform active_controller, but pins and battery circuits do not transfer; use current ESP32 guides."
+    },
+    {
+      "id": "left_flex_4",
+      "name": "Left ring flex channel",
+      "power_domain": "left",
+      "components": [
+        {
+          "ref": "FL4",
+          "part": "Adafruit short flex sensor #1070",
+          "quantity": 1,
+          "resistance_ohm_examples": [
+            25000,
+            100000
+          ],
+          "examples_not_calibration": true
+        },
+        {
+          "ref": "RL4",
+          "part": "47 kohm 1% resistor",
+          "quantity": 1,
+          "value_ohm": 47000,
+          "power_min_w": 0.125
+        },
+        {
+          "ref": "CL4",
+          "part": "100 nF X7R capacitor",
+          "quantity": 1,
+          "value_f": 1e-07,
+          "voltage_min_v": 10
+        },
+        {
+          "ref": "JL4",
+          "part": "Keyed two-contact mating pair",
+          "quantity": 1
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "JL4.1",
+          "role": "U6 3V -> flex terminal 1"
+        },
+        {
+          "endpoint": "JL4.2",
+          "role": "Flex terminal 2 -> U6 A3"
+        },
+        {
+          "endpoint": "RL4.1 and CL4.1",
+          "role": "ADC node U6 A3"
+        },
+        {
+          "endpoint": "RL4.2 and CL4.2",
+          "role": "U6 GND"
+        }
+      ],
+      "connection_ids": [
+        "L4a",
+        "L4b",
+        "L4c",
+        "L4d",
+        "L4e",
+        "L4f"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "RC response and ADC voltage sweep",
+        "Open/short faults and in-range stuck/adjacent-channel faults",
+        "Measured finger calibration and mechanical strain relief"
+      ],
+      "source_ids": [
+        "hands_research",
+        "controller_bom"
+      ],
+      "current_scope_class": "historical_controller_reference",
+      "current_validation": "Superseded nRF52840 Rev A wiring and power. Functional sensing/button roles inform active_controller, but pins and battery circuits do not transfer; use current ESP32 guides."
+    },
+    {
+      "id": "left_flex_5",
+      "name": "Left little flex channel",
+      "power_domain": "left",
+      "components": [
+        {
+          "ref": "FL5",
+          "part": "Adafruit short flex sensor #1070",
+          "quantity": 1,
+          "resistance_ohm_examples": [
+            25000,
+            100000
+          ],
+          "examples_not_calibration": true
+        },
+        {
+          "ref": "RL5",
+          "part": "47 kohm 1% resistor",
+          "quantity": 1,
+          "value_ohm": 47000,
+          "power_min_w": 0.125
+        },
+        {
+          "ref": "CL5",
+          "part": "100 nF X7R capacitor",
+          "quantity": 1,
+          "value_f": 1e-07,
+          "voltage_min_v": 10
+        },
+        {
+          "ref": "JL5",
+          "part": "Keyed two-contact mating pair",
+          "quantity": 1
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "JL5.1",
+          "role": "U6 3V -> flex terminal 1"
+        },
+        {
+          "endpoint": "JL5.2",
+          "role": "Flex terminal 2 -> U6 A4"
+        },
+        {
+          "endpoint": "RL5.1 and CL5.1",
+          "role": "ADC node U6 A4"
+        },
+        {
+          "endpoint": "RL5.2 and CL5.2",
+          "role": "U6 GND"
+        }
+      ],
+      "connection_ids": [
+        "L5a",
+        "L5b",
+        "L5c",
+        "L5d",
+        "L5e",
+        "L5f"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "RC response and ADC voltage sweep",
+        "Open/short faults and in-range stuck/adjacent-channel faults",
+        "Measured finger calibration and mechanical strain relief"
+      ],
+      "source_ids": [
+        "hands_research",
+        "controller_bom"
+      ],
+      "current_scope_class": "historical_controller_reference",
+      "current_validation": "Superseded nRF52840 Rev A wiring and power. Functional sensing/button roles inform active_controller, but pins and battery circuits do not transfer; use current ESP32 guides."
+    },
+    {
+      "id": "right_flex_1",
+      "name": "Right thumb flex channel",
+      "power_domain": "right",
+      "components": [
+        {
+          "ref": "FR1",
+          "part": "Adafruit short flex sensor #1070",
+          "quantity": 1,
+          "resistance_ohm_examples": [
+            25000,
+            100000
+          ],
+          "examples_not_calibration": true
+        },
+        {
+          "ref": "RR1",
+          "part": "47 kohm 1% resistor",
+          "quantity": 1,
+          "value_ohm": 47000,
+          "power_min_w": 0.125
+        },
+        {
+          "ref": "CR1",
+          "part": "100 nF X7R capacitor",
+          "quantity": 1,
+          "value_f": 1e-07,
+          "voltage_min_v": 10
+        },
+        {
+          "ref": "JR1",
+          "part": "Keyed two-contact mating pair",
+          "quantity": 1
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "JR1.1",
+          "role": "U7 3V -> flex terminal 1"
+        },
+        {
+          "endpoint": "JR1.2",
+          "role": "Flex terminal 2 -> U7 A0"
+        },
+        {
+          "endpoint": "RR1.1 and CR1.1",
+          "role": "ADC node U7 A0"
+        },
+        {
+          "endpoint": "RR1.2 and CR1.2",
+          "role": "U7 GND"
+        }
+      ],
+      "connection_ids": [
+        "R1a",
+        "R1b",
+        "R1c",
+        "R1d",
+        "R1e",
+        "R1f"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "RC response and ADC voltage sweep",
+        "Open/short faults and in-range stuck/adjacent-channel faults",
+        "Measured finger calibration and mechanical strain relief"
+      ],
+      "source_ids": [
+        "hands_research",
+        "controller_bom"
+      ],
+      "current_scope_class": "historical_controller_reference",
+      "current_validation": "Superseded nRF52840 Rev A wiring and power. Functional sensing/button roles inform active_controller, but pins and battery circuits do not transfer; use current ESP32 guides."
+    },
+    {
+      "id": "right_flex_2",
+      "name": "Right index flex channel",
+      "power_domain": "right",
+      "components": [
+        {
+          "ref": "FR2",
+          "part": "Adafruit short flex sensor #1070",
+          "quantity": 1,
+          "resistance_ohm_examples": [
+            25000,
+            100000
+          ],
+          "examples_not_calibration": true
+        },
+        {
+          "ref": "RR2",
+          "part": "47 kohm 1% resistor",
+          "quantity": 1,
+          "value_ohm": 47000,
+          "power_min_w": 0.125
+        },
+        {
+          "ref": "CR2",
+          "part": "100 nF X7R capacitor",
+          "quantity": 1,
+          "value_f": 1e-07,
+          "voltage_min_v": 10
+        },
+        {
+          "ref": "JR2",
+          "part": "Keyed two-contact mating pair",
+          "quantity": 1
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "JR2.1",
+          "role": "U7 3V -> flex terminal 1"
+        },
+        {
+          "endpoint": "JR2.2",
+          "role": "Flex terminal 2 -> U7 A1"
+        },
+        {
+          "endpoint": "RR2.1 and CR2.1",
+          "role": "ADC node U7 A1"
+        },
+        {
+          "endpoint": "RR2.2 and CR2.2",
+          "role": "U7 GND"
+        }
+      ],
+      "connection_ids": [
+        "R2a",
+        "R2b",
+        "R2c",
+        "R2d",
+        "R2e",
+        "R2f"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "RC response and ADC voltage sweep",
+        "Open/short faults and in-range stuck/adjacent-channel faults",
+        "Measured finger calibration and mechanical strain relief"
+      ],
+      "source_ids": [
+        "hands_research",
+        "controller_bom"
+      ],
+      "current_scope_class": "historical_controller_reference",
+      "current_validation": "Superseded nRF52840 Rev A wiring and power. Functional sensing/button roles inform active_controller, but pins and battery circuits do not transfer; use current ESP32 guides."
+    },
+    {
+      "id": "right_flex_3",
+      "name": "Right middle flex channel",
+      "power_domain": "right",
+      "components": [
+        {
+          "ref": "FR3",
+          "part": "Adafruit short flex sensor #1070",
+          "quantity": 1,
+          "resistance_ohm_examples": [
+            25000,
+            100000
+          ],
+          "examples_not_calibration": true
+        },
+        {
+          "ref": "RR3",
+          "part": "47 kohm 1% resistor",
+          "quantity": 1,
+          "value_ohm": 47000,
+          "power_min_w": 0.125
+        },
+        {
+          "ref": "CR3",
+          "part": "100 nF X7R capacitor",
+          "quantity": 1,
+          "value_f": 1e-07,
+          "voltage_min_v": 10
+        },
+        {
+          "ref": "JR3",
+          "part": "Keyed two-contact mating pair",
+          "quantity": 1
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "JR3.1",
+          "role": "U7 3V -> flex terminal 1"
+        },
+        {
+          "endpoint": "JR3.2",
+          "role": "Flex terminal 2 -> U7 A2"
+        },
+        {
+          "endpoint": "RR3.1 and CR3.1",
+          "role": "ADC node U7 A2"
+        },
+        {
+          "endpoint": "RR3.2 and CR3.2",
+          "role": "U7 GND"
+        }
+      ],
+      "connection_ids": [
+        "R3a",
+        "R3b",
+        "R3c",
+        "R3d",
+        "R3e",
+        "R3f"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "RC response and ADC voltage sweep",
+        "Open/short faults and in-range stuck/adjacent-channel faults",
+        "Measured finger calibration and mechanical strain relief"
+      ],
+      "source_ids": [
+        "hands_research",
+        "controller_bom"
+      ],
+      "current_scope_class": "historical_controller_reference",
+      "current_validation": "Superseded nRF52840 Rev A wiring and power. Functional sensing/button roles inform active_controller, but pins and battery circuits do not transfer; use current ESP32 guides."
+    },
+    {
+      "id": "right_flex_4",
+      "name": "Right ring flex channel",
+      "power_domain": "right",
+      "components": [
+        {
+          "ref": "FR4",
+          "part": "Adafruit short flex sensor #1070",
+          "quantity": 1,
+          "resistance_ohm_examples": [
+            25000,
+            100000
+          ],
+          "examples_not_calibration": true
+        },
+        {
+          "ref": "RR4",
+          "part": "47 kohm 1% resistor",
+          "quantity": 1,
+          "value_ohm": 47000,
+          "power_min_w": 0.125
+        },
+        {
+          "ref": "CR4",
+          "part": "100 nF X7R capacitor",
+          "quantity": 1,
+          "value_f": 1e-07,
+          "voltage_min_v": 10
+        },
+        {
+          "ref": "JR4",
+          "part": "Keyed two-contact mating pair",
+          "quantity": 1
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "JR4.1",
+          "role": "U7 3V -> flex terminal 1"
+        },
+        {
+          "endpoint": "JR4.2",
+          "role": "Flex terminal 2 -> U7 A3"
+        },
+        {
+          "endpoint": "RR4.1 and CR4.1",
+          "role": "ADC node U7 A3"
+        },
+        {
+          "endpoint": "RR4.2 and CR4.2",
+          "role": "U7 GND"
+        }
+      ],
+      "connection_ids": [
+        "R4a",
+        "R4b",
+        "R4c",
+        "R4d",
+        "R4e",
+        "R4f"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "RC response and ADC voltage sweep",
+        "Open/short faults and in-range stuck/adjacent-channel faults",
+        "Measured finger calibration and mechanical strain relief"
+      ],
+      "source_ids": [
+        "hands_research",
+        "controller_bom"
+      ],
+      "current_scope_class": "historical_controller_reference",
+      "current_validation": "Superseded nRF52840 Rev A wiring and power. Functional sensing/button roles inform active_controller, but pins and battery circuits do not transfer; use current ESP32 guides."
+    },
+    {
+      "id": "right_flex_5",
+      "name": "Right little flex channel",
+      "power_domain": "right",
+      "components": [
+        {
+          "ref": "FR5",
+          "part": "Adafruit short flex sensor #1070",
+          "quantity": 1,
+          "resistance_ohm_examples": [
+            25000,
+            100000
+          ],
+          "examples_not_calibration": true
+        },
+        {
+          "ref": "RR5",
+          "part": "47 kohm 1% resistor",
+          "quantity": 1,
+          "value_ohm": 47000,
+          "power_min_w": 0.125
+        },
+        {
+          "ref": "CR5",
+          "part": "100 nF X7R capacitor",
+          "quantity": 1,
+          "value_f": 1e-07,
+          "voltage_min_v": 10
+        },
+        {
+          "ref": "JR5",
+          "part": "Keyed two-contact mating pair",
+          "quantity": 1
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "JR5.1",
+          "role": "U7 3V -> flex terminal 1"
+        },
+        {
+          "endpoint": "JR5.2",
+          "role": "Flex terminal 2 -> U7 A4"
+        },
+        {
+          "endpoint": "RR5.1 and CR5.1",
+          "role": "ADC node U7 A4"
+        },
+        {
+          "endpoint": "RR5.2 and CR5.2",
+          "role": "U7 GND"
+        }
+      ],
+      "connection_ids": [
+        "R5a",
+        "R5b",
+        "R5c",
+        "R5d",
+        "R5e",
+        "R5f"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "RC response and ADC voltage sweep",
+        "Open/short faults and in-range stuck/adjacent-channel faults",
+        "Measured finger calibration and mechanical strain relief"
+      ],
+      "source_ids": [
+        "hands_research",
+        "controller_bom"
+      ],
+      "current_scope_class": "historical_controller_reference",
+      "current_validation": "Superseded nRF52840 Rev A wiring and power. Functional sensing/button roles inform active_controller, but pins and battery circuits do not transfer; use current ESP32 guides."
+    },
+    {
+      "id": "left_enable",
+      "name": "Left ENABLE button network",
+      "power_domain": "left",
+      "components": [
+        {
+          "ref": "SW4",
+          "part": "Normally-open momentary pushbutton",
+          "quantity": 1
+        },
+        {
+          "ref": "R201",
+          "part": "10 kohm 1% pull-up",
+          "quantity": 1,
+          "value_ohm": 10000
+        },
+        {
+          "ref": "R202",
+          "part": "1 kohm 1% series resistor",
+          "quantity": 1,
+          "value_ohm": 1000
+        },
+        {
+          "ref": "C201",
+          "part": "100 nF X7R filter",
+          "quantity": 1,
+          "value_f": 1e-07
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "U6 D5 / P1.08",
+          "role": "Active-low input; pull-up to own 3V, capacitor to own GND, series resistor toward switch"
+        },
+        {
+          "endpoint": "SW4 other contact",
+          "role": "U6 GND"
+        }
+      ],
+      "connection_ids": [
+        "SW4.1",
+        "SW4.2",
+        "SW4.3",
+        "SW4.4",
+        "SW4.5",
+        "SW4.6",
+        "SW4.7"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "Open-circuit inactive state and short-to-ground behavior",
+        "Debounce/release-before-enable state machine",
+        "Calibration only with hub output inhibited and operator-confirmed manual/disarmed state"
+      ],
+      "source_ids": [
+        "hands_research",
+        "controller_firmware"
+      ],
+      "current_scope_class": "historical_controller_reference",
+      "current_validation": "Superseded nRF52840 Rev A wiring and power. Functional sensing/button roles inform active_controller, but pins and battery circuits do not transfer; use current ESP32 guides."
+    },
+    {
+      "id": "hub_calibrate",
+      "name": "Hub CALIBRATE button network",
+      "power_domain": "hub",
+      "components": [
+        {
+          "ref": "SW5",
+          "part": "Normally-open momentary pushbutton",
+          "quantity": 1
+        },
+        {
+          "ref": "R203",
+          "part": "10 kohm 1% pull-up",
+          "quantity": 1,
+          "value_ohm": 10000
+        },
+        {
+          "ref": "R204",
+          "part": "1 kohm 1% series resistor",
+          "quantity": 1,
+          "value_ohm": 1000
+        },
+        {
+          "ref": "C202",
+          "part": "100 nF X7R filter",
+          "quantity": 1,
+          "value_f": 1e-07
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "U8 D6 / P0.07",
+          "role": "Active-low input; pull-up to own 3V, capacitor to own GND, series resistor toward switch"
+        },
+        {
+          "endpoint": "SW5 other contact",
+          "role": "U8 GND"
+        }
+      ],
+      "connection_ids": [
+        "SW5.1",
+        "SW5.2",
+        "SW5.3",
+        "SW5.4",
+        "SW5.5",
+        "SW5.6",
+        "SW5.7"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "Open-circuit inactive state and short-to-ground behavior",
+        "Debounce/release-before-enable state machine",
+        "Calibration only with hub output inhibited and operator-confirmed manual/disarmed state"
+      ],
+      "source_ids": [
+        "hands_research",
+        "controller_firmware"
+      ],
+      "current_scope_class": "historical_controller_reference",
+      "current_validation": "Superseded nRF52840 Rev A wiring and power. Functional sensing/button roles inform active_controller, but pins and battery circuits do not transfer; use current ESP32 guides."
+    },
+    {
+      "id": "trainer_buffer",
+      "name": "Trainer line driver, carrier and removable cable connection",
+      "power_domain": "hub",
+      "components": [
+        {
+          "ref": "U301",
+          "part": "TI SN74LVC1G125DBVR, SOT-23-5",
+          "quantity": 1
+        },
+        {
+          "ref": "U301.CARRIER",
+          "part": "Adafruit #1230 six-pad SOT-23 adapter",
+          "quantity": 1
+        },
+        {
+          "ref": "R301",
+          "part": "10 kohm /OE pull-up",
+          "quantity": 1,
+          "value_ohm": 10000
+        },
+        {
+          "ref": "R302",
+          "part": "100 kohm input pull-down",
+          "quantity": 1,
+          "value_ohm": 100000
+        },
+        {
+          "ref": "R303",
+          "part": "1 kohm output series resistor",
+          "quantity": 1,
+          "value_ohm": 1000
+        },
+        {
+          "ref": "C301",
+          "part": "100 nF supply bypass",
+          "quantity": 1,
+          "value_f": 1e-07
+        },
+        {
+          "ref": "JP301",
+          "part": "Two-pin header and removable shunt",
+          "quantity": 1,
+          "initial_state": "open"
+        },
+        {
+          "ref": "TP301",
+          "part": "Test point before JP301",
+          "quantity": 1
+        },
+        {
+          "ref": "TP302",
+          "part": "Test point on cable side of JP301",
+          "quantity": 1
+        },
+        {
+          "ref": "J301",
+          "part": "Male 3.5 mm mono TS plug and short shielded cable",
+          "quantity": 1
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "U301.1 /OE",
+          "role": "U8 D9; R301 to hub 3V; LOW enables output",
+          "carrier_pad": 1,
+          "carrier_header": "JP2.1"
+        },
+        {
+          "endpoint": "U301.2 A",
+          "role": "U8 D5; R302 to hub GND",
+          "carrier_pad": 2,
+          "carrier_header": "JP2.2"
+        },
+        {
+          "endpoint": "U301.3 GND",
+          "role": "U8 GND",
+          "carrier_pad": 3,
+          "carrier_header": "JP2.3"
+        },
+        {
+          "endpoint": "U301.4 Y",
+          "role": "R303 -> JP301 -> TS tip",
+          "carrier_pad": 4,
+          "carrier_header": "JP1.3"
+        },
+        {
+          "endpoint": "U301.5 VCC",
+          "role": "U8 3V; C301 to GND",
+          "carrier_pad": 6,
+          "carrier_header": "JP1.1"
+        },
+        {
+          "endpoint": "Carrier pad 5 / JP1.2",
+          "role": "Unused; no IC leg"
+        },
+        {
+          "endpoint": "J301 sleeve",
+          "role": "Hub GND; sole shared ground with Pocket"
+        }
+      ],
+      "connection_ids": [
+        "H01",
+        "H02",
+        "H03",
+        "H04",
+        "H05",
+        "H06",
+        "H07",
+        "H08",
+        "H09",
+        "H10",
+        "H11",
+        "H12",
+        "H13",
+        "H14"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "Correct five-pin IC to six-pad carrier continuity",
+        "Reset/output-disable and Ioff behavior",
+        "Loaded pulse levels, edge timing and cable faults",
+        "Verify actual Pocket input tolerance before closing JP301"
+      ],
+      "source_ids": [
+        "trainer_research",
+        "buffer",
+        "carrier"
+      ],
+      "current_scope_class": "optional_legacy_interface",
+      "current_validation": "Excluded from current completion gates and purchasing requirements. Original electrical checks apply only if this optional interface is deliberately pursued."
+    },
+    {
+      "id": "pocket",
+      "name": "Operator radio and physical authority controls",
+      "power_domain": "radio",
+      "components": [
+        {
+          "ref": "RADIO1",
+          "part": "RadioMaster Pocket M2 ELRS/FCC",
+          "quantity": 1
+        },
+        {
+          "ref": "RADIO1.CELL",
+          "part": "Radio-compatible 18650 cell",
+          "quantity": 2
+        },
+        {
+          "ref": "RADIO1.INPUTS",
+          "part": "Physical sticks, momentary SE, arm/mode switches and DSC trainer input",
+          "quantity": 1,
+          "included_in": "RADIO1"
+        },
+        {
+          "ref": "RADIO1.RF",
+          "part": "Internal ELRS transmitter and stock antenna",
+          "quantity": 1,
+          "included_in": "RADIO1"
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "Pocket DSC tip",
+          "role": "PPM from J301 tip"
+        },
+        {
+          "endpoint": "Pocket DSC sleeve",
+          "role": "J301 sleeve / hub GND"
+        },
+        {
+          "endpoint": "Pocket battery compartment",
+          "role": "Own cells only; not powered by Feather"
+        }
+      ],
+      "connection_ids": [],
+      "model_verification": "pending",
+      "required_validation": [
+        "Actual trainer input electrical limits",
+        "Master/Jack decode and all eight trainer slots",
+        "Manual takeover and matched throttle transition",
+        "Latched fault/release-to-reenable",
+        "Stopped/repeating/stale/malformed PPM and radio restart"
+      ],
+      "source_ids": [
+        "trainer_research",
+        "pocket_manual",
+        "trainer_pinout"
+      ],
+      "current_scope_class": "optional_legacy_interface",
+      "current_validation": "Excluded from current completion gates and purchasing requirements. Original electrical checks apply only if this optional interface is deliberately pursued."
+    },
+    {
+      "id": "wireless_links",
+      "name": "Two BLE links and ELRS radio link",
+      "power_domain": "wireless",
+      "components": [
+        {
+          "ref": "BLE_LEFT",
+          "part": "U6 -> U8 BLE link",
+          "quantity": 1
+        },
+        {
+          "ref": "BLE_RIGHT",
+          "part": "U7 -> U8 BLE link",
+          "quantity": 1
+        },
+        {
+          "ref": "ELRS_AIR",
+          "part": "Pocket -> U3 ELRS link",
+          "quantity": 1
+        }
+      ],
+      "pins": [],
+      "connection_ids": [],
+      "model_verification": "pending",
+      "required_validation": [
+        "Real concurrent BLE scheduling",
+        "Body shadowing, interference, range and packet loss",
+        "Identity, reboot session, sequence and acquisition timestamp validation",
+        "ELRS binding, telemetry and radio-loss behavior"
+      ],
+      "source_ids": [
+        "architecture",
+        "controller_firmware"
+      ],
+      "current_scope_class": "mixed_controller_ble_and_historical_elrs",
+      "current_validation": "Two controller BLE hand-to-hub links are required; ELRS is historical and optional."
+    },
+    {
+      "id": "air_power",
+      "name": "Aircraft 4S battery, main wiring and capacitor",
+      "power_domain": "aircraft",
+      "components": [
+        {
+          "ref": "BT1",
+          "part": "Tattu FunFly 1300 mAh 4S 100C XT60 TAA13004S10X6",
+          "quantity": 1,
+          "installed_quantity": 1,
+          "purchase_quantity": 2,
+          "nominal_voltage_v": 14.8,
+          "full_voltage_v": 16.8
+        },
+        {
+          "ref": "C1",
+          "part": "1000 uF / 35 V electrolytic capacitor",
+          "quantity": 1,
+          "value_f": 0.001,
+          "voltage_v": 35
+        },
+        {
+          "ref": "AIR.XT60",
+          "part": "XT60 mating pigtail and 12 AWG power leads",
+          "quantity": 1
+        },
+        {
+          "ref": "AIR.WIRING",
+          "part": "Motor lead extensions, signal wire, insulation and harnesses",
+          "quantity": 1,
+          "quantity_description": "one installation lot"
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "BT1 mating XT60 +",
+          "role": "U2 large VBAT +; C1 positive"
+        },
+        {
+          "endpoint": "BT1 mating XT60 -",
+          "role": "U2 large GND -; C1 negative stripe"
+        }
+      ],
+      "connection_ids": [
+        "P01",
+        "P02",
+        "P03",
+        "P04"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "Polarity, continuity and current-limited bring-up",
+        "Loaded voltage sag/current/thermal behavior",
+        "ESC transient suppression and regulator margin"
+      ],
+      "source_ids": [
+        "aircraft_research",
+        "aircraft_tests"
+      ],
+      "current_scope_class": "virtual_drone_reference_candidate",
+      "current_validation": "D1-D4 select supported virtual MCU, sensors, actuators and dynamics parameters. Original physical build/measurement requirements do not apply."
+    },
+    {
+      "id": "flight_controller",
+      "name": "Full-size flight-controller assembly",
+      "power_domain": "aircraft",
+      "components": [
+        {
+          "ref": "U1",
+          "part": "Holybro Kakute H7 v1.5 full-size SKU11091",
+          "quantity": 1,
+          "mcu_family": "STM32H743",
+          "physical_mcu_package": "unverified; do not equate to catalog STM32H743ZI",
+          "simulation_model_candidate": "STM32H743ZI"
+        },
+        {
+          "ref": "U1.IMU",
+          "part": "ICM-42688-P",
+          "quantity": 1,
+          "included_in": "U1"
+        },
+        {
+          "ref": "U1.BARO",
+          "part": "SPA06",
+          "quantity": 1,
+          "included_in": "U1"
+        },
+        {
+          "ref": "U1.BLE",
+          "part": "ESP32-C3 service Bluetooth on UART2",
+          "quantity": 1,
+          "included_in": "U1",
+          "note": "SKU11091C omits Bluetooth; not selected BOM"
+        },
+        {
+          "ref": "U1.OSD",
+          "part": "AT7456E OSD",
+          "quantity": 1,
+          "included_in": "U1",
+          "control_usage": "Video/OSD connectors unused"
+        },
+        {
+          "ref": "U1.POWER",
+          "part": "5V and 9V regulators plus internal logic power",
+          "quantity": 1,
+          "included_in": "U1"
+        },
+        {
+          "ref": "U1.USB",
+          "part": "USB-C programming/service interface",
+          "quantity": 1,
+          "included_in": "U1"
+        },
+        {
+          "ref": "SD1",
+          "part": "16-32 GB microSD for flight logging",
+          "quantity": 1
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "U1 R3 / T3",
+          "role": "RP1 TX / RX; UART3 CRSF"
+        },
+        {
+          "endpoint": "U1 R4 / T4",
+          "role": "Matek TX / RX; UART4 GNSS"
+        },
+        {
+          "endpoint": "U1 SCL / SDA",
+          "role": "Matek CL / DA"
+        },
+        {
+          "endpoint": "U1 R7",
+          "role": "ESC serial telemetry"
+        },
+        {
+          "endpoint": "U1 CURRENT",
+          "role": "ESC analog current"
+        },
+        {
+          "endpoint": "U1 ESC1 M1-M4",
+          "role": "Four ESC control signals"
+        },
+        {
+          "endpoint": "U1 5V / G",
+          "role": "Peripheral regulated supply"
+        },
+        {
+          "endpoint": "U1 Z-",
+          "role": "Finder low-side buzzer trigger"
+        },
+        {
+          "endpoint": "U1 IMU/barometer/SD buses",
+          "role": "Factory traces; validate current full-size board hwdef before any chip-pin model mapping"
+        }
+      ],
+      "connection_ids": [],
+      "model_verification": "pending",
+      "required_validation": [
+        "Correct full-size board and MCU package",
+        "ArduCopter KakuteH7 boot, actual sensor detection and logging",
+        "Regulator current/transient/USB behavior",
+        "CRSF/UART/I2C/DShot and scheduler timing",
+        "Failsafe/state-estimation behavior on actual target"
+      ],
+      "source_ids": [
+        "aircraft_research",
+        "kakute",
+        "kakute_pinout",
+        "aircraft_tests"
+      ],
+      "current_scope_class": "virtual_drone_reference_candidate",
+      "current_validation": "D1-D4 select supported virtual MCU, sensors, actuators and dynamics parameters. Original physical build/measurement requirements do not apply."
+    },
+    {
+      "id": "esc_stack",
+      "name": "Four-channel ESC and FC harness",
+      "power_domain": "aircraft",
+      "components": [
+        {
+          "ref": "U2",
+          "part": "Holybro Tekko32 F4 four-in-one 50A AM32 SKU31102",
+          "quantity": 1,
+          "pcb_revision": "received revision pending"
+        },
+        {
+          "ref": "J_ESC",
+          "part": "Supplied eight-conductor FC/ESC harness",
+          "quantity": 1
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "ESC harness A1 VBAT",
+          "role": "U1 ESC1 B+; raw battery"
+        },
+        {
+          "endpoint": "A2 TLM",
+          "role": "U1 ESC1 R7"
+        },
+        {
+          "endpoint": "A3 GND",
+          "role": "U1 ESC1 GND"
+        },
+        {
+          "endpoint": "A4 CURRENT",
+          "role": "U1 ESC1 CURRENT"
+        },
+        {
+          "endpoint": "A5-A8 M1-M4",
+          "role": "Matching U1 ESC1 M1-M4"
+        },
+        {
+          "endpoint": "U2 phase triplets 1-4",
+          "role": "Three motor leads per channel"
+        }
+      ],
+      "connection_ids": [
+        "E01",
+        "E02",
+        "E03",
+        "E04",
+        "E05",
+        "E06",
+        "E07",
+        "E08"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "Harness continuity by function",
+        "ESC revision/current-scale calibration",
+        "DShot/telemetry protocol and motor directions",
+        "Power-stage commutation, desync, current and temperature"
+      ],
+      "source_ids": [
+        "aircraft_research",
+        "esc",
+        "esc_current"
+      ],
+      "current_scope_class": "virtual_drone_reference_candidate",
+      "current_validation": "D1-D4 select supported virtual MCU, sensors, actuators and dynamics parameters. Original physical build/measurement requirements do not apply."
+    },
+    {
+      "id": "motor_1",
+      "name": "Motor 1 and propeller",
+      "power_domain": "aircraft",
+      "components": [
+        {
+          "ref": "M1",
+          "part": "EMAX ECO II 2207 2400KV",
+          "quantity": 1
+        },
+        {
+          "ref": "PROP1",
+          "part": "Ethix/HQProp P3B 5.1 x 3 x 2, 5 mm bore",
+          "quantity": 1,
+          "rotation": "CW",
+          "installed_quantity": 1
+        },
+        {
+          "ref": "M1.HARDWARE",
+          "part": "Matching prop nut and four motor screws",
+          "quantity": 1,
+          "quantity_description": "one mounting set"
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "U2 motor bank 1 phase 1/2/3",
+          "role": "M1 leads U/V/W; phases are not power polarity"
+        }
+      ],
+      "connection_ids": [
+        "M1U",
+        "M1V",
+        "M1W"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "Props-off location/direction test",
+        "Guarded actual motor/prop 4S thrust-current-temperature measurement",
+        "Vibration, retention and winding screw clearance"
+      ],
+      "source_ids": [
+        "bom",
+        "aircraft_tests"
+      ],
+      "position_from_above": "rear-right",
+      "rotation_from_above": "CW",
+      "ardupilot_motor_test_letter": "B",
+      "current_scope_class": "virtual_drone_reference_candidate",
+      "current_validation": "D1-D4 select supported virtual MCU, sensors, actuators and dynamics parameters. Original physical build/measurement requirements do not apply."
+    },
+    {
+      "id": "motor_2",
+      "name": "Motor 2 and propeller",
+      "power_domain": "aircraft",
+      "components": [
+        {
+          "ref": "M2",
+          "part": "EMAX ECO II 2207 2400KV",
+          "quantity": 1
+        },
+        {
+          "ref": "PROP2",
+          "part": "Ethix/HQProp P3B 5.1 x 3 x 2, 5 mm bore",
+          "quantity": 1,
+          "rotation": "CCW",
+          "installed_quantity": 1
+        },
+        {
+          "ref": "M2.HARDWARE",
+          "part": "Matching prop nut and four motor screws",
+          "quantity": 1,
+          "quantity_description": "one mounting set"
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "U2 motor bank 2 phase 1/2/3",
+          "role": "M2 leads U/V/W; phases are not power polarity"
+        }
+      ],
+      "connection_ids": [
+        "M2U",
+        "M2V",
+        "M2W"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "Props-off location/direction test",
+        "Guarded actual motor/prop 4S thrust-current-temperature measurement",
+        "Vibration, retention and winding screw clearance"
+      ],
+      "source_ids": [
+        "bom",
+        "aircraft_tests"
+      ],
+      "position_from_above": "front-right",
+      "rotation_from_above": "CCW",
+      "ardupilot_motor_test_letter": "A",
+      "current_scope_class": "virtual_drone_reference_candidate",
+      "current_validation": "D1-D4 select supported virtual MCU, sensors, actuators and dynamics parameters. Original physical build/measurement requirements do not apply."
+    },
+    {
+      "id": "motor_3",
+      "name": "Motor 3 and propeller",
+      "power_domain": "aircraft",
+      "components": [
+        {
+          "ref": "M3",
+          "part": "EMAX ECO II 2207 2400KV",
+          "quantity": 1
+        },
+        {
+          "ref": "PROP3",
+          "part": "Ethix/HQProp P3B 5.1 x 3 x 2, 5 mm bore",
+          "quantity": 1,
+          "rotation": "CCW",
+          "installed_quantity": 1
+        },
+        {
+          "ref": "M3.HARDWARE",
+          "part": "Matching prop nut and four motor screws",
+          "quantity": 1,
+          "quantity_description": "one mounting set"
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "U2 motor bank 3 phase 1/2/3",
+          "role": "M3 leads U/V/W; phases are not power polarity"
+        }
+      ],
+      "connection_ids": [
+        "M3U",
+        "M3V",
+        "M3W"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "Props-off location/direction test",
+        "Guarded actual motor/prop 4S thrust-current-temperature measurement",
+        "Vibration, retention and winding screw clearance"
+      ],
+      "source_ids": [
+        "bom",
+        "aircraft_tests"
+      ],
+      "position_from_above": "rear-left",
+      "rotation_from_above": "CCW",
+      "ardupilot_motor_test_letter": "C",
+      "current_scope_class": "virtual_drone_reference_candidate",
+      "current_validation": "D1-D4 select supported virtual MCU, sensors, actuators and dynamics parameters. Original physical build/measurement requirements do not apply."
+    },
+    {
+      "id": "motor_4",
+      "name": "Motor 4 and propeller",
+      "power_domain": "aircraft",
+      "components": [
+        {
+          "ref": "M4",
+          "part": "EMAX ECO II 2207 2400KV",
+          "quantity": 1
+        },
+        {
+          "ref": "PROP4",
+          "part": "Ethix/HQProp P3B 5.1 x 3 x 2, 5 mm bore",
+          "quantity": 1,
+          "rotation": "CW",
+          "installed_quantity": 1
+        },
+        {
+          "ref": "M4.HARDWARE",
+          "part": "Matching prop nut and four motor screws",
+          "quantity": 1,
+          "quantity_description": "one mounting set"
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "U2 motor bank 4 phase 1/2/3",
+          "role": "M4 leads U/V/W; phases are not power polarity"
+        }
+      ],
+      "connection_ids": [
+        "M4U",
+        "M4V",
+        "M4W"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "Props-off location/direction test",
+        "Guarded actual motor/prop 4S thrust-current-temperature measurement",
+        "Vibration, retention and winding screw clearance"
+      ],
+      "source_ids": [
+        "bom",
+        "aircraft_tests"
+      ],
+      "position_from_above": "front-left",
+      "rotation_from_above": "CW",
+      "ardupilot_motor_test_letter": "D",
+      "current_scope_class": "virtual_drone_reference_candidate",
+      "current_validation": "D1-D4 select supported virtual MCU, sensors, actuators and dynamics parameters. Original physical build/measurement requirements do not apply."
+    },
+    {
+      "id": "receiver",
+      "name": "ELRS receiver and antenna",
+      "power_domain": "aircraft",
+      "components": [
+        {
+          "ref": "U3",
+          "part": "RadioMaster RP1 V2 2.4 GHz ELRS/FCC",
+          "quantity": 1
+        },
+        {
+          "ref": "U3.ANT",
+          "part": "Included 65 mm 2.4 GHz T antenna",
+          "quantity": 1
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "U3 5V / GND",
+          "role": "U1 5V / G"
+        },
+        {
+          "endpoint": "U3 TX",
+          "role": "U1 R3"
+        },
+        {
+          "endpoint": "U3 RX",
+          "role": "U1 T3"
+        },
+        {
+          "endpoint": "U3 U.FL",
+          "role": "Factory antenna coax"
+        }
+      ],
+      "connection_ids": [
+        "A01",
+        "A02",
+        "A03",
+        "A04",
+        "RF1"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "CRSF channel order/endpoints/telemetry",
+        "ELRS binding and radio loss",
+        "Installed antenna range and interference"
+      ],
+      "source_ids": [
+        "aircraft_research",
+        "rp1"
+      ],
+      "current_scope_class": "historical_aircraft_only",
+      "current_validation": "No current physical build or model requirement; revisit only if needed by a deliberately selected virtual model."
+    },
+    {
+      "id": "navigation",
+      "name": "GNSS and external compass",
+      "power_domain": "aircraft",
+      "components": [
+        {
+          "ref": "U4",
+          "part": "Matek M10Q-5883 GNSS/compass",
+          "quantity": 1
+        },
+        {
+          "ref": "U4.MAG",
+          "part": "QMC5883L compass",
+          "quantity": 1,
+          "included_in": "U4"
+        },
+        {
+          "ref": "U4.GNSS",
+          "part": "M10 GNSS and antenna",
+          "quantity": 1,
+          "included_in": "U4"
+        },
+        {
+          "ref": "U4.CABLE",
+          "part": "Supplied six-contact JST-GH cable; use one of mirrored sockets",
+          "quantity": 1
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "U4 5V / G",
+          "role": "U1 5V / G"
+        },
+        {
+          "endpoint": "U4 TX / RX",
+          "role": "U1 R4 / T4"
+        },
+        {
+          "endpoint": "U4 CL / DA",
+          "role": "U1 SCL / SDA; 3.3V I/O"
+        }
+      ],
+      "connection_ids": [
+        "A05",
+        "A06",
+        "A07",
+        "A08",
+        "A09",
+        "A10"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "GNSS protocol/fix and compass discovery/orientation",
+        "Installed heading/current-interference and requested 100mm separation",
+        "Real RF visibility and navigation-estimator response"
+      ],
+      "source_ids": [
+        "aircraft_research",
+        "matek"
+      ],
+      "current_scope_class": "virtual_drone_reference_candidate",
+      "current_validation": "D1-D4 select supported virtual MCU, sensors, actuators and dynamics parameters. Original physical build/measurement requirements do not apply."
+    },
+    {
+      "id": "remote_id",
+      "name": "Standalone Remote ID module and antennas",
+      "power_domain": "aircraft",
+      "components": [
+        {
+          "ref": "U5",
+          "part": "Dronetag BS gen.2",
+          "quantity": 1
+        },
+        {
+          "ref": "U5.BT_ANT",
+          "part": "Stock short black Bluetooth antenna",
+          "quantity": 1
+        },
+        {
+          "ref": "U5.GNSS_ANT",
+          "part": "Stock long grey GNSS antenna",
+          "quantity": 1
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "U5 four-pin contact 1 VCC",
+          "role": "U1 5V"
+        },
+        {
+          "endpoint": "U5 four-pin contact 4 GND",
+          "role": "U1 G"
+        },
+        {
+          "endpoint": "U5 four-pin contacts 2 RX / 3 TX",
+          "role": "NC; individually insulate"
+        },
+        {
+          "endpoint": "U5 three-pin connector",
+          "role": "Unused; do not add second supply"
+        },
+        {
+          "endpoint": "U5 left U.FL marked BT",
+          "role": "Short black antenna"
+        },
+        {
+          "endpoint": "U5 right U.FL marked GNSS",
+          "role": "Long grey antenna"
+        }
+      ],
+      "connection_ids": [
+        "A11",
+        "A12",
+        "RF2",
+        "RF3"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "Correct connector orientation and antenna sockets",
+        "Power/current and actual configuration",
+        "Real GNSS reception and Remote ID broadcast"
+      ],
+      "source_ids": [
+        "aircraft_research",
+        "dronetag_power",
+        "dronetag_antenna"
+      ],
+      "current_scope_class": "historical_aircraft_only",
+      "current_validation": "No current physical build or model requirement; revisit only if needed by a deliberately selected virtual model."
+    },
+    {
+      "id": "finder",
+      "name": "Recovery buzzer and backup power",
+      "power_domain": "aircraft",
+      "components": [
+        {
+          "ref": "BZ1",
+          "part": "VIFLY Finder 2 self-powered recovery buzzer",
+          "quantity": 1
+        },
+        {
+          "ref": "BZ1.BACKUP",
+          "part": "Factory backup cell/charger, button/light sensing",
+          "quantity": 1,
+          "included_in": "BZ1"
+        }
+      ],
+      "pins": [
+        {
+          "endpoint": "BZ1 red 5V",
+          "role": "U1 5V"
+        },
+        {
+          "endpoint": "BZ1 black GND",
+          "role": "U1 G"
+        },
+        {
+          "endpoint": "BZ1 yellow BZ",
+          "role": "U1 Z-; not permanent ground"
+        }
+      ],
+      "connection_ids": [
+        "A13",
+        "A14",
+        "A15"
+      ],
+      "model_verification": "pending",
+      "required_validation": [
+        "Buzzer command and main-pack-disconnect recovery",
+        "Backup charge/runtime and physical disarm access"
+      ],
+      "source_ids": [
+        "aircraft_research",
+        "finder"
+      ],
+      "current_scope_class": "historical_aircraft_only",
+      "current_validation": "No current physical build or model requirement; revisit only if needed by a deliberately selected virtual model."
+    },
+    {
+      "id": "mechanical",
+      "name": "Aircraft structure, retainers and wearable enclosures",
+      "power_domain": "mechanical",
+      "components": [
+        {
+          "ref": "MECH.PRINTED",
+          "part": "Printed aircraft bodies",
+          "quantity": 34,
+          "subparts": [
+            {
+              "name": "frame",
+              "quantity": 1
+            },
+            {
+              "name": "battery tray",
+              "quantity": 1
+            },
+            {
+              "name": "FC/ESC tray",
+              "quantity": 1
+            },
+            {
+              "name": "arm bodies with fairings",
+              "quantity": 4
+            },
+            {
+              "name": "arm-root caps",
+              "quantity": 4
+            },
+            {
+              "name": "motor pods",
+              "quantity": 4
+            },
+            {
+              "name": "belly",
+              "quantity": 1
+            },
+            {
+              "name": "lid spacers",
+              "quantity": 4
+            },
+            {
+              "name": "canopy halves",
+              "quantity": 2
+            },
+            {
+              "name": "center spine",
+              "quantity": 1
+            },
+            {
+              "name": "existing decorative insert",
+              "quantity": 1
+            },
+            {
+              "name": "auxiliary electronics carriers",
+              "quantity": 2
+            },
+            {
+              "name": "GPS deck",
+              "quantity": 1
+            },
+            {
+              "name": "receiver antenna bar",
+              "quantity": 1
+            },
+            {
+              "name": "Remote ID antenna racks",
+              "quantity": 2
+            },
+            {
+              "name": "proposed curved landing feet",
+              "quantity": 4
+            }
+          ],
+          "note": "34 including retained decorative insert and four proposed feet; final foot attachment/printing process not released",
+          "current_applicability": "historical_aircraft_no_physical_build"
+        },
+        {
+          "ref": "MECH.JOINTS",
+          "part": "Root screws/sleeves, trays/stack fasteners, pod/belly/canopy screws/inserts, antenna/carrier fasteners and shims",
+          "quantity": 1,
+          "quantity_description": "BOM pages 3-4; final stack dimensions require measurement",
+          "current_applicability": "historical_aircraft_no_physical_build"
+        },
+        {
+          "ref": "MECH.RETENTION",
+          "part": "Two battery straps, padding, cable ties and mounting tape",
+          "quantity": 1,
+          "quantity_description": "one installation lot",
+          "current_applicability": "historical_aircraft_no_physical_build"
+        },
+        {
+          "ref": "MECH.SOLE",
+          "part": "Landing sole pads",
+          "quantity": 4,
+          "current_applicability": "historical_aircraft_no_physical_build"
+        },
+        {
+          "ref": "MECH.WEARABLE",
+          "part": "Hand/wrist carriers, adjustable straps, sliding flex guides and hub enclosure",
+          "quantity": 1,
+          "quantity_description": "one two-hand set plus hub",
+          "current_applicability": "physical_controller_prototype"
+        },
+        {
+          "ref": "MECH.PROTO",
+          "part": "Soldered prototype board/header sets",
+          "quantity": 3,
+          "current_applicability": "physical_controller_prototype"
+        }
+      ],
+      "pins": [],
+      "connection_ids": [],
+      "model_verification": "pending",
+      "required_validation": [
+        "Measured mass/CG and complete fit",
+        "Printed-process coupons, joint/screw engagement and load paths",
+        "Landing/propulsion loads, resonance and vibration isolation",
+        "Wearable movement, connector retention, flex strain relief and battery protection"
+      ],
+      "source_ids": [
+        "bom",
+        "controller_tests",
+        "aircraft_tests"
+      ],
+      "current_scope_class": "mixed_wearable_physical_and_drone_virtual",
+      "current_validation": "Physically validate wearable/hub enclosures, strain relief and comfortable movement. Aircraft frames, joints and propulsion loads are historical references; drone mechanics are modeled in D2."
+    },
+    {
+      "id": "bench_equipment",
+      "name": "Charging, development and measurement equipment",
+      "power_domain": "external",
+      "components": [
+        {
+          "ref": "BENCH.CHARGER",
+          "part": "SkyRC S100neo AC/DC balance charger and compatible leads",
+          "quantity": 1
+        },
+        {
+          "ref": "BENCH.LIMITER",
+          "part": "XT60 current limiter for electronics bring-up",
+          "quantity": 1
+        },
+        {
+          "ref": "BENCH.USB",
+          "part": "Micro-USB data/charging cables and USB host/5V supplies",
+          "quantity": 1,
+          "quantity_description": "BOM H11 / as required for three boards"
+        },
+        {
+          "ref": "BENCH.INSTRUMENTS",
+          "part": "DMM, oscilloscope/logic analyzer, guarded thrust/current/temperature fixture and assembly tools",
+          "quantity": 1,
+          "quantity_description": "one development setup"
+        },
+        {
+          "ref": "BENCH.CONTAINMENT",
+          "part": "Suitable charging/storage containment",
+          "quantity": 1
+        }
+      ],
+      "pins": [],
+      "connection_ids": [],
+      "model_verification": "pending",
+      "required_validation": [
+        "Correct charger/cell settings and connector compatibility",
+        "Instrument bandwidth, grounding, calibration and fixture suitability"
+      ],
+      "source_ids": [
+        "bom",
+        "controller_bom"
+      ],
+      "current_scope_class": "mixed_controller_bench_and_historical_aircraft_fixture",
+      "current_validation": "USB, controller-compatible instruments, assembly tools and protected-cell handling for the controller only; aircraft balance charger, XT60 limiter and thrust fixture are not current requirements."
+    }
+  ],
+  "connections": [
+    {
+      "id": "P01",
+      "net": "VBAT",
+      "source": "BT1 mating XT60 +",
+      "destination": "U2 VBAT large + pad",
+      "wire": "12 AWG red",
+      "notes": "One 4S pack; connector + mark controls polarity",
+      "status": "specified",
+      "assembly_id": "air_power",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "P02",
+      "net": "AIR_GND",
+      "source": "BT1 mating XT60 -",
+      "destination": "U2 GND large - pad",
+      "wire": "12 AWG black",
+      "notes": "Short return paired with P01",
+      "status": "specified",
+      "assembly_id": "air_power",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "P03",
+      "net": "VBAT",
+      "source": "C1 +",
+      "destination": "U2 VBAT large + pad",
+      "wire": "Capacitor lead",
+      "notes": "1000 uF / 35 V; short and insulated",
+      "status": "specified",
+      "assembly_id": "air_power",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "P04",
+      "net": "AIR_GND",
+      "source": "C1 - striped side",
+      "destination": "U2 GND large - pad",
+      "wire": "Capacitor lead",
+      "notes": "Secure capacitor body",
+      "status": "specified",
+      "assembly_id": "air_power",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "E01",
+      "net": "VBAT",
+      "source": "U2 harness VBAT",
+      "destination": "U1 ESC1 B+",
+      "wire": "Supplied 8-pin harness",
+      "notes": "RAW battery supply to FC, not 5 V",
+      "status": "specified",
+      "assembly_id": "esc_stack",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "E02",
+      "net": "ESC_TLM",
+      "source": "U2 harness TLM",
+      "destination": "U1 ESC1 R7",
+      "wire": "Supplied 8-pin harness",
+      "notes": "ESC UART telemetry; no TX7 connection",
+      "status": "specified",
+      "assembly_id": "esc_stack",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "E03",
+      "net": "AIR_GND",
+      "source": "U2 harness GND",
+      "destination": "U1 ESC1 GND",
+      "wire": "Supplied 8-pin harness",
+      "notes": "Common signal ground",
+      "status": "specified",
+      "assembly_id": "esc_stack",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "E04",
+      "net": "ESC_CURRENT",
+      "source": "U2 harness CURRENT",
+      "destination": "U1 ESC1 CURRENT",
+      "wire": "Supplied 8-pin harness",
+      "notes": "Analog current signal, not power",
+      "status": "specified",
+      "assembly_id": "esc_stack",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "E05",
+      "net": "MOTOR1",
+      "source": "U2 harness M1",
+      "destination": "U1 ESC1 M1",
+      "wire": "Supplied 8-pin harness",
+      "notes": "FC output -> ESC channel 1",
+      "status": "specified",
+      "assembly_id": "esc_stack",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "E06",
+      "net": "MOTOR2",
+      "source": "U2 harness M2",
+      "destination": "U1 ESC1 M2",
+      "wire": "Supplied 8-pin harness",
+      "notes": "FC output -> ESC channel 2",
+      "status": "specified",
+      "assembly_id": "esc_stack",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "E07",
+      "net": "MOTOR3",
+      "source": "U2 harness M3",
+      "destination": "U1 ESC1 M3",
+      "wire": "Supplied 8-pin harness",
+      "notes": "FC output -> ESC channel 3",
+      "status": "specified",
+      "assembly_id": "esc_stack",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "E08",
+      "net": "MOTOR4",
+      "source": "U2 harness M4",
+      "destination": "U1 ESC1 M4",
+      "wire": "Supplied 8-pin harness",
+      "notes": "FC output -> ESC channel 4",
+      "status": "specified",
+      "assembly_id": "esc_stack",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "A01",
+      "net": "AIR_5V",
+      "source": "U1 5V",
+      "destination": "U3 RP1 5V",
+      "wire": "26 AWG red",
+      "notes": "Receiver power",
+      "status": "specified",
+      "assembly_id": "receiver",
+      "current_scope_class": "historical_aircraft_only"
+    },
+    {
+      "id": "A02",
+      "net": "AIR_GND",
+      "source": "U1 G",
+      "destination": "U3 RP1 GND",
+      "wire": "26 AWG black",
+      "notes": "Receiver reference",
+      "status": "specified",
+      "assembly_id": "receiver",
+      "current_scope_class": "historical_aircraft_only"
+    },
+    {
+      "id": "A03",
+      "net": "CRSF_UP",
+      "source": "U3 RP1 TX",
+      "destination": "U1 R3",
+      "wire": "28 AWG white",
+      "notes": "Receiver commands -> FC",
+      "status": "specified",
+      "assembly_id": "receiver",
+      "current_scope_class": "historical_aircraft_only"
+    },
+    {
+      "id": "A04",
+      "net": "CRSF_DOWN",
+      "source": "U1 T3",
+      "destination": "U3 RP1 RX",
+      "wire": "28 AWG blue",
+      "notes": "FC telemetry -> receiver",
+      "status": "specified",
+      "assembly_id": "receiver",
+      "current_scope_class": "historical_aircraft_only"
+    },
+    {
+      "id": "A05",
+      "net": "AIR_5V",
+      "source": "U1 5V",
+      "destination": "U4 Matek 5V",
+      "wire": "26 AWG red",
+      "notes": "4-9 V allowed; use regulated 5 V",
+      "status": "specified",
+      "assembly_id": "navigation",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "A06",
+      "net": "AIR_GND",
+      "source": "U1 G",
+      "destination": "U4 Matek G",
+      "wire": "26 AWG black",
+      "notes": "GNSS and compass ground",
+      "status": "specified",
+      "assembly_id": "navigation",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "A07",
+      "net": "GPS_UP",
+      "source": "U4 Matek TX",
+      "destination": "U1 R4",
+      "wire": "Supplied blue",
+      "notes": "GNSS data -> FC; verify supplied color",
+      "status": "specified",
+      "assembly_id": "navigation",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "A08",
+      "net": "GPS_DOWN",
+      "source": "U1 T4",
+      "destination": "U4 Matek RX",
+      "wire": "Supplied yellow",
+      "notes": "FC configuration -> GNSS; verify supplied color",
+      "status": "specified",
+      "assembly_id": "navigation",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "A09",
+      "net": "I2C_SCL",
+      "source": "U1 SCL",
+      "destination": "U4 Matek CL",
+      "wire": "28 AWG green",
+      "notes": "Compass clock; do not add 5 V pull-ups",
+      "status": "specified",
+      "assembly_id": "navigation",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "A10",
+      "net": "I2C_SDA",
+      "source": "U1 SDA",
+      "destination": "U4 Matek DA",
+      "wire": "Supplied white",
+      "notes": "Compass data; 3.3 V logic; verify color",
+      "status": "specified",
+      "assembly_id": "navigation",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "A11",
+      "net": "AIR_5V",
+      "source": "U1 5V",
+      "destination": "U5 4-pin contact 1 VCC",
+      "wire": "26 AWG red",
+      "notes": "Standalone module power",
+      "status": "specified",
+      "assembly_id": "remote_id",
+      "current_scope_class": "historical_aircraft_only"
+    },
+    {
+      "id": "A12",
+      "net": "AIR_GND",
+      "source": "U1 G",
+      "destination": "U5 4-pin contact 4 GND",
+      "wire": "26 AWG black",
+      "notes": "Contacts 2/3 NC; leave 3-pin connector empty",
+      "status": "specified",
+      "assembly_id": "remote_id",
+      "current_scope_class": "historical_aircraft_only"
+    },
+    {
+      "id": "A13",
+      "net": "AIR_5V",
+      "source": "U1 5V",
+      "destination": "BZ1 Finder 2 5V",
+      "wire": "26 AWG red",
+      "notes": "Buzzer supply/charging",
+      "status": "specified",
+      "assembly_id": "finder",
+      "current_scope_class": "historical_aircraft_only"
+    },
+    {
+      "id": "A14",
+      "net": "AIR_GND",
+      "source": "U1 G",
+      "destination": "BZ1 Finder 2 GND",
+      "wire": "26 AWG black",
+      "notes": "Must connect real GND",
+      "status": "specified",
+      "assembly_id": "finder",
+      "current_scope_class": "historical_aircraft_only"
+    },
+    {
+      "id": "A15",
+      "net": "BUZZ_LOW",
+      "source": "U1 Z-",
+      "destination": "BZ1 Finder 2 BZ",
+      "wire": "28 AWG yellow",
+      "notes": "Switched negative trigger, not GND",
+      "status": "specified",
+      "assembly_id": "finder",
+      "current_scope_class": "historical_aircraft_only"
+    },
+    {
+      "id": "RF1",
+      "net": "ELRS_RF",
+      "source": "U3 RP1 U.FL",
+      "destination": "Supplied 2.4 GHz T antenna",
+      "wire": "Factory coax",
+      "notes": "Push straight down; strain-relieve coax",
+      "status": "specified",
+      "assembly_id": "receiver",
+      "current_scope_class": "historical_aircraft_only"
+    },
+    {
+      "id": "RF2",
+      "net": "RID_BT",
+      "source": "U5 left U.FL (marked BT)",
+      "destination": "Short black Bluetooth antenna",
+      "wire": "Factory coax",
+      "notes": "Board view: RF sockets top, wire sockets bottom",
+      "status": "specified",
+      "assembly_id": "remote_id",
+      "current_scope_class": "historical_aircraft_only"
+    },
+    {
+      "id": "RF3",
+      "net": "RID_GNSS",
+      "source": "U5 right U.FL (marked GNSS)",
+      "destination": "Long grey GNSS antenna",
+      "wire": "Factory coax",
+      "notes": "Do not interchange with BT antenna",
+      "status": "specified",
+      "assembly_id": "remote_id",
+      "current_scope_class": "historical_aircraft_only"
+    },
+    {
+      "id": "M1U",
+      "net": "PHASE_1U",
+      "source": "U2 motor bank 1 phase 1",
+      "destination": "M1 rear-right lead U",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified",
+      "assembly_id": "motor_1",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "M1V",
+      "net": "PHASE_1V",
+      "source": "U2 motor bank 1 phase 2",
+      "destination": "M1 rear-right lead V",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified",
+      "assembly_id": "motor_1",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "M1W",
+      "net": "PHASE_1W",
+      "source": "U2 motor bank 1 phase 3",
+      "destination": "M1 rear-right lead W",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified",
+      "assembly_id": "motor_1",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "M2U",
+      "net": "PHASE_2U",
+      "source": "U2 motor bank 2 phase 1",
+      "destination": "M2 front-right lead U",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified",
+      "assembly_id": "motor_2",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "M2V",
+      "net": "PHASE_2V",
+      "source": "U2 motor bank 2 phase 2",
+      "destination": "M2 front-right lead V",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified",
+      "assembly_id": "motor_2",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "M2W",
+      "net": "PHASE_2W",
+      "source": "U2 motor bank 2 phase 3",
+      "destination": "M2 front-right lead W",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified",
+      "assembly_id": "motor_2",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "M3U",
+      "net": "PHASE_3U",
+      "source": "U2 motor bank 3 phase 1",
+      "destination": "M3 rear-left lead U",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified",
+      "assembly_id": "motor_3",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "M3V",
+      "net": "PHASE_3V",
+      "source": "U2 motor bank 3 phase 2",
+      "destination": "M3 rear-left lead V",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified",
+      "assembly_id": "motor_3",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "M3W",
+      "net": "PHASE_3W",
+      "source": "U2 motor bank 3 phase 3",
+      "destination": "M3 rear-left lead W",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified",
+      "assembly_id": "motor_3",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "M4U",
+      "net": "PHASE_4U",
+      "source": "U2 motor bank 4 phase 1",
+      "destination": "M4 front-left lead U",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified",
+      "assembly_id": "motor_4",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "M4V",
+      "net": "PHASE_4V",
+      "source": "U2 motor bank 4 phase 2",
+      "destination": "M4 front-left lead V",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified",
+      "assembly_id": "motor_4",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "M4W",
+      "net": "PHASE_4W",
+      "source": "U2 motor bank 4 phase 3",
+      "destination": "M4 front-left lead W",
+      "wire": "Match motor lead AWG",
+      "notes": "U/V/W are build labels; swap any two phases if direction is wrong",
+      "status": "specified",
+      "assembly_id": "motor_4",
+      "current_scope_class": "virtual_drone_reference_candidate"
+    },
+    {
+      "id": "L1a",
+      "net": "L_3V",
+      "source": "U6 3V",
+      "destination": "JL1.1 -> FL1 terminal 1",
+      "wire": "30 AWG red",
+      "notes": "Flex sensor is nonpolar",
+      "status": "specified",
+      "assembly_id": "left_flex_1",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L1b",
+      "net": "L_A0",
+      "source": "FL1 terminal 2 -> JL1.2",
+      "destination": "U6 A0",
+      "wire": "30 AWG signal",
+      "notes": "thumb; node NL1",
+      "status": "specified",
+      "assembly_id": "left_flex_1",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L1c",
+      "net": "L_A0",
+      "source": "U6 A0",
+      "destination": "RL1.1",
+      "wire": "Local trace/jumper",
+      "notes": "47 kohm, 1%, 0.125 W or higher",
+      "status": "specified",
+      "assembly_id": "left_flex_1",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L1d",
+      "net": "L_GND",
+      "source": "RL1.2",
+      "destination": "U6 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Divider lower leg",
+      "status": "specified",
+      "assembly_id": "left_flex_1",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L1e",
+      "net": "L_A0",
+      "source": "U6 A0",
+      "destination": "CL1.1",
+      "wire": "Local trace/jumper",
+      "notes": "100 nF, X7R, >=10 V",
+      "status": "specified",
+      "assembly_id": "left_flex_1",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L1f",
+      "net": "L_GND",
+      "source": "CL1.2",
+      "destination": "U6 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Place RC by ADC header",
+      "status": "specified",
+      "assembly_id": "left_flex_1",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L2a",
+      "net": "L_3V",
+      "source": "U6 3V",
+      "destination": "JL2.1 -> FL2 terminal 1",
+      "wire": "30 AWG red",
+      "notes": "Flex sensor is nonpolar",
+      "status": "specified",
+      "assembly_id": "left_flex_2",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L2b",
+      "net": "L_A1",
+      "source": "FL2 terminal 2 -> JL2.2",
+      "destination": "U6 A1",
+      "wire": "30 AWG signal",
+      "notes": "index; node NL2",
+      "status": "specified",
+      "assembly_id": "left_flex_2",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L2c",
+      "net": "L_A1",
+      "source": "U6 A1",
+      "destination": "RL2.1",
+      "wire": "Local trace/jumper",
+      "notes": "47 kohm, 1%, 0.125 W or higher",
+      "status": "specified",
+      "assembly_id": "left_flex_2",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L2d",
+      "net": "L_GND",
+      "source": "RL2.2",
+      "destination": "U6 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Divider lower leg",
+      "status": "specified",
+      "assembly_id": "left_flex_2",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L2e",
+      "net": "L_A1",
+      "source": "U6 A1",
+      "destination": "CL2.1",
+      "wire": "Local trace/jumper",
+      "notes": "100 nF, X7R, >=10 V",
+      "status": "specified",
+      "assembly_id": "left_flex_2",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L2f",
+      "net": "L_GND",
+      "source": "CL2.2",
+      "destination": "U6 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Place RC by ADC header",
+      "status": "specified",
+      "assembly_id": "left_flex_2",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L3a",
+      "net": "L_3V",
+      "source": "U6 3V",
+      "destination": "JL3.1 -> FL3 terminal 1",
+      "wire": "30 AWG red",
+      "notes": "Flex sensor is nonpolar",
+      "status": "specified",
+      "assembly_id": "left_flex_3",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L3b",
+      "net": "L_A2",
+      "source": "FL3 terminal 2 -> JL3.2",
+      "destination": "U6 A2",
+      "wire": "30 AWG signal",
+      "notes": "middle; node NL3",
+      "status": "specified",
+      "assembly_id": "left_flex_3",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L3c",
+      "net": "L_A2",
+      "source": "U6 A2",
+      "destination": "RL3.1",
+      "wire": "Local trace/jumper",
+      "notes": "47 kohm, 1%, 0.125 W or higher",
+      "status": "specified",
+      "assembly_id": "left_flex_3",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L3d",
+      "net": "L_GND",
+      "source": "RL3.2",
+      "destination": "U6 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Divider lower leg",
+      "status": "specified",
+      "assembly_id": "left_flex_3",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L3e",
+      "net": "L_A2",
+      "source": "U6 A2",
+      "destination": "CL3.1",
+      "wire": "Local trace/jumper",
+      "notes": "100 nF, X7R, >=10 V",
+      "status": "specified",
+      "assembly_id": "left_flex_3",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L3f",
+      "net": "L_GND",
+      "source": "CL3.2",
+      "destination": "U6 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Place RC by ADC header",
+      "status": "specified",
+      "assembly_id": "left_flex_3",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L4a",
+      "net": "L_3V",
+      "source": "U6 3V",
+      "destination": "JL4.1 -> FL4 terminal 1",
+      "wire": "30 AWG red",
+      "notes": "Flex sensor is nonpolar",
+      "status": "specified",
+      "assembly_id": "left_flex_4",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L4b",
+      "net": "L_A3",
+      "source": "FL4 terminal 2 -> JL4.2",
+      "destination": "U6 A3",
+      "wire": "30 AWG signal",
+      "notes": "ring; node NL4",
+      "status": "specified",
+      "assembly_id": "left_flex_4",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L4c",
+      "net": "L_A3",
+      "source": "U6 A3",
+      "destination": "RL4.1",
+      "wire": "Local trace/jumper",
+      "notes": "47 kohm, 1%, 0.125 W or higher",
+      "status": "specified",
+      "assembly_id": "left_flex_4",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L4d",
+      "net": "L_GND",
+      "source": "RL4.2",
+      "destination": "U6 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Divider lower leg",
+      "status": "specified",
+      "assembly_id": "left_flex_4",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L4e",
+      "net": "L_A3",
+      "source": "U6 A3",
+      "destination": "CL4.1",
+      "wire": "Local trace/jumper",
+      "notes": "100 nF, X7R, >=10 V",
+      "status": "specified",
+      "assembly_id": "left_flex_4",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L4f",
+      "net": "L_GND",
+      "source": "CL4.2",
+      "destination": "U6 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Place RC by ADC header",
+      "status": "specified",
+      "assembly_id": "left_flex_4",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L5a",
+      "net": "L_3V",
+      "source": "U6 3V",
+      "destination": "JL5.1 -> FL5 terminal 1",
+      "wire": "30 AWG red",
+      "notes": "Flex sensor is nonpolar",
+      "status": "specified",
+      "assembly_id": "left_flex_5",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L5b",
+      "net": "L_A4",
+      "source": "FL5 terminal 2 -> JL5.2",
+      "destination": "U6 A4",
+      "wire": "30 AWG signal",
+      "notes": "little; node NL5",
+      "status": "specified",
+      "assembly_id": "left_flex_5",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L5c",
+      "net": "L_A4",
+      "source": "U6 A4",
+      "destination": "RL5.1",
+      "wire": "Local trace/jumper",
+      "notes": "47 kohm, 1%, 0.125 W or higher",
+      "status": "specified",
+      "assembly_id": "left_flex_5",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L5d",
+      "net": "L_GND",
+      "source": "RL5.2",
+      "destination": "U6 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Divider lower leg",
+      "status": "specified",
+      "assembly_id": "left_flex_5",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L5e",
+      "net": "L_A4",
+      "source": "U6 A4",
+      "destination": "CL5.1",
+      "wire": "Local trace/jumper",
+      "notes": "100 nF, X7R, >=10 V",
+      "status": "specified",
+      "assembly_id": "left_flex_5",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "L5f",
+      "net": "L_GND",
+      "source": "CL5.2",
+      "destination": "U6 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Place RC by ADC header",
+      "status": "specified",
+      "assembly_id": "left_flex_5",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R1a",
+      "net": "R_3V",
+      "source": "U7 3V",
+      "destination": "JR1.1 -> FR1 terminal 1",
+      "wire": "30 AWG red",
+      "notes": "Flex sensor is nonpolar",
+      "status": "specified",
+      "assembly_id": "right_flex_1",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R1b",
+      "net": "R_A0",
+      "source": "FR1 terminal 2 -> JR1.2",
+      "destination": "U7 A0",
+      "wire": "30 AWG signal",
+      "notes": "thumb; node NR1",
+      "status": "specified",
+      "assembly_id": "right_flex_1",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R1c",
+      "net": "R_A0",
+      "source": "U7 A0",
+      "destination": "RR1.1",
+      "wire": "Local trace/jumper",
+      "notes": "47 kohm, 1%, 0.125 W or higher",
+      "status": "specified",
+      "assembly_id": "right_flex_1",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R1d",
+      "net": "R_GND",
+      "source": "RR1.2",
+      "destination": "U7 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Divider lower leg",
+      "status": "specified",
+      "assembly_id": "right_flex_1",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R1e",
+      "net": "R_A0",
+      "source": "U7 A0",
+      "destination": "CR1.1",
+      "wire": "Local trace/jumper",
+      "notes": "100 nF, X7R, >=10 V",
+      "status": "specified",
+      "assembly_id": "right_flex_1",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R1f",
+      "net": "R_GND",
+      "source": "CR1.2",
+      "destination": "U7 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Place RC by ADC header",
+      "status": "specified",
+      "assembly_id": "right_flex_1",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R2a",
+      "net": "R_3V",
+      "source": "U7 3V",
+      "destination": "JR2.1 -> FR2 terminal 1",
+      "wire": "30 AWG red",
+      "notes": "Flex sensor is nonpolar",
+      "status": "specified",
+      "assembly_id": "right_flex_2",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R2b",
+      "net": "R_A1",
+      "source": "FR2 terminal 2 -> JR2.2",
+      "destination": "U7 A1",
+      "wire": "30 AWG signal",
+      "notes": "index; node NR2",
+      "status": "specified",
+      "assembly_id": "right_flex_2",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R2c",
+      "net": "R_A1",
+      "source": "U7 A1",
+      "destination": "RR2.1",
+      "wire": "Local trace/jumper",
+      "notes": "47 kohm, 1%, 0.125 W or higher",
+      "status": "specified",
+      "assembly_id": "right_flex_2",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R2d",
+      "net": "R_GND",
+      "source": "RR2.2",
+      "destination": "U7 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Divider lower leg",
+      "status": "specified",
+      "assembly_id": "right_flex_2",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R2e",
+      "net": "R_A1",
+      "source": "U7 A1",
+      "destination": "CR2.1",
+      "wire": "Local trace/jumper",
+      "notes": "100 nF, X7R, >=10 V",
+      "status": "specified",
+      "assembly_id": "right_flex_2",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R2f",
+      "net": "R_GND",
+      "source": "CR2.2",
+      "destination": "U7 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Place RC by ADC header",
+      "status": "specified",
+      "assembly_id": "right_flex_2",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R3a",
+      "net": "R_3V",
+      "source": "U7 3V",
+      "destination": "JR3.1 -> FR3 terminal 1",
+      "wire": "30 AWG red",
+      "notes": "Flex sensor is nonpolar",
+      "status": "specified",
+      "assembly_id": "right_flex_3",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R3b",
+      "net": "R_A2",
+      "source": "FR3 terminal 2 -> JR3.2",
+      "destination": "U7 A2",
+      "wire": "30 AWG signal",
+      "notes": "middle; node NR3",
+      "status": "specified",
+      "assembly_id": "right_flex_3",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R3c",
+      "net": "R_A2",
+      "source": "U7 A2",
+      "destination": "RR3.1",
+      "wire": "Local trace/jumper",
+      "notes": "47 kohm, 1%, 0.125 W or higher",
+      "status": "specified",
+      "assembly_id": "right_flex_3",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R3d",
+      "net": "R_GND",
+      "source": "RR3.2",
+      "destination": "U7 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Divider lower leg",
+      "status": "specified",
+      "assembly_id": "right_flex_3",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R3e",
+      "net": "R_A2",
+      "source": "U7 A2",
+      "destination": "CR3.1",
+      "wire": "Local trace/jumper",
+      "notes": "100 nF, X7R, >=10 V",
+      "status": "specified",
+      "assembly_id": "right_flex_3",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R3f",
+      "net": "R_GND",
+      "source": "CR3.2",
+      "destination": "U7 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Place RC by ADC header",
+      "status": "specified",
+      "assembly_id": "right_flex_3",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R4a",
+      "net": "R_3V",
+      "source": "U7 3V",
+      "destination": "JR4.1 -> FR4 terminal 1",
+      "wire": "30 AWG red",
+      "notes": "Flex sensor is nonpolar",
+      "status": "specified",
+      "assembly_id": "right_flex_4",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R4b",
+      "net": "R_A3",
+      "source": "FR4 terminal 2 -> JR4.2",
+      "destination": "U7 A3",
+      "wire": "30 AWG signal",
+      "notes": "ring; node NR4",
+      "status": "specified",
+      "assembly_id": "right_flex_4",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R4c",
+      "net": "R_A3",
+      "source": "U7 A3",
+      "destination": "RR4.1",
+      "wire": "Local trace/jumper",
+      "notes": "47 kohm, 1%, 0.125 W or higher",
+      "status": "specified",
+      "assembly_id": "right_flex_4",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R4d",
+      "net": "R_GND",
+      "source": "RR4.2",
+      "destination": "U7 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Divider lower leg",
+      "status": "specified",
+      "assembly_id": "right_flex_4",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R4e",
+      "net": "R_A3",
+      "source": "U7 A3",
+      "destination": "CR4.1",
+      "wire": "Local trace/jumper",
+      "notes": "100 nF, X7R, >=10 V",
+      "status": "specified",
+      "assembly_id": "right_flex_4",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R4f",
+      "net": "R_GND",
+      "source": "CR4.2",
+      "destination": "U7 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Place RC by ADC header",
+      "status": "specified",
+      "assembly_id": "right_flex_4",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R5a",
+      "net": "R_3V",
+      "source": "U7 3V",
+      "destination": "JR5.1 -> FR5 terminal 1",
+      "wire": "30 AWG red",
+      "notes": "Flex sensor is nonpolar",
+      "status": "specified",
+      "assembly_id": "right_flex_5",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R5b",
+      "net": "R_A4",
+      "source": "FR5 terminal 2 -> JR5.2",
+      "destination": "U7 A4",
+      "wire": "30 AWG signal",
+      "notes": "little; node NR5",
+      "status": "specified",
+      "assembly_id": "right_flex_5",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R5c",
+      "net": "R_A4",
+      "source": "U7 A4",
+      "destination": "RR5.1",
+      "wire": "Local trace/jumper",
+      "notes": "47 kohm, 1%, 0.125 W or higher",
+      "status": "specified",
+      "assembly_id": "right_flex_5",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R5d",
+      "net": "R_GND",
+      "source": "RR5.2",
+      "destination": "U7 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Divider lower leg",
+      "status": "specified",
+      "assembly_id": "right_flex_5",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R5e",
+      "net": "R_A4",
+      "source": "U7 A4",
+      "destination": "CR5.1",
+      "wire": "Local trace/jumper",
+      "notes": "100 nF, X7R, >=10 V",
+      "status": "specified",
+      "assembly_id": "right_flex_5",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "R5f",
+      "net": "R_GND",
+      "source": "CR5.2",
+      "destination": "U7 GND",
+      "wire": "Local trace/jumper",
+      "notes": "Place RC by ADC header",
+      "status": "specified",
+      "assembly_id": "right_flex_5",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "LP1",
+      "net": "L_BAT",
+      "source": "BT2 +",
+      "destination": "U6 JST BAT +",
+      "wire": "Factory battery lead",
+      "notes": "Adafruit #1578, protected 1S 500 mAh",
+      "status": "specified",
+      "assembly_id": "left_power",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "LP2",
+      "net": "L_GND",
+      "source": "BT2 -",
+      "destination": "U6 JST BAT -",
+      "wire": "Factory battery lead",
+      "notes": "Check connector polarity; never series-connect cells",
+      "status": "specified",
+      "assembly_id": "left_power",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "LP3",
+      "net": "L_EN",
+      "source": "U6 EN",
+      "destination": "SWL common",
+      "wire": "28 AWG signal",
+      "notes": "SPDT slide used as SPST",
+      "status": "specified",
+      "assembly_id": "left_power",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "LP4",
+      "net": "L_GND",
+      "source": "SWL OFF throw",
+      "destination": "U6 GND",
+      "wire": "28 AWG black",
+      "notes": "Other throw NC; closed EN-GND means OFF",
+      "status": "specified",
+      "assembly_id": "left_power",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "RP1",
+      "net": "R_BAT",
+      "source": "BT3 +",
+      "destination": "U7 JST BAT +",
+      "wire": "Factory battery lead",
+      "notes": "Adafruit #1578, protected 1S 500 mAh",
+      "status": "specified",
+      "assembly_id": "right_power",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "RP2",
+      "net": "R_GND",
+      "source": "BT3 -",
+      "destination": "U7 JST BAT -",
+      "wire": "Factory battery lead",
+      "notes": "Check connector polarity; never series-connect cells",
+      "status": "specified",
+      "assembly_id": "right_power",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "RP3",
+      "net": "R_EN",
+      "source": "U7 EN",
+      "destination": "SWR common",
+      "wire": "28 AWG signal",
+      "notes": "SPDT slide used as SPST",
+      "status": "specified",
+      "assembly_id": "right_power",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "RP4",
+      "net": "R_GND",
+      "source": "SWR OFF throw",
+      "destination": "U7 GND",
+      "wire": "28 AWG black",
+      "notes": "Other throw NC; closed EN-GND means OFF",
+      "status": "specified",
+      "assembly_id": "right_power",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "HP1",
+      "net": "H_BAT",
+      "source": "BT4 +",
+      "destination": "U8 JST BAT +",
+      "wire": "Factory battery lead",
+      "notes": "Adafruit #1578, protected 1S 500 mAh",
+      "status": "specified",
+      "assembly_id": "hub_power",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "HP2",
+      "net": "H_GND",
+      "source": "BT4 -",
+      "destination": "U8 JST BAT -",
+      "wire": "Factory battery lead",
+      "notes": "Check connector polarity; never series-connect cells",
+      "status": "specified",
+      "assembly_id": "hub_power",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "HP3",
+      "net": "H_EN",
+      "source": "U8 EN",
+      "destination": "SWH common",
+      "wire": "28 AWG signal",
+      "notes": "SPDT slide used as SPST",
+      "status": "specified",
+      "assembly_id": "hub_power",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "HP4",
+      "net": "H_GND",
+      "source": "SWH OFF throw",
+      "destination": "U8 GND",
+      "wire": "28 AWG black",
+      "notes": "Other throw NC; closed EN-GND means OFF",
+      "status": "specified",
+      "assembly_id": "hub_power",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "SW4.1",
+      "net": "L_3V",
+      "source": "U6 3V",
+      "destination": "R201.1",
+      "wire": "28 AWG / local trace",
+      "notes": "10k external pull-up",
+      "status": "specified",
+      "assembly_id": "left_enable",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "SW4.2",
+      "net": "left_enable",
+      "source": "R201.2",
+      "destination": "U6 D5",
+      "wire": "28 AWG / local trace",
+      "notes": "GPIO configured INPUT; active low",
+      "status": "specified",
+      "assembly_id": "left_enable",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "SW4.3",
+      "net": "left_enable",
+      "source": "U6 D5",
+      "destination": "R202.1",
+      "wire": "28 AWG / local trace",
+      "notes": "1k in series toward button",
+      "status": "specified",
+      "assembly_id": "left_enable",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "SW4.4",
+      "net": "SW4_LEAD",
+      "source": "R202.2",
+      "destination": "SW4 contact 1",
+      "wire": "28 AWG / local trace",
+      "notes": "Normally open pushbutton",
+      "status": "specified",
+      "assembly_id": "left_enable",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "SW4.5",
+      "net": "L_GND",
+      "source": "SW4 contact 2",
+      "destination": "U6 GND",
+      "wire": "28 AWG / local trace",
+      "notes": "Opposite contacts; not joined same-side legs",
+      "status": "specified",
+      "assembly_id": "left_enable",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "SW4.6",
+      "net": "left_enable",
+      "source": "U6 D5",
+      "destination": "C201.1",
+      "wire": "28 AWG / local trace",
+      "notes": "100nF X7R >=10 V",
+      "status": "specified",
+      "assembly_id": "left_enable",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "SW4.7",
+      "net": "L_GND",
+      "source": "C201.2",
+      "destination": "U6 GND",
+      "wire": "28 AWG / local trace",
+      "notes": "Capacitor at MCU pin",
+      "status": "specified",
+      "assembly_id": "left_enable",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "SW5.1",
+      "net": "H_3V",
+      "source": "U8 3V",
+      "destination": "R203.1",
+      "wire": "28 AWG / local trace",
+      "notes": "10k external pull-up",
+      "status": "specified",
+      "assembly_id": "hub_calibrate",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "SW5.2",
+      "net": "hub_calibration",
+      "source": "R203.2",
+      "destination": "U8 D6",
+      "wire": "28 AWG / local trace",
+      "notes": "GPIO configured INPUT; active low",
+      "status": "specified",
+      "assembly_id": "hub_calibrate",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "SW5.3",
+      "net": "hub_calibration",
+      "source": "U8 D6",
+      "destination": "R204.1",
+      "wire": "28 AWG / local trace",
+      "notes": "1k in series toward button",
+      "status": "specified",
+      "assembly_id": "hub_calibrate",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "SW5.4",
+      "net": "SW5_LEAD",
+      "source": "R204.2",
+      "destination": "SW5 contact 1",
+      "wire": "28 AWG / local trace",
+      "notes": "Normally open pushbutton",
+      "status": "specified",
+      "assembly_id": "hub_calibrate",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "SW5.5",
+      "net": "H_GND",
+      "source": "SW5 contact 2",
+      "destination": "U8 GND",
+      "wire": "28 AWG / local trace",
+      "notes": "Opposite contacts; not joined same-side legs",
+      "status": "specified",
+      "assembly_id": "hub_calibrate",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "SW5.6",
+      "net": "hub_calibration",
+      "source": "U8 D6",
+      "destination": "C202.1",
+      "wire": "28 AWG / local trace",
+      "notes": "100nF X7R >=10 V",
+      "status": "specified",
+      "assembly_id": "hub_calibrate",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "SW5.7",
+      "net": "H_GND",
+      "source": "C202.2",
+      "destination": "U8 GND",
+      "wire": "28 AWG / local trace",
+      "notes": "Capacitor at MCU pin",
+      "status": "specified",
+      "assembly_id": "hub_calibrate",
+      "current_scope_class": "controller_simulation_then_physical_prototype"
+    },
+    {
+      "id": "H01",
+      "net": "H_3V",
+      "source": "U8 3V",
+      "destination": "U301 pin 5 VCC",
+      "wire": "Local wire",
+      "notes": "SN74LVC1G125DBVR; verify adapter map",
+      "status": "bench prototype; verify Pocket input before joining JP301",
+      "assembly_id": "trainer_buffer",
+      "current_scope_class": "optional_legacy_interface"
+    },
+    {
+      "id": "H02",
+      "net": "H_GND",
+      "source": "U8 GND",
+      "destination": "U301 pin 3 GND",
+      "wire": "Local wire",
+      "notes": "Logic supply reference",
+      "status": "bench prototype; verify Pocket input before joining JP301",
+      "assembly_id": "trainer_buffer",
+      "current_scope_class": "optional_legacy_interface"
+    },
+    {
+      "id": "H03",
+      "net": "PPM_A",
+      "source": "U8 D5 (P1.08)",
+      "destination": "U301 pin 2 A",
+      "wire": "Local wire",
+      "notes": "PPM waveform input",
+      "status": "bench prototype; verify Pocket input before joining JP301",
+      "assembly_id": "trainer_buffer",
+      "current_scope_class": "optional_legacy_interface"
+    },
+    {
+      "id": "H04",
+      "net": "PPM_OEn",
+      "source": "U8 D9 (P0.26)",
+      "destination": "U301 pin 1 /OE",
+      "wire": "Local wire",
+      "notes": "LOW enables buffer; HIGH disables",
+      "status": "bench prototype; verify Pocket input before joining JP301",
+      "assembly_id": "trainer_buffer",
+      "current_scope_class": "optional_legacy_interface"
+    },
+    {
+      "id": "H05",
+      "net": "H_3V",
+      "source": "U8 3V",
+      "destination": "R301.1",
+      "wire": "Local trace",
+      "notes": "10k pull-up",
+      "status": "bench prototype; verify Pocket input before joining JP301",
+      "assembly_id": "trainer_buffer",
+      "current_scope_class": "optional_legacy_interface"
+    },
+    {
+      "id": "H06",
+      "net": "PPM_OEn",
+      "source": "R301.2",
+      "destination": "U301 pin 1 /OE",
+      "wire": "Local trace",
+      "notes": "Holds output disabled in reset",
+      "status": "bench prototype; verify Pocket input before joining JP301",
+      "assembly_id": "trainer_buffer",
+      "current_scope_class": "optional_legacy_interface"
+    },
+    {
+      "id": "H07",
+      "net": "PPM_A",
+      "source": "U301 pin 2 A",
+      "destination": "R302.1",
+      "wire": "Local trace",
+      "notes": "100k input pull-down",
+      "status": "bench prototype; verify Pocket input before joining JP301",
+      "assembly_id": "trainer_buffer",
+      "current_scope_class": "optional_legacy_interface"
+    },
+    {
+      "id": "H08",
+      "net": "H_GND",
+      "source": "R302.2",
+      "destination": "U8 GND",
+      "wire": "Local trace",
+      "notes": "Defines idle input",
+      "status": "bench prototype; verify Pocket input before joining JP301",
+      "assembly_id": "trainer_buffer",
+      "current_scope_class": "optional_legacy_interface"
+    },
+    {
+      "id": "H09",
+      "net": "H_3V",
+      "source": "U301 pin 5 VCC",
+      "destination": "C301.1",
+      "wire": "Local trace",
+      "notes": "100nF, at IC",
+      "status": "bench prototype; verify Pocket input before joining JP301",
+      "assembly_id": "trainer_buffer",
+      "current_scope_class": "optional_legacy_interface"
+    },
+    {
+      "id": "H10",
+      "net": "H_GND",
+      "source": "C301.2",
+      "destination": "U301 pin 3 GND",
+      "wire": "Local trace",
+      "notes": "Decoupling return",
+      "status": "bench prototype; verify Pocket input before joining JP301",
+      "assembly_id": "trainer_buffer",
+      "current_scope_class": "optional_legacy_interface"
+    },
+    {
+      "id": "H11",
+      "net": "PPM_Y",
+      "source": "U301 pin 4 Y",
+      "destination": "R303.1",
+      "wire": "Local trace",
+      "notes": "1k series resistor",
+      "status": "bench prototype; verify Pocket input before joining JP301",
+      "assembly_id": "trainer_buffer",
+      "current_scope_class": "optional_legacy_interface"
+    },
+    {
+      "id": "H12",
+      "net": "PPM_PRE",
+      "source": "R303.2",
+      "destination": "JP301.1 / TP301",
+      "wire": "Local trace",
+      "notes": "Test here with jumper removed",
+      "status": "bench prototype; verify Pocket input before joining JP301",
+      "assembly_id": "trainer_buffer",
+      "current_scope_class": "optional_legacy_interface"
+    },
+    {
+      "id": "H13",
+      "net": "PPM_CABLE",
+      "source": "JP301.2 / TP302",
+      "destination": "J301 TS tip",
+      "wire": "Shielded signal",
+      "notes": "JP301 shunt OPEN until Pocket compatibility verified",
+      "status": "bench prototype; verify Pocket input before joining JP301",
+      "assembly_id": "trainer_buffer",
+      "current_scope_class": "optional_legacy_interface"
+    },
+    {
+      "id": "H14",
+      "net": "H_GND",
+      "source": "U8 GND",
+      "destination": "J301 TS sleeve",
+      "wire": "Shield / return",
+      "notes": "Only shared ground between hub and Pocket",
+      "status": "bench prototype; verify Pocket input before joining JP301",
+      "assembly_id": "trainer_buffer",
+      "current_scope_class": "optional_legacy_interface"
+    }
+  ],
+  "sources": {
+    "architecture": "docs/architecture.md",
+    "bom": "docs/reference/PalmPilot_BOM.pdf",
+    "netlist": "hardware/schematics/rev-a/connection-netlist.json",
+    "controller_bom": "docs/controller/bom.md",
+    "controller_tests": "docs/controller/validation.md",
+    "controller_firmware": "docs/controller/firmware-plan.md",
+    "aircraft_tests": "docs/aircraft-integration.md",
+    "hands_research": "docs/schematic-research-hands.md",
+    "trainer_research": "docs/schematic-research-trainer.md",
+    "aircraft_research": "docs/schematic-research-aircraft.md",
+    "sense_overview": "https://learn.adafruit.com/adafruit-feather-sense/overview",
+    "sense_variant": "https://raw.githubusercontent.com/adafruit/Adafruit_nRF52_Arduino/master/variants/feather_nrf52840_sense/variant.cpp",
+    "express_variant": "https://raw.githubusercontent.com/adafruit/Adafruit_nRF52_Arduino/master/variants/feather_nrf52840_express/variant.cpp",
+    "sense_pcb": "https://github.com/adafruit/Adafruit-Feather-nRF52840-Sense-PCB",
+    "express_pcb": "https://github.com/adafruit/Adafruit-nRF52-Bluefruit-Feather-PCB",
+    "kakute": "https://holybro.com/products/kakute-h7",
+    "kakute_pinout": "https://docs.holybro.com/autopilot/kakute-h7-v1-v2-mini/kakute-h7-v1/pinout",
+    "esc": "https://holybro.com/products/tekko32-f4-4in1-50a-esc",
+    "esc_current": "https://docs.holybro.com/esc/current-sensor-scale",
+    "matek": "https://www.mateksys.com/?portfolio=m10q-5883",
+    "rp1": "https://radiomasterrc.com/products/rp1-expresslrs-2-4ghz-nano-receiver",
+    "pocket_manual": "https://cdn.shopify.com/s/files/1/0701/8066/7584/files/Pocket_A1.8.pdf?v=1770617495",
+    "trainer_pinout": "https://radiomasterrc.freshdesk.com/support/solutions/articles/64000256682-trainer-port-pin-out",
+    "buffer": "https://www.ti.com/lit/ds/symlink/sn74lvc1g125.pdf",
+    "carrier": "https://github.com/adafruit/Adafruit-SMT-Breakout-PCBs/blob/master/6-pin%20SOT-23.brd",
+    "finder": "https://viflydrone.com/products/vifly-finder-v2-fpv-racing-drone-buzzer",
+    "dronetag_power": "https://help.dronetag.com/dronetag-bs-gen2/power-source-installation/",
+    "dronetag_antenna": "https://help.dronetag.com/dronetag-bs-gen2/enclosure-installation/",
+    "drone_simulation": "docs/drone-simulation.md",
+    "inventory_scope": "simulation/simantic/README.md",
+    "esp32_devkit": "https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.0.html"
+  },
+  "coverage_checks": {
+    "canonical_connection_ids_covered_once": true,
+    "wire_count": 142,
+    "assembly_count": 36,
+    "external_controller_passives": {
+      "47k_resistors": 10,
+      "100nF_capacitors": 13,
+      "10k_resistors": 3,
+      "1k_resistors": 3,
+      "100k_resistors": 1
+    },
+    "purchase_spares_not_additional_installed_hardware": true,
+    "meaning": "These counts cover the historical full-system Rev A source, including excluded parts; they are not current required quantities, simulator instantiations or test results."
+  },
+  "active_controller": {
+    "status": "selected design; production firmware and full simulation unqualified",
+    "bench_board": "ESP32-S3-DevKitC-1",
+    "module": "ESP32-S3-WROOM-1-N8R2",
+    "nodes": [
+      {
+        "id": "left",
+        "quantity": 1,
+        "flex_channels": 5,
+        "external_imu": "Adafruit #5543 LSM6DS3TR-C + LIS3MDL",
+        "enable_gpio": 7
+      },
+      {
+        "id": "right",
+        "quantity": 1,
+        "flex_channels": 5,
+        "external_imu": "Adafruit #5543 LSM6DS3TR-C + LIS3MDL"
+      },
+      {
+        "id": "hub",
+        "quantity": 1,
+        "role": "planned two-peer BLE central and host serial bridge",
+        "calibrate_gpio": 7
+      }
+    ],
+    "hand_flex_gpio": [
+      1,
+      2,
+      4,
+      5,
+      6
+    ],
+    "hand_flex_adc1_channels": [
+      0,
+      1,
+      3,
+      4,
+      5
+    ],
+    "hand_i2c": {
+      "sda_gpio": 8,
+      "scl_gpio": 9,
+      "default_sensor_addresses": [
+        "0x6A",
+        "0x1C"
+      ]
+    },
+    "battery_monitor_gpio_reserved": 10,
+    "power": "USB-powered bench; wearable charger/regulator/protection/monitoring design pending. No direct LiPo or inherited Feather power wiring.",
+    "host_bench_transport": "DevKit USB-to-UART bridge on UART0 GPIO43/44; simulation adapter and production stack require qualification",
+    "hand_link": "BLE planned; no ESP stack or two-link qualification claimed",
+    "schematic_status": "new ESP32 revision pending; original Rev A netlist is not applicable",
+    "authoritative_bom": "docs/controller/bom.md",
+    "authoritative_wiring": "docs/controller/build-guide.md",
+    "runtime_evidence": "simulation/simantic/capability-audit/esp32s3/README.md"
+  }
+}

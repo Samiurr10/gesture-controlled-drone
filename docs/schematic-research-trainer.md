@@ -1,5 +1,11 @@
 # Ground hub to RadioMaster Pocket trainer — research and proposed circuit
 
+> **Archived Rev A research — superseded 2026-09-16.** The active goals are (1) simulate the hand controller in Simantic, then build its physical prototype, and (2) model the drone hardware/microcontroller in Simantic and feed its actuator outputs into an on-screen mechanical simulation. There is no physical drone build or flight phase. Pocket, ELRS and a trainer interface are not required.
+>
+> Follow the [project goals](../README.md) and [current architecture](architecture.md). The original September 14 research below is retained for provenance, including its historical BOM, wiring and test instructions; those are not an active procurement or implementation checklist.
+
+## Retained September 14 research
+
 Date: 2026-09-14. Scope: current BOM H02 Adafruit Feather nRF52840 Express #4062, H10 interface, and Pocket ELRS/FCC. This is a complete **bench prototype circuit**, with one explicitly open qualification item: the Pocket's jack electrical input limits are not published in the official sources located. Keep JP301 open until the received radio's input interface has been verified. These are source findings/design choices, not instructions copied from the BOM.
 
 ## 1. What is established and what is assumed

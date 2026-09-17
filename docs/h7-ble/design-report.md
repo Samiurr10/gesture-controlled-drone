@@ -1,4 +1,6 @@
-> **Historical design:** this 3S / XIAO / Kakute H7 Mini design predates the current 4S / Feather BOM. Use the [current architecture](../architecture.md) and [controller build guide](../controller/build-guide.md). Do not mix these pin assignments with the current schematic.
+> **Archived design — superseded 2026-09-16.** The active project physically builds only the hand controller: first simulate and validate it in Simantic, then build its prototype. The second goal is a virtual drone: Simantic models its hardware/microcontroller and produces actuator signals for a mechanical simulation shown on screen. Physical drone construction, aircraft purchases and flight tests are outside scope; Pocket/ELRS/trainer hardware is not required.
+>
+> Use the [project goals](../../README.md), [current architecture](../architecture.md) and [controller plan](../controller/README.md). The original September 10 record below is retained as design history. Its “current,” “required,” “later,” procurement and flight instructions describe that abandoned plan, not present requirements; its MCU selections do not select the virtual drone's implementation.
 
 # Direct H7 BLE Flight Architecture
 

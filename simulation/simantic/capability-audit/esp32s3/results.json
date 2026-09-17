@@ -1,0 +1,280 @@
+{
+  "cli": "0.5.7",
+  "virtual_timeout_seconds": 1,
+  "wall_timeout_seconds": 40,
+  "probes": [
+    {
+      "probe": "boot",
+      "process_exit": 0,
+      "completed": true,
+      "observed_at_utc": "2026-09-17T01:22:15.132271+00:00",
+      "model_sha256": "7215de036ce4bd6df989e3f522eb82249f9ed51c4b1d8a4d3813f5d77d99630e",
+      "elf_sha256": "6f92dd4ce9f78c3add055998a87aa93a68efcf5f2eeb55c90164d132c57b3bb2",
+      "source_sha256": {
+        "probe.c": "ff1aa7c7a2c606bbbc8a5953296e797f6d83340876a073c5892e233ddb49173a",
+        "start.S": "60cbac7e56b8cf8f7f4911604494914e54212247560689a9730a86203cca8344",
+        "link.ld": "f4f47ea7f89d3213fa64337a24a3e4c8b2f0aa54c4db6e370f9d66a60d265f99",
+        "build.sh": "83b58b66a254808571a14f28973ec0f2d68f02fae9fb6670b35a59aa701f737b",
+        "run.py": "218c5962a9145c5b9831b7834434a22d5421b1529dc3667665721ba1096cab1e"
+      },
+      "uart_sha256": "11b7ed6c76762a79b4905b1359fd983a0b554b5a800a38135c753c4c183e1519",
+      "checks": [],
+      "observations": []
+    },
+    {
+      "probe": "i2c",
+      "process_exit": 0,
+      "completed": true,
+      "observed_at_utc": "2026-09-17T01:22:39.101071+00:00",
+      "model_sha256": "a43ed8043baaefa123fd30b1de1780e18dd1df79ffdfe3533298f31970623698",
+      "elf_sha256": "06a16deb3bde26cd9289f6fd5eb952affd147acf5429263a0b99f3421c1f922a",
+      "source_sha256": {
+        "probe.c": "ff1aa7c7a2c606bbbc8a5953296e797f6d83340876a073c5892e233ddb49173a",
+        "start.S": "60cbac7e56b8cf8f7f4911604494914e54212247560689a9730a86203cca8344",
+        "link.ld": "f4f47ea7f89d3213fa64337a24a3e4c8b2f0aa54c4db6e370f9d66a60d265f99",
+        "build.sh": "83b58b66a254808571a14f28973ec0f2d68f02fae9fb6670b35a59aa701f737b",
+        "run.py": "218c5962a9145c5b9831b7834434a22d5421b1529dc3667665721ba1096cab1e"
+      },
+      "uart_sha256": "78405c7fc861c47cde48f4176a98b7b5c47f1c7aa08ab315ddc29ef754d4059d",
+      "checks": [
+        {
+          "name": "I2C_REPEATED_START_COMPLETE",
+          "status": "PASS",
+          "got": "0x00000080",
+          "expected": "0x00000080"
+        },
+        {
+          "name": "I2C_BME280_ID",
+          "status": "PASS",
+          "got": "0x00000060",
+          "expected": "0x00000060"
+        },
+        {
+          "name": "I2C_STOP_COMMAND_DONE",
+          "status": "PASS",
+          "got": "0x80000000",
+          "expected": "0x80000000"
+        },
+        {
+          "name": "I2C_INTERRUPT_CLEAR",
+          "status": "PASS",
+          "got": "0x00000000",
+          "expected": "0x00000000"
+        },
+        {
+          "name": "I2C_MISSING_SLAVE_NACK",
+          "status": "PASS",
+          "got": "0x00000400",
+          "expected": "0x00000400"
+        }
+      ],
+      "observations": []
+    },
+    {
+      "probe": "core",
+      "process_exit": 0,
+      "completed": true,
+      "observed_at_utc": "2026-09-17T01:27:53.683186+00:00",
+      "model_sha256": "7215de036ce4bd6df989e3f522eb82249f9ed51c4b1d8a4d3813f5d77d99630e",
+      "elf_sha256": "b8e67273f51499efc0a22f4ea34cba72d7371539bb62e6d9a959d00dd0b19920",
+      "source_sha256": {
+        "probe.c": "ac7fd9aa450cf82e271b104e70e8799489c95bb37f708de5f9903b7e1d22157c",
+        "start.S": "60cbac7e56b8cf8f7f4911604494914e54212247560689a9730a86203cca8344",
+        "link.ld": "f4f47ea7f89d3213fa64337a24a3e4c8b2f0aa54c4db6e370f9d66a60d265f99",
+        "build.sh": "83b58b66a254808571a14f28973ec0f2d68f02fae9fb6670b35a59aa701f737b",
+        "run.py": "218c5962a9145c5b9831b7834434a22d5421b1529dc3667665721ba1096cab1e"
+      },
+      "uart_sha256": "312494e1e12e04993f548dfea9daae68711d4dd46772e9222f297a9b7b411631",
+      "checks": [
+        {
+          "name": "XTENSA_CCOUNT_ADVANCES",
+          "status": "PASS",
+          "got": "0x00000fa3",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "GPIO4_CLEAR",
+          "status": "PASS",
+          "got": "0x00000000",
+          "expected": "0x00000000"
+        },
+        {
+          "name": "GPIO4_SET",
+          "status": "PASS",
+          "got": "0x00000010",
+          "expected": "0x00000010"
+        },
+        {
+          "name": "GPIO43_SET",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000800"
+        },
+        {
+          "name": "GPIO43_CLEAR",
+          "status": "PASS",
+          "got": "0x00000000",
+          "expected": "0x00000000"
+        },
+        {
+          "name": "TIMG0_ENABLE_READBACK",
+          "status": "PASS",
+          "got": "0xc0000000",
+          "expected": "0xc0000000"
+        },
+        {
+          "name": "TIMG0_SNAPSHOT_READY",
+          "status": "FAIL",
+          "got": "0x80000000",
+          "expected": "0x00000000"
+        },
+        {
+          "name": "TIMG0_COUNTER_ADVANCES",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TIMG0_ALARM_RAW",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TIMG0_ALARM_CLEAR",
+          "status": "PASS",
+          "got": "0x00000000",
+          "expected": "0x00000000"
+        },
+        {
+          "name": "SYSTIMER_SNAPSHOT_VALID",
+          "status": "PASS",
+          "got": "0x20000000",
+          "expected": "0x20000000"
+        },
+        {
+          "name": "SYSTIMER_COUNTER_ADVANCES",
+          "status": "PASS",
+          "got": "0x00000640",
+          "expected": "0x00000001"
+        }
+      ],
+      "observations": []
+    },
+    {
+      "probe": "adc",
+      "process_exit": 0,
+      "completed": true,
+      "observed_at_utc": "2026-09-17T01:28:02.596807+00:00",
+      "model_sha256": "7215de036ce4bd6df989e3f522eb82249f9ed51c4b1d8a4d3813f5d77d99630e",
+      "elf_sha256": "03dfd7d0f1e5866dc2d47569ec9e961ef044774bbff0c5a55e43773d0fad8278",
+      "source_sha256": {
+        "probe.c": "ac7fd9aa450cf82e271b104e70e8799489c95bb37f708de5f9903b7e1d22157c",
+        "start.S": "60cbac7e56b8cf8f7f4911604494914e54212247560689a9730a86203cca8344",
+        "link.ld": "f4f47ea7f89d3213fa64337a24a3e4c8b2f0aa54c4db6e370f9d66a60d265f99",
+        "build.sh": "83b58b66a254808571a14f28973ec0f2d68f02fae9fb6670b35a59aa701f737b",
+        "run.py": "218c5962a9145c5b9831b7834434a22d5421b1529dc3667665721ba1096cab1e"
+      },
+      "uart_sha256": "f4f5b66607e0eb53bddc8d318890d10fdbdb209d7171d550b269dc0498de8f78",
+      "checks": [
+        {
+          "name": "ADC1_RTC_IDLE",
+          "status": "PASS",
+          "got": "0x00000000",
+          "expected": "0x00000000"
+        },
+        {
+          "name": "ADC1_RTC_CONTROL_READBACK",
+          "status": "PASS",
+          "got": "0x800c0000",
+          "expected": "0x800c0000"
+        },
+        {
+          "name": "ADC1_RTC_DONE",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00010000"
+        },
+        {
+          "name": "ADC1_RTC_IDLE",
+          "status": "PASS",
+          "got": "0x00000000",
+          "expected": "0x00000000"
+        },
+        {
+          "name": "ADC1_RTC_CONTROL_READBACK",
+          "status": "PASS",
+          "got": "0x80140000",
+          "expected": "0x80140000"
+        },
+        {
+          "name": "ADC1_RTC_DONE",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00010000"
+        },
+        {
+          "name": "ADC1_RTC_IDLE",
+          "status": "PASS",
+          "got": "0x00000000",
+          "expected": "0x00000000"
+        },
+        {
+          "name": "ADC1_RTC_CONTROL_READBACK",
+          "status": "PASS",
+          "got": "0x80440000",
+          "expected": "0x80440000"
+        },
+        {
+          "name": "ADC1_RTC_DONE",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00010000"
+        },
+        {
+          "name": "ADC1_RTC_IDLE",
+          "status": "PASS",
+          "got": "0x00000000",
+          "expected": "0x00000000"
+        },
+        {
+          "name": "ADC1_RTC_CONTROL_READBACK",
+          "status": "PASS",
+          "got": "0x80840000",
+          "expected": "0x80840000"
+        },
+        {
+          "name": "ADC1_RTC_DONE",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00010000"
+        },
+        {
+          "name": "ADC1_RTC_IDLE",
+          "status": "PASS",
+          "got": "0x00000000",
+          "expected": "0x00000000"
+        },
+        {
+          "name": "ADC1_RTC_CONTROL_READBACK",
+          "status": "PASS",
+          "got": "0x81040000",
+          "expected": "0x81040000"
+        },
+        {
+          "name": "ADC1_RTC_DONE",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00010000"
+        }
+      ],
+      "observations": [
+        "OBS ADC1 channel=0x00000000 raw=0x00000000",
+        "OBS ADC1 channel=0x00000001 raw=0x00000000",
+        "OBS ADC1 channel=0x00000003 raw=0x00000000",
+        "OBS ADC1 channel=0x00000004 raw=0x00000000",
+        "OBS ADC1 channel=0x00000005 raw=0x00000000"
+      ]
+    }
+  ]
+}

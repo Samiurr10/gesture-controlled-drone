@@ -1,9 +1,8 @@
 # Hand schematic review
 
-> Historical review snapshot from drafting. Findings below refer to an intermediate
-> builder version. Use the [delivered Rev A package](../hardware/schematics/rev-a/README.md)
-> for the current circuit and [controller validation](controller/validation.md) for
-> outstanding implementation checks; this snapshot is not the current build checklist.
+> **Archived review snapshot — superseded 2026-09-16.** These findings concern an intermediate September 14 Rev A drawing generator. They are not current build tasks or proof of testing. The [Rev A package](../hardware/schematics/rev-a/README.md) is also an archived full-system record.
+>
+> Current work is controller simulation in Simantic, then a physical controller prototype, followed by virtual drone hardware/microcontroller outputs driving an on-screen mechanical simulation. Physical aircraft, Pocket/ELRS and trainer construction are outside the required scope. Use the [project goals](../README.md), [current architecture](architecture.md) and [controller validation](controller/validation.md). The original review below retains historical “required” and “current” wording only as part of that record.
 
 Reviewed 2026-09-14 against `tools/build_palmpilot_schematic.py` and the source-linked `docs/schematic-research-hands.md`. The builder was still being extended during the initial review. Findings concern assembly clarity and consistency as well as electrical connectivity; no hardware testing is implied.
 

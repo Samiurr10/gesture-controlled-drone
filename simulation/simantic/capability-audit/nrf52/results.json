@@ -1,0 +1,545 @@
+{
+  "cli": "0.5.7",
+  "model_sha256": "afda52a78972f99dba85614efb267b0e1615baa56324bdf273aa997efe3b8237",
+  "virtual_timeout_seconds": 1,
+  "wall_timeout_seconds": 40,
+  "probes": [
+    {
+      "probe": "boot",
+      "process_exit": 0,
+      "completed": true,
+      "observed_at_utc": "2026-09-16T23:50:03.319836+00:00",
+      "source_sha256": {
+        "probe.c": "9d9c00feebe547c1b2da6194e940daf9dc0d7febf3f4b2456ac726471f03566f",
+        "link.ld": "ca9b7ae4497527f0109d985caf89642a4f5c4850f7bf1fd2fed23a92bc5d640a",
+        "build.sh": "26f807ffcb8af3b7c2ffeb75e2f96097ed9cb9ced771a26c155f1bcf3140cad7",
+        "run.py": "a82050f98e671ff9843a87bf069d2ea1e56d03936b14837554465a8384889f8b"
+      },
+      "model_sha256": "afda52a78972f99dba85614efb267b0e1615baa56324bdf273aa997efe3b8237",
+      "elf_sha256": "af11f5faaa29648293f6af89dfc12c76f01d13447cce579796af53081f2926f5",
+      "uart_sha256": "bfb1fa5e669b5ac6e420f839418fdec6546f0874a183d9d91cf6cd0b131699e7",
+      "checks": []
+    },
+    {
+      "probe": "core",
+      "process_exit": 0,
+      "completed": true,
+      "observed_at_utc": "2026-09-16T23:50:12.824609+00:00",
+      "source_sha256": {
+        "probe.c": "9d9c00feebe547c1b2da6194e940daf9dc0d7febf3f4b2456ac726471f03566f",
+        "link.ld": "ca9b7ae4497527f0109d985caf89642a4f5c4850f7bf1fd2fed23a92bc5d640a",
+        "build.sh": "26f807ffcb8af3b7c2ffeb75e2f96097ed9cb9ced771a26c155f1bcf3140cad7",
+        "run.py": "a82050f98e671ff9843a87bf069d2ea1e56d03936b14837554465a8384889f8b"
+      },
+      "model_sha256": "afda52a78972f99dba85614efb267b0e1615baa56324bdf273aa997efe3b8237",
+      "elf_sha256": "74b8349147f6da5ae6d93b5ee51294561b144a26cc3827aa3f3ef922578621f6",
+      "uart_sha256": "0b9421ef913014c7329898021b9bf766ed2ac2f92544555153a59bbee876bcca",
+      "checks": [
+        {
+          "name": "HFCLK_STARTED",
+          "status": "PASS",
+          "got": "0x00000001",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "LFCLK_STARTED",
+          "status": "PASS",
+          "got": "0x00000001",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "GPIO_OUT_CLEAR",
+          "status": "PASS",
+          "got": "0x00000000",
+          "expected": "0x00000000"
+        },
+        {
+          "name": "GPIO_OUT_SET",
+          "status": "PASS",
+          "got": "0x00002000",
+          "expected": "0x00002000"
+        },
+        {
+          "name": "GPIO_OUTPUT_INPUT_FEEDBACK",
+          "status": "PASS",
+          "got": "0x00002000",
+          "expected": "0x00002000"
+        },
+        {
+          "name": "GPIO_INPUT_PULLUP",
+          "status": "PASS",
+          "got": "0x00000080",
+          "expected": "0x00000080"
+        },
+        {
+          "name": "GPIOTE_OUTINIT_LOW_OUT_REGISTER",
+          "status": "FAIL",
+          "got": "0x00002000",
+          "expected": "0x00000000"
+        },
+        {
+          "name": "GPIOTE_OUTINIT_LOW_INPUT_FEEDBACK",
+          "status": "FAIL",
+          "got": "0x00002000",
+          "expected": "0x00000000"
+        },
+        {
+          "name": "GPIOTE_TASK_TOGGLE",
+          "status": "PASS",
+          "got": "0x00002000",
+          "expected": "0x00002000"
+        },
+        {
+          "name": "GPIOTE_TASK_TOGGLE_BACK",
+          "status": "PASS",
+          "got": "0x00000000",
+          "expected": "0x00000000"
+        },
+        {
+          "name": "TIMER_COMPARE",
+          "status": "PASS",
+          "got": "0x00000001",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TIMER_EVENT_CLEAR",
+          "status": "PASS",
+          "got": "0x00000000",
+          "expected": "0x00000000"
+        },
+        {
+          "name": "TIMER_NVIC_IRQ",
+          "status": "PASS",
+          "got": "0x00000001",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "PPI_TIMER_TO_GPIOTE",
+          "status": "PASS",
+          "got": "0x00002000",
+          "expected": "0x00002000"
+        }
+      ]
+    },
+    {
+      "probe": "saadc",
+      "process_exit": 0,
+      "completed": true,
+      "observed_at_utc": "2026-09-16T23:50:22.252578+00:00",
+      "source_sha256": {
+        "probe.c": "9d9c00feebe547c1b2da6194e940daf9dc0d7febf3f4b2456ac726471f03566f",
+        "link.ld": "ca9b7ae4497527f0109d985caf89642a4f5c4850f7bf1fd2fed23a92bc5d640a",
+        "build.sh": "26f807ffcb8af3b7c2ffeb75e2f96097ed9cb9ced771a26c155f1bcf3140cad7",
+        "run.py": "a82050f98e671ff9843a87bf069d2ea1e56d03936b14837554465a8384889f8b"
+      },
+      "model_sha256": "afda52a78972f99dba85614efb267b0e1615baa56324bdf273aa997efe3b8237",
+      "elf_sha256": "6990d4f958a2907805df00f425c094ceb0ab8348432d6a1027004265f2cae314",
+      "uart_sha256": "df5c32cf3e5a2b2ccdc194f958a21fbde8b1638e278f3d6af11aa2ea6696c4c2",
+      "checks": [
+        {
+          "name": "SAADC_ENABLE_READBACK",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "SAADC_STARTED",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "SAADC_CALIBRATEDONE",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        }
+      ]
+    },
+    {
+      "probe": "twi",
+      "process_exit": 0,
+      "completed": true,
+      "observed_at_utc": "2026-09-16T23:50:30.847823+00:00",
+      "source_sha256": {
+        "probe.c": "9d9c00feebe547c1b2da6194e940daf9dc0d7febf3f4b2456ac726471f03566f",
+        "link.ld": "ca9b7ae4497527f0109d985caf89642a4f5c4850f7bf1fd2fed23a92bc5d640a",
+        "build.sh": "26f807ffcb8af3b7c2ffeb75e2f96097ed9cb9ced771a26c155f1bcf3140cad7",
+        "run.py": "a82050f98e671ff9843a87bf069d2ea1e56d03936b14837554465a8384889f8b"
+      },
+      "model_sha256": "afda52a78972f99dba85614efb267b0e1615baa56324bdf273aa997efe3b8237",
+      "elf_sha256": "43c4c84fb604777cfa09860cd3e8551cdf715df6c5e6c0256edd581cd0854f91",
+      "uart_sha256": "cceff88eaa17c26d93491a9abf9889c890eb8091681bb2ecf7389529e5e46550",
+      "checks": [
+        {
+          "name": "TWI_MISSING_SLAVE_ERROR",
+          "status": "PASS",
+          "got": "0x00000001",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWI_ADDRESS_NACK",
+          "status": "PASS",
+          "got": "0x00000002",
+          "expected": "0x00000002"
+        },
+        {
+          "name": "TWI_ERROR_CLEAR",
+          "status": "PASS",
+          "got": "0x00000000",
+          "expected": "0x00000000"
+        }
+      ]
+    },
+    {
+      "probe": "twim",
+      "process_exit": 0,
+      "completed": true,
+      "observed_at_utc": "2026-09-16T23:50:39.490850+00:00",
+      "source_sha256": {
+        "probe.c": "9d9c00feebe547c1b2da6194e940daf9dc0d7febf3f4b2456ac726471f03566f",
+        "link.ld": "ca9b7ae4497527f0109d985caf89642a4f5c4850f7bf1fd2fed23a92bc5d640a",
+        "build.sh": "26f807ffcb8af3b7c2ffeb75e2f96097ed9cb9ced771a26c155f1bcf3140cad7",
+        "run.py": "a82050f98e671ff9843a87bf069d2ea1e56d03936b14837554465a8384889f8b"
+      },
+      "model_sha256": "afda52a78972f99dba85614efb267b0e1615baa56324bdf273aa997efe3b8237",
+      "elf_sha256": "dd9f9ad9caa88322e521f7305f02c0cf84aaf3c36a352471636c0157beee99dc",
+      "uart_sha256": "a5d527cbcf5e3e1db05b9646de2620d7b5124df64a42a07e932e35c810c44ad9",
+      "checks": [
+        {
+          "name": "TWIM_ENABLE_READBACK",
+          "status": "PASS",
+          "got": "0x00000006",
+          "expected": "0x00000006"
+        },
+        {
+          "name": "TWIM_MISSING_SLAVE_ERROR",
+          "status": "PASS",
+          "got": "0x00000001",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_ADDRESS_NACK",
+          "status": "PASS",
+          "got": "0x00000002",
+          "expected": "0x00000002"
+        }
+      ]
+    },
+    {
+      "probe": "nvmc",
+      "process_exit": 0,
+      "completed": true,
+      "observed_at_utc": "2026-09-16T23:50:48.157723+00:00",
+      "source_sha256": {
+        "probe.c": "9d9c00feebe547c1b2da6194e940daf9dc0d7febf3f4b2456ac726471f03566f",
+        "link.ld": "ca9b7ae4497527f0109d985caf89642a4f5c4850f7bf1fd2fed23a92bc5d640a",
+        "build.sh": "26f807ffcb8af3b7c2ffeb75e2f96097ed9cb9ced771a26c155f1bcf3140cad7",
+        "run.py": "a82050f98e671ff9843a87bf069d2ea1e56d03936b14837554465a8384889f8b"
+      },
+      "model_sha256": "afda52a78972f99dba85614efb267b0e1615baa56324bdf273aa997efe3b8237",
+      "elf_sha256": "e37a1aafa42bb3d5cfcc8b7900cc168ca47539fccb31d30664d639c9024f121c",
+      "uart_sha256": "e98ef2a410e0b6a158317d5847c2cb00b8e858b4114ffd9709d7b76b761b0319",
+      "checks": [
+        {
+          "name": "NVMC_ERASE_READY",
+          "status": "PASS",
+          "got": "0x00000001",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "NVMC_ERASE_PAGE",
+          "status": "PASS",
+          "got": "0xffffffff",
+          "expected": "0xffffffff"
+        },
+        {
+          "name": "NVMC_PROGRAM",
+          "status": "PASS",
+          "got": "0x12345678",
+          "expected": "0x12345678"
+        },
+        {
+          "name": "NVMC_ONE_TO_ZERO",
+          "status": "FAIL",
+          "got": "0xffffffff",
+          "expected": "0x12345678"
+        },
+        {
+          "name": "NVMC_READONLY_PROTECTION",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0xffffffff"
+        }
+      ]
+    },
+    {
+      "probe": "watchdog",
+      "process_exit": 0,
+      "completed": true,
+      "observed_at_utc": "2026-09-16T23:50:56.343153+00:00",
+      "source_sha256": {
+        "probe.c": "9d9c00feebe547c1b2da6194e940daf9dc0d7febf3f4b2456ac726471f03566f",
+        "link.ld": "ca9b7ae4497527f0109d985caf89642a4f5c4850f7bf1fd2fed23a92bc5d640a",
+        "build.sh": "26f807ffcb8af3b7c2ffeb75e2f96097ed9cb9ced771a26c155f1bcf3140cad7",
+        "run.py": "a82050f98e671ff9843a87bf069d2ea1e56d03936b14837554465a8384889f8b"
+      },
+      "model_sha256": "afda52a78972f99dba85614efb267b0e1615baa56324bdf273aa997efe3b8237",
+      "elf_sha256": "85a15cd167c272bd38d813cb6e59261cc81ce92b22ebe2e613b30fdf032737b9",
+      "uart_sha256": "6775387f06b1ea140fc51ec3a9be56e58dd59f542823fa3831d4edc315fca1c0",
+      "checks": [
+        {
+          "name": "WDT_RUNSTATUS",
+          "status": "PASS",
+          "got": "0x00000001",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "WDT_RESET_RETURN",
+          "status": "PASS",
+          "got": "0x00000001",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "WDT_RESETREAS",
+          "status": "FAIL",
+          "got": "0x00000001",
+          "expected": "0x00000002"
+        }
+      ]
+    },
+    {
+      "probe": "twim_positive",
+      "process_exit": 0,
+      "completed": true,
+      "observed_at_utc": "2026-09-16T23:51:04.749055+00:00",
+      "source_sha256": {
+        "probe.c": "9d9c00feebe547c1b2da6194e940daf9dc0d7febf3f4b2456ac726471f03566f",
+        "link.ld": "ca9b7ae4497527f0109d985caf89642a4f5c4850f7bf1fd2fed23a92bc5d640a",
+        "build.sh": "26f807ffcb8af3b7c2ffeb75e2f96097ed9cb9ced771a26c155f1bcf3140cad7",
+        "run.py": "a82050f98e671ff9843a87bf069d2ea1e56d03936b14837554465a8384889f8b"
+      },
+      "model_sha256": "bf14f6ceeb9f9393f5f1df4036b25fdfc7094722caa0aca807314b058f152ff4",
+      "elf_sha256": "8690b48debbf2b9adaa5255e5fa168ae766f58abefc619ee6ffd6113f1307b57",
+      "uart_sha256": "0816167a5698e10fa01133451b15b8d3461385240ab3c8c59039010a62e89688",
+      "checks": [
+        {
+          "name": "TWIM_TXSTARTED",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_LASTTX",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_TX_AMOUNT",
+          "status": "PASS",
+          "got": "0x00000001",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_SUSPEND",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_RXSTARTED",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_LASTRX",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_RX_AMOUNT",
+          "status": "PASS",
+          "got": "0x00000001",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_REPEATED_START_ID",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000060"
+        },
+        {
+          "name": "TWIM_RX_MAXCNT_GUARDS",
+          "status": "PASS",
+          "got": "0x0000a55a",
+          "expected": "0x0000a55a"
+        },
+        {
+          "name": "TWIM_STOPPED",
+          "status": "PASS",
+          "got": "0x00000001",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_STOP_EVENT_CLEAR",
+          "status": "PASS",
+          "got": "0x00000000",
+          "expected": "0x00000000"
+        },
+        {
+          "name": "TWIM_TXSTARTED",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_LASTTX",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_TX_AMOUNT",
+          "status": "PASS",
+          "got": "0x00000001",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_RXSTARTED",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_LASTRX",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_RX_AMOUNT",
+          "status": "PASS",
+          "got": "0x00000001",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_STOP_SEPARATED_ID",
+          "status": "PASS",
+          "got": "0x00000060",
+          "expected": "0x00000060"
+        },
+        {
+          "name": "TWIM_RX_MAXCNT_GUARDS",
+          "status": "PASS",
+          "got": "0x0000a55a",
+          "expected": "0x0000a55a"
+        },
+        {
+          "name": "TWIM_STOPPED",
+          "status": "PASS",
+          "got": "0x00000001",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_STOP_EVENT_CLEAR",
+          "status": "PASS",
+          "got": "0x00000000",
+          "expected": "0x00000000"
+        },
+        {
+          "name": "TWIM_TXSTARTED",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_LASTTX",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_TX_AMOUNT",
+          "status": "PASS",
+          "got": "0x00000002",
+          "expected": "0x00000002"
+        },
+        {
+          "name": "TWIM_REGISTER_WRITE_LIFECYCLE",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_TXSTARTED",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_LASTTX",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_TX_AMOUNT",
+          "status": "PASS",
+          "got": "0x00000001",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_SUSPEND",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_RXSTARTED",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_LASTRX",
+          "status": "FAIL",
+          "got": "0x00000000",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_RX_AMOUNT",
+          "status": "PASS",
+          "got": "0x00000001",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_REGISTER_READBACK",
+          "status": "PASS",
+          "got": "0x000000a0",
+          "expected": "0x000000a0"
+        },
+        {
+          "name": "TWIM_RX_MAXCNT_GUARDS",
+          "status": "PASS",
+          "got": "0x0000a55a",
+          "expected": "0x0000a55a"
+        },
+        {
+          "name": "TWIM_STOP_NVIC_IRQ",
+          "status": "PASS",
+          "got": "0x00000001",
+          "expected": "0x00000001"
+        },
+        {
+          "name": "TWIM_STOP_EVENT_CLEAR",
+          "status": "PASS",
+          "got": "0x00000000",
+          "expected": "0x00000000"
+        }
+      ]
+    }
+  ]
+}

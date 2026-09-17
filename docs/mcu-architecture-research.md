@@ -1,4 +1,6 @@
-> **Historical research:** this comparison informed the earlier H7 Mini design. The current parts and build order are in the [project README](../README.md) and [current architecture](architecture.md).
+> **Archived design — superseded 2026-09-16.** The active project physically builds only the hand controller: first simulate and validate it in Simantic, then build its prototype. The second goal is a virtual drone: Simantic models its hardware/microcontroller and produces actuator signals for a mechanical simulation shown on screen. Physical drone construction, aircraft purchases and flight tests are outside scope; Pocket/ELRS/trainer hardware is not required.
+>
+> Use the [project goals](../README.md), [current architecture](architecture.md) and [controller plan](controller/README.md). The original September 10 record below is retained as design history. Its “current,” “required,” “later,” procurement and flight instructions describe that abandoned plan, not present requirements; its MCU selections do not select the virtual drone's implementation.
 
 # MCU Selection Research
 

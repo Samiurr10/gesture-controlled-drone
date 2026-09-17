@@ -1,0 +1,23 @@
+[
+  {
+    "file": "ble-central.elf",
+    "url": "https://dl.antmicro.com/projects/renode/nrf52840--zephyr-bluetooth_central_hr.elf-s_3380332-316e27f81dcda3c2b0e7f2c3516001e7b27ad051",
+    "size": 3380332,
+    "sha1": "316e27f81dcda3c2b0e7f2c3516001e7b27ad051",
+    "sha256": "ea17b005cc961d076cc0c1e0018a37e80a837cb0dd89c7689bff5876f5031102"
+  },
+  {
+    "file": "ble-peripheral.elf",
+    "url": "https://dl.antmicro.com/projects/renode/nrf52840--zephyr-bluetooth_peripheral_hr.elf-s_3217940-7b59adc9629f8be90067b131e663a13d2d4bb711",
+    "size": 3217940,
+    "sha1": "7b59adc9629f8be90067b131e663a13d2d4bb711",
+    "sha256": "d7f877adb963f24310f2a989c9012ac5cf295e80160745f2fa5b180752d83a82"
+  },
+  {
+    "file": "uart-shell.elf",
+    "url": "https://dl.antmicro.com/projects/renode/zephyr_shell_nrf52840.elf-s_1110556-9653ab7fffe1427c50fa6b837e55edab38925681",
+    "size": 1110556,
+    "sha1": "9653ab7fffe1427c50fa6b837e55edab38925681",
+    "sha256": "a0198529bcafd15a0372b8937b1e276ffd54680aef9a46e60229f3a00b0eab5a"
+  }
+]

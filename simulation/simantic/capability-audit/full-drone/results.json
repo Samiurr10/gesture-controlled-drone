@@ -1,0 +1,694 @@
+{
+  "schema_version": 1,
+  "overall": "Unmodified stock ArduCopter starts IMU FIFO sampling and enters the vehicle loop with explicit sensor/absence fixtures. Full drone closed-loop simulation remains NOT demonstrated.",
+  "runtime": {
+    "cli": "0.5.7",
+    "engine": "0.5.7",
+    "sdk": "0.3.1"
+  },
+  "firmware": {
+    "target": "KakuteH7",
+    "version": "ArduCopter 4.7.1 official",
+    "commit": "dbe792162d06cab66c3475fd5556bf7a120f119e",
+    "url": "https://firmware.ardupilot.org/Copter/stable/KakuteH7/arducopter.elf",
+    "sha256": "f748b43edb69b8eda6df100acdede72bfe2982d1cbcf109f35c5f872256ebf99",
+    "native_vector_address": "0x08020000"
+  },
+  "model": {
+    "name": "STM32H743ZI",
+    "sha256": "07d5144b65b4aedce597ced80e6541b82db9c783aefc643297cfd8c925c68ab1",
+    "board_identity": "Generic catalog MCU model; not a qualified complete KakuteH7 board"
+  },
+  "stock_startup": {
+    "virtual_seconds": 5.0,
+    "wall_seconds": 20.754394124727696,
+    "symbol_hooks": "Explicit CPU address hooks resolved from arm-none-eabi-nm -C; public trace_symbols did not resolve tested C++ symbols",
+    "function_entry_seconds": {
+      "main": 0.00060126,
+      "HAL_ChibiOS::run(int, char* const*, AP_HAL::HAL::Callbacks*) const": 0.000601275,
+      "AP_Vehicle::setup()": 0.00223351,
+      "AP_BoardConfig::init()": 1.117805255,
+      "Copter::init_ardupilot()": 3.660215245,
+      "AP_Baro::init()": 3.66023218,
+      "GCS::setup_uarts()": 3.66027958,
+      "AP_OSD::init()": 3.664497245,
+      "AP_OSD_MAX7456::init()": 3.66451842
+    },
+    "all_sampled_cfsr_hfsr_zero": true,
+    "motor_edges": [
+      {
+        "t": 0.0,
+        "pin": "PB0",
+        "level": true
+      },
+      {
+        "t": 0.0,
+        "pin": "PB1",
+        "level": true
+      },
+      {
+        "t": 0.0,
+        "pin": "PB3",
+        "level": true
+      },
+      {
+        "t": 0.0,
+        "pin": "PB10",
+        "level": true
+      }
+    ],
+    "earliest_uncompleted_observed_stage": "AP_OSD_MAX7456::init; later init_rc_in and INS entry hooks did not fire within the bound",
+    "stage_limitation": "No MAX7456 attached. This does not establish an IMU or SPI4 incompatibility, or an infinite hang.",
+    "barometer": {
+      "fixture": "SPA06-shaped static register fixture on I2C1 address 0x76",
+      "frames": 92,
+      "first_frames": [
+        {
+          "t": 3.660238,
+          "machine": "drone",
+          "label": "baro",
+          "protocol": "I2c",
+          "direction": "Tx",
+          "summary": "addr=0x76 read len=1 data=00",
+          "id": 118,
+          "data": "00"
+        },
+        {
+          "t": 3.6602451,
+          "machine": "drone",
+          "label": "baro",
+          "protocol": "I2c",
+          "direction": "Tx",
+          "summary": "addr=0x76 read len=1 data=11",
+          "id": 118,
+          "data": "11"
+        },
+        {
+          "t": 3.6602474,
+          "machine": "drone",
+          "label": "baro",
+          "protocol": "I2c",
+          "direction": "Tx",
+          "summary": "addr=0x76 read len=1 data=F0",
+          "id": 118,
+          "data": "f0"
+        },
+        {
+          "t": 3.660251,
+          "machine": "drone",
+          "label": "baro",
+          "protocol": "I2c",
+          "direction": "Tx",
+          "summary": "addr=0x76 read len=9 data=03 20 00 18 BC D0 00 00 00",
+          "id": 118,
+          "data": "03200018bcd0000000"
+        },
+        {
+          "t": 3.6602546,
+          "machine": "drone",
+          "label": "baro",
+          "protocol": "I2c",
+          "direction": "Tx",
+          "summary": "addr=0x76 read len=9 data=00 00 00 00 00 00 00 00 00",
+          "id": 118,
+          "data": "000000000000000000"
+        },
+        {
+          "t": 3.6602572,
+          "machine": "drone",
+          "label": "baro",
+          "protocol": "I2c",
+          "direction": "Tx",
+          "summary": "addr=0x76 read len=3 data=00 00 00",
+          "id": 118,
+          "data": "000000"
+        },
+        {
+          "t": 3.66026,
+          "machine": "drone",
+          "label": "baro",
+          "protocol": "I2c",
+          "direction": "Rx",
+          "summary": "addr=0x76 write len=2 data=07 53",
+          "id": 118,
+          "data": "0753"
+        },
+        {
+          "t": 3.660262,
+          "machine": "drone",
+          "label": "baro",
+          "protocol": "I2c",
+          "direction": "Rx",
+          "summary": "addr=0x76 write len=2 data=06 53",
+          "id": 118,
+          "data": "0653"
+        },
+        {
+          "t": 3.660264,
+          "machine": "drone",
+          "label": "baro",
+          "protocol": "I2c",
+          "direction": "Rx",
+          "summary": "addr=0x76 write len=2 data=08 07",
+          "id": 118,
+          "data": "0807"
+        },
+        {
+          "t": 3.660266,
+          "machine": "drone",
+          "label": "baro",
+          "protocol": "I2c",
+          "direction": "Rx",
+          "summary": "addr=0x76 write len=2 data=09 00",
+          "id": 118,
+          "data": "0900"
+        }
+      ],
+      "scope": "ID/calibration/configuration and repeated reads; no physical sensor fidelity or calibrated estimator claim"
+    },
+    "imu": {
+      "fixture": "Sensors.ICM42688P attached to SPI4",
+      "bus_frames": 0,
+      "status": "Firmware had not reached inertial-sensor startup; driver and FIFO compatibility untested"
+    },
+    "uart2_heartbeats": [
+      {
+        "message": "HEARTBEAT",
+        "sequence": 0,
+        "system_id": 1,
+        "component_id": 1,
+        "custom_mode": 0,
+        "vehicle_type": 2,
+        "autopilot": 3,
+        "base_mode": 81,
+        "system_status": 1,
+        "mavlink_version": 3,
+        "crc_valid": true,
+        "raw_hex": "fd0900000001010000000000000002035101035a27"
+      },
+      {
+        "message": "HEARTBEAT",
+        "sequence": 1,
+        "system_id": 1,
+        "component_id": 1,
+        "custom_mode": 0,
+        "vehicle_type": 2,
+        "autopilot": 3,
+        "base_mode": 81,
+        "system_status": 1,
+        "mavlink_version": 3,
+        "crc_valid": true,
+        "raw_hex": "fd0900000101010000000000000002035101034aa9"
+      }
+    ],
+    "telemetry_interpretation": "CRC-valid MAVLink 2 HEARTBEAT; quadrotor, ArduPilot, boot state, armed flag clear. Does not establish ready/healthy/controllable vehicle.",
+    "spi2_example_diagnostics": [
+      {
+        "t": 3.66452,
+        "level": "Warning",
+        "source": "spi2",
+        "message": "Unhandled write to offset 0x0. Unhandled bits: [8] when writing value 0x100. Tags: MASRX (0x1)."
+      },
+      {
+        "t": 3.66452,
+        "level": "Warning",
+        "source": "spi2",
+        "message": "Unhandled write to offset 0x8. Unhandled bits: [29] when writing value 0x2000C007. Tags: MBR (0x2)."
+      },
+      {
+        "t": 3.66452,
+        "level": "Warning",
+        "source": "spi2",
+        "message": "Unhandled write to offset 0xC. Unhandled bits: [29] when writing value 0x20400000. Tags: SSOE (0x1)."
+      },
+      {
+        "t": 3.66452,
+        "level": "Warning",
+        "source": "spi2",
+        "message": "Unhandled write to offset 0x10. Unhandled bits: [6] when writing value 0x40. Tags: OVRIE (0x1)."
+      },
+      {
+        "t": 3.66452,
+        "level": "Warning",
+        "source": "spi2",
+        "message": "Unhandled write to offset 0x18. Unhandled bits: [0-2, 4-10, 12-31] when writing value 0xFFFFFFFF. Tags: RESERVED (0x7), TXTFC (0x1), UDRC (0x1), OVRC (0x1), CRCEC (0x1), TIFREC (0x1), MODFC (0x1), TSERFC (0x1), RESERVED (0xFFFFF)."
+      },
+      {
+        "t": 3.6645226,
+        "level": "Warning",
+        "source": "spi2",
+        "message": "Unhandled write to offset 0x18. Unhandled bits: [0-2, 4-10, 12-31] when writing value 0xFFFFFFFF. Tags: RESERVED (0x7), TXTFC (0x1), UDRC (0x1), OVRC (0x1), CRCEC (0x1), TIFREC (0x1), MODFC (0x1), TSERFC (0x1), RESERVED (0xFFFFF)."
+      },
+      {
+        "t": 3.6655258,
+        "level": "Error",
+        "source": "spi2",
+        "message": "Attempted to set peripheral into SPI slave mode. Only master mode is supported"
+      }
+    ],
+    "superseded_by": "stock_vehicle_loop below: initial optional OSD gate was cleared using an explicit absent-device SPI fixture"
+  },
+  "alternative_pwm": {
+    "firmware": "Bare-metal diagnostic, not ArduPilot",
+    "routes": {
+      "M3": "PB3/TIM2_CH2",
+      "M4": "PB10/TIM2_CH3",
+      "M5": "PA0/TIM5_CH1",
+      "M6": "PA2/TIM5_CH3"
+    },
+    "virtual_seconds": 0.12,
+    "results": {
+      "M3": {
+        "expected_width_us": 1100,
+        "widths_us": [
+          1100.0000000000002,
+          1099.9999999999968,
+          1100.0000000000039,
+          1100.0000000000039,
+          1100.0000000000039
+        ],
+        "periods_us": [
+          19999.000000000004,
+          19998.999999999996,
+          19998.999999999996,
+          19999.000000000004,
+          19999.000000000004
+        ],
+        "period_error_us": [
+          -0.999999999996362,
+          -1.000000000003638,
+          -1.000000000003638,
+          -0.999999999996362,
+          -0.999999999996362
+        ],
+        "exact_period_pass": false,
+        "pass": true
+      },
+      "M4": {
+        "expected_width_us": 1300,
+        "widths_us": [
+          1299.999999999999,
+          1299.9999999999957,
+          1300.0000000000025,
+          1300.0000000000095,
+          1299.9999999999957
+        ],
+        "periods_us": [
+          19999.000000000004,
+          19998.999999999996,
+          19998.999999999996,
+          19999.000000000004,
+          19999.000000000004
+        ],
+        "period_error_us": [
+          -0.999999999996362,
+          -1.000000000003638,
+          -1.000000000003638,
+          -0.999999999996362,
+          -0.999999999996362
+        ],
+        "exact_period_pass": false,
+        "pass": true
+      },
+      "M5": {
+        "expected_width_us": 1500,
+        "widths_us": [
+          1500.0000000000014,
+          1499.9999999999943,
+          1500.0000000000014,
+          1500.0000000000014,
+          1500.0000000000014
+        ],
+        "periods_us": [
+          19999.000000000004,
+          19998.999999999996,
+          19999.000000000004,
+          19999.000000000004,
+          19998.99999999999
+        ],
+        "period_error_us": [
+          -0.999999999996362,
+          -1.000000000003638,
+          -0.999999999996362,
+          -0.999999999996362,
+          -1.000000000010914
+        ],
+        "exact_period_pass": false,
+        "pass": true
+      },
+      "M6": {
+        "expected_width_us": 1700,
+        "widths_us": [
+          1700.0000000000002,
+          1700.0000000000002,
+          1700.0000000000002,
+          1699.9999999999932,
+          1699.9999999999932
+        ],
+        "periods_us": [
+          19999.000000000004,
+          19998.999999999996,
+          19999.000000000004,
+          19999.000000000004,
+          19998.99999999999
+        ],
+        "period_error_us": [
+          -0.999999999996362,
+          -1.000000000003638,
+          -0.999999999996362,
+          -0.999999999996362,
+          -1.000000000010914
+        ],
+        "exact_period_pass": false,
+        "pass": true
+      }
+    },
+    "scope": "Four modeled main-output pulse trains work; every measured nominal 20,000 us period was 19,999 us. Hardware-accurate timing remains imperfect. ArduPilot remap/config and motor control are untested.",
+    "previous_gaps_preserved": [
+      "TIM1 CH2N/CH3N complementary enable unsupported in earlier probe",
+      "Timer-request DMA pacing failed earlier probe; DShot remains unqualified"
+    ]
+  },
+  "next_gates": [
+    "Validate IMU sample scaling, FIFO byte order, timing and estimator health using controlled user-owned sensor inputs.",
+    "Configure an isolated ArduPilot test to map motors to M3-M6 standard PWM and prove each changes correctly under command, or repair TIM1 complementary outputs and DMA-paced DShot.",
+    "Verify telemetry/control input, arming checks, stale-input failsafe, GPS/compass paths as required.",
+    "Connect user-owned world dynamics and sensor inputs to motor outputs, then verify causal closed-loop response."
+  ],
+  "raw_evidence_directory": "tmp/simantic/audit/full-drone",
+  "source_sha256": {
+    "absent_spi.py": "f9ccfb873b5f9647bd4ad8693f667f6a7ae49846c1bc7a27312c8293c666873d",
+    "pwm_alternative.py": "855aecb62aecbf24b84ebd8df10b284e1e62556ec5080a2574821245dbb0c5c1",
+    "fetch_inputs.py": "0196eaf260ee174b113eca51fbfefa29712414d1ba18d69e357581715ffdd44b",
+    "run_probe.py": "33edfeea438afbf6f14d2db6f3d315ca2aafa27eaf50c1284613717c2e012bbc",
+    "baro_fixture.py": "c1a3a5deaf2895f8ce8c1ae6c70b0c5466233739edd8a2959c78627188a29ee3",
+    "summarize.py": "6c900f6cd66590c06b19615ffe1797c1aa6d00848e35480496964f16cf31ca69",
+    "pwm_alternative.c": "d5cf6563617a933de2cc694339c2be3962ccc0d065b7d65705a196263d7bc38c"
+  },
+  "stock_vehicle_loop": {
+    "name": "osd-absent",
+    "virtual_seconds": 8.25,
+    "wall_seconds": 55.09488437511027,
+    "performance_scope": "Instrumented run only; no real-time performance guarantee. Requested 30 virtual seconds stopped at the 55-second wall budget.",
+    "options": {
+      "seconds": 30.0,
+      "name": "osd-absent",
+      "imu": true,
+      "sd": false,
+      "baro": true,
+      "absent_osd": true
+    },
+    "function_entry_seconds": {
+      "main": 0.00060126,
+      "HAL_ChibiOS::run(int, char* const*, AP_HAL::HAL::Callbacks*) const": 0.000601275,
+      "AP_Vehicle::setup()": 0.00223351,
+      "AP_BoardConfig::init()": 1.117805255,
+      "Copter::init_ardupilot()": 3.660215245,
+      "AP_Baro::init()": 3.66023218,
+      "GCS::setup_uarts()": 3.66027958,
+      "AP_OSD::init()": 3.664497245,
+      "AP_OSD_MAX7456::init()": 3.66451842,
+      "Copter::init_rc_in()": 3.665530555,
+      "Copter::allocate_motors()": 3.666824285,
+      "Copter::init_rc_out()": 3.69709029,
+      "Copter::esc_calibration_startup_check()": 3.698356635,
+      "AP_GPS::init()": 5.7041674,
+      "Compass::init()": 5.722717585,
+      "AP_Baro::calibrate(bool)": 5.846175025,
+      "Copter::startup_INS_ground()": 7.48170441,
+      "AP_InertialSensor::init(unsigned short)": 7.48170461,
+      "AP_InertialSensor::detect_backends()": 7.48179934,
+      "AP_InertialSensor_Invensensev3::hardware_init()": 7.481822465,
+      "AP_InertialSensor_Invensensev3::check_whoami()": 7.481823115,
+      "AP_InertialSensor_Invensensev3::read_fifo()": 7.57261035,
+      "AP_Vehicle::loop()": 8.09924541
+    },
+    "function_counts": {
+      "main": 1,
+      "HAL_ChibiOS::run(int, char* const*, AP_HAL::HAL::Callbacks*) const": 1,
+      "AP_Vehicle::setup()": 1,
+      "AP_BoardConfig::init()": 1,
+      "Copter::init_ardupilot()": 1,
+      "AP_Baro::init()": 1,
+      "GCS::setup_uarts()": 1,
+      "AP_OSD::init()": 1,
+      "AP_OSD_MAX7456::init()": 1,
+      "Copter::init_rc_in()": 1,
+      "Copter::allocate_motors()": 1,
+      "Copter::init_rc_out()": 1,
+      "Copter::esc_calibration_startup_check()": 1,
+      "AP_GPS::init()": 1,
+      "Compass::init()": 1,
+      "AP_Baro::calibrate(bool)": 1,
+      "Copter::startup_INS_ground()": 1,
+      "AP_InertialSensor::init(unsigned short)": 1,
+      "AP_InertialSensor::detect_backends()": 1,
+      "AP_InertialSensor_Invensensev3::hardware_init()": 1,
+      "AP_InertialSensor_Invensensev3::check_whoami()": 1,
+      "AP_InertialSensor_Invensensev3::read_fifo()": 1345,
+      "AP_Vehicle::loop()": 62
+    },
+    "all_sampled_cfsr_hfsr_zero": true,
+    "negative_osd_probe": {
+      "fixture": "SPI.ScriptedSpiSlave returns 0xff for every byte on SPI2; idealized absent device with pulled-high MISO",
+      "frames": [
+        {
+          "t": 3.6645233,
+          "machine": "drone",
+          "label": "osdAbsent",
+          "protocol": "Spi",
+          "direction": "Rx",
+          "summary": "cs=0 len=2 mosi=00 02 miso=FF FF",
+          "id": 0,
+          "data": "0002"
+        },
+        {
+          "t": 3.6655285,
+          "machine": "drone",
+          "label": "osdAbsent",
+          "protocol": "Spi",
+          "direction": "Rx",
+          "summary": "cs=0 len=2 mosi=80 00 miso=FF FF",
+          "id": 0,
+          "data": "8000"
+        }
+      ],
+      "result": "Unmodified OSD driver rejected optional device; no font-update function entry observed; normal RC/motor/sensor startup continued. No firmware edits or CPU skips."
+    },
+    "spi_imu": {
+      "type": "Sensors.ICM42688P",
+      "frame_count": 2892,
+      "whoami_frames": [
+        {
+          "t": 7.481815,
+          "machine": "drone",
+          "label": "imu",
+          "protocol": "Spi",
+          "direction": "Rx",
+          "summary": "cs=0 len=2 mosi=F5 00 miso=00 47",
+          "id": 0,
+          "data": "f500"
+        },
+        {
+          "t": 7.4818253,
+          "machine": "drone",
+          "label": "imu",
+          "protocol": "Spi",
+          "direction": "Rx",
+          "summary": "cs=0 len=2 mosi=F5 00 miso=00 47",
+          "id": 0,
+          "data": "f500"
+        }
+      ],
+      "last_fifo_frames": [
+        {
+          "t": 8.249322,
+          "machine": "drone",
+          "label": "imu",
+          "protocol": "Spi",
+          "direction": "Rx",
+          "summary": "cs=0 len=3 mosi=AE 00 00 miso=00 01 00",
+          "id": 0,
+          "data": "ae0000"
+        },
+        {
+          "t": 8.2493252,
+          "machine": "drone",
+          "label": "imu",
+          "protocol": "Spi",
+          "direction": "Rx",
+          "summary": "cs=0 len=17 mosi=B0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 miso=00 68 01 00 FF FF FF 07 FF FF 01 00 01 00 00 D8 17",
+          "id": 0,
+          "data": "b000000000000000000000000000000000"
+        },
+        {
+          "t": 8.2498257,
+          "machine": "drone",
+          "label": "imu",
+          "protocol": "Spi",
+          "direction": "Rx",
+          "summary": "cs=0 len=3 mosi=AE 00 00 miso=00 01 00",
+          "id": 0,
+          "data": "ae0000"
+        },
+        {
+          "t": 8.249829,
+          "machine": "drone",
+          "label": "imu",
+          "protocol": "Spi",
+          "direction": "Rx",
+          "summary": "cs=0 len=17 mosi=B0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 miso=00 68 FF FF FF FF FF 07 FF FF FF FF FF FF 00 CC 19",
+          "id": 0,
+          "data": "b000000000000000000000000000000000"
+        }
+      ],
+      "scope": "WHO_AM_I 0x47, real driver hardware initialization and repeated FIFO reads observed. Model sample values, dynamics, accuracy and estimator health were not validated."
+    },
+    "baro_frames": 319,
+    "vehicle_loop_intervals_seconds": {
+      "count": 61,
+      "minimum": 7.755999999936591e-05,
+      "maximum": 0.002699970000000107,
+      "mean": 0.002459800819672131,
+      "median": 0.002499719999999428
+    },
+    "motor_pin_edges": [
+      {
+        "t": 0.0,
+        "pin": "PB0",
+        "level": true
+      },
+      {
+        "t": 0.0,
+        "pin": "PB1",
+        "level": true
+      },
+      {
+        "t": 0.0,
+        "pin": "PB3",
+        "level": true
+      },
+      {
+        "t": 0.0,
+        "pin": "PB10",
+        "level": true
+      },
+      {
+        "t": 8.117533675,
+        "pin": "PB3",
+        "level": false
+      },
+      {
+        "t": 8.117533675,
+        "pin": "PB10",
+        "level": false
+      }
+    ],
+    "output_scope": "Only initial levels and PB3/PB10 falling transitions after startup were observed. No motor pulse trains or commanded output changes were proven from stock firmware. No arming command was sent.",
+    "heartbeats": [
+      {
+        "record_time": 4.6625889,
+        "sequence": 0,
+        "system_id": 1,
+        "component_id": 1,
+        "vehicle_type": 2,
+        "autopilot": 3,
+        "base_mode": 89,
+        "system_status": 1,
+        "crc_valid": true,
+        "raw_hex": "fd09000000010100000000000000020359010382c2"
+      },
+      {
+        "record_time": 4.6625889,
+        "sequence": 1,
+        "system_id": 1,
+        "component_id": 1,
+        "vehicle_type": 2,
+        "autopilot": 3,
+        "base_mode": 89,
+        "system_status": 1,
+        "crc_valid": true,
+        "raw_hex": "fd090000010101000000000000000203590103924c"
+      },
+      {
+        "record_time": 5.6707207,
+        "sequence": 2,
+        "system_id": 1,
+        "component_id": 1,
+        "vehicle_type": 2,
+        "autopilot": 3,
+        "base_mode": 89,
+        "system_status": 1,
+        "crc_valid": true,
+        "raw_hex": "fd090000020101000000000000000203590103b3d6"
+      },
+      {
+        "record_time": 5.6707207,
+        "sequence": 3,
+        "system_id": 1,
+        "component_id": 1,
+        "vehicle_type": 2,
+        "autopilot": 3,
+        "base_mode": 89,
+        "system_status": 1,
+        "crc_valid": true,
+        "raw_hex": "fd090000030101000000000000000203590103a358"
+      },
+      {
+        "record_time": 6.6608196,
+        "sequence": 4,
+        "system_id": 1,
+        "component_id": 1,
+        "vehicle_type": 2,
+        "autopilot": 3,
+        "base_mode": 89,
+        "system_status": 1,
+        "crc_valid": true,
+        "raw_hex": "fd090000040101000000000000000203590103e0ea"
+      },
+      {
+        "record_time": 6.6608196,
+        "sequence": 5,
+        "system_id": 1,
+        "component_id": 1,
+        "vehicle_type": 2,
+        "autopilot": 3,
+        "base_mode": 89,
+        "system_status": 1,
+        "crc_valid": true,
+        "raw_hex": "fd090000050101000000000000000203590103f064"
+      },
+      {
+        "record_time": 7.6583699,
+        "sequence": 6,
+        "system_id": 1,
+        "component_id": 1,
+        "vehicle_type": 2,
+        "autopilot": 3,
+        "base_mode": 89,
+        "system_status": 1,
+        "crc_valid": true,
+        "raw_hex": "fd090000060101000000000000000203590103d1fe"
+      },
+      {
+        "record_time": 7.6583699,
+        "sequence": 7,
+        "system_id": 1,
+        "component_id": 1,
+        "vehicle_type": 2,
+        "autopilot": 3,
+        "base_mode": 89,
+        "system_status": 1,
+        "crc_valid": true,
+        "raw_hex": "fd090000070101000000000000000203590103c170"
+      }
+    ],
+    "telemetry_scope": "Captured heartbeats preceded first vehicle-loop entry and report BOOT with armed flag clear; none proves post-startup readiness. GPS autodetection commands also appeared on UART3.",
+    "limitations": [
+      "No GPS/compass model or world dynamics attached",
+      "Arming, estimator health, changing motor commands and feedback not exercised",
+      "SPI4 and DMA/cache diagnostics still occur; successful sampled driver path does not qualify all DMA/clock/cache semantics",
+      "Optional SD blank-card experiment did not qualify filesystem/mount operation"
+    ]
+  }
+}

@@ -1,126 +1,84 @@
 # Current system architecture
 
-Baseline: the September 14, 2026 [PalmPilot BOM](reference/PalmPilot_BOM.pdf).
-Build priority: qualify the two-hand controller and its ground hub on the bench,
-then integrate the aircraft. The [root README](../README.md) tracks completion.
+**Decision — September 16, 2026:** use **ESP32-S3 hands and hub**, with an **STM32H743 virtual drone candidate**. Physically build the controller only. The sequence is **controller simulation in Simantic → physical controller prototype → drone hardware/MCU simulation → mechanical simulation and screen display**. Drone feasibility tests may run now without marking controller milestones complete. The [project checkpoints](../README.md#full-implementation-checkpoints) govern execution.
 
-## First deliverable: a working controller
+The original BOM and Rev A drawings are historical, including their nRF52840 hand pins, onboard sensors and battery circuits. Active ESP32 parts and wiring are in the [controller guides](controller/README.md) and [migration record](controller/esp32-migration.md). No physical drone is part of the current deliverable.
 
-The controller consists of two Feather Sense hand nodes and one Feather Express
-ground hub. Start with one hand and one flex input. Progress to ten flex inputs,
-onboard motion sensing, calibrated mapping and two simultaneous BLE links.
-The hub first reports commands over USB and generates a scoped trainer signal
-with its output jumper open. Qualify the Pocket interface before connecting it.
+## Goal 1: a working controller
 
-The initial controller milestone ends with verified inputs on the Pocket and
-measured manual takeover. The aircraft can remain unassembled for this work.
-Receiver/flight-controller channel checks follow as a separate bench stage.
+Start with one simulated flex input and one ESP32-S3 firmware target. Expand to two hands with external motion sensors, enable logic and an ESP32-S3 hub. The bench target is ESP32-S3-DevKitC-1 with ESP32-S3-WROOM-1-N8R2, powered through USB. Validate commands in a host monitor before building the physical prototype.
+
+The physical controller uses the same validated application logic, with measured sensor calibration and actual BLE, power and wearable tests. C7 ends with reliable commands arriving at the computer and a demonstrated fault/recovery procedure. A Pocket radio, trainer buffer and physical flight controller are not required.
 
 ```mermaid
 flowchart LR
-    LF[Five left flex sensors] --> L[U6 Feather Sense]
-    RF[Five right flex sensors] --> R[U7 Feather Sense]
-    L -->|BLE| H[U8 Feather Express hub]
-    R -->|BLE| H
-    H -->|USB diagnostics during development| PC[Computer]
-    H --> BUF[U301 buffer and JP301]
-    BUF -->|Qualified PPM trainer cable| P[Pocket ELRS radio]
-    P -->|ELRS - later aircraft stage| RX[U3 RP1 V2]
-    RX -->|CRSF on UART3| FC[U1 Kakute H7 v1.5 / ArduPilot]
-    GPS[U4 Matek GNSS and compass] --> FC
-    FC -->|DShot| ESC[U2 Tekko AM32 ESC]
-    ESC --> M[Four motors]
+    LH[Left sensors and ESP32-S3] -->|Planned BLE| HUB[ESP32-S3 hub]
+    RH[Right sensors and ESP32-S3] -->|Planned BLE| HUB
+    HUB -->|Validated commands| BRIDGE[Computer command bridge]
+    BRIDGE -->|Virtual command input| MCU[Drone hardware and MCU in Simantic]
+    MCU -->|Motor output signals| PLANT[Actuator and mechanical dynamics model]
+    PLANT -->|Virtual sensor feedback| MCU
+    PLANT -->|Position and orientation| VIEW[On-screen drone]
+    HOST[Operator start stop and reset] --> BRIDGE
 ```
 
-## Hardware and ownership
+The hand nodes and hub are simulated during S0–S3 and physical during C0–C7. The drone stays virtual throughout. Simantic covers modeled hardware and MCU execution; the mechanical engine and display implementation remain to be selected.
 
-| Location | Selected hardware | Responsibility |
+## Responsibilities and boundaries
+
+| Element | Responsibility | Implementation status |
 |---|---|---|
-| Left hand | U6 Feather nRF52840 Sense #4516; five flex #1070; SW4 ENABLE | Acquire and validate A0-A4, onboard motion, battery and enable state; transmit new samples |
-| Right hand | U7 Feather nRF52840 Sense #4516; five flex #1070 | Acquire and validate independent A0-A4, onboard motion and battery; transmit new samples |
-| Ground hub | U8 Feather nRF52840 Express #4062; SW5 CALIBRATE | Validate both nodes, manage calibration/profiles, combine bounded pilot intent, generate trainer frames and health signals |
-| Trainer interface | SN74LVC1G125DBVR on carrier; series resistor; JP301 | Drive a proposed 3.3 V PPM signal with output disabled at reset; expose measurement points |
-| Operator radio | RadioMaster Pocket M2 ELRS/FCC | Physical sticks, deliberate arm/mode controls, gesture authority gate and independent manual takeover |
-| Aircraft | RP1 V2; full-size Kakute H7 v1.5; Tekko F4 50A AM32; 4S pack | Receive CRSF; run ArduPilot estimation, stabilization, arming and failsafes; command motor power |
+| Left ESP32-S3 | Five flex channels, external motion sensing, enable; identity and acquisition progress | USB bench target selected; battery design pending |
+| Right ESP32-S3 | Independent five flex channels, external motion sensing and calibration | Same bench target; distinct hand identity |
+| ESP32-S3 hub | Validate both hands, calibration, freshness and bounds; send combined commands | Two-peer BLE and application firmware pending |
+| Host command bridge | Validate records and connection health; gate commands with operator controls; adapt to virtual drone input | USB-to-UART bench diagnostics; production protocol pending |
+| Simantic drone model | Execute flight-control firmware with required peripherals and feedback | STM32H743/KakuteH7 ArduCopter candidate; see [current assessment](implementation-records/2026-09-16_esp32-full-drone-feasibility.md) |
+| Output adapter | Observe/decode actual simulated MCU outputs and map channels to virtual actuators | Signal protocol and API pending |
+| Dynamics model | Turn actuator outputs into thrust/torque, integrate rigid-body state and generate sensor feedback | Model, parameters and engine pending |
+| Display | Render dynamics state and show controller/simulation health | Implementation pending |
 
-The Sense boards contain the hand motion sensors. Their internal traces need no
-extra user wiring. No onboard XIAO gateway, BNO085 module or ToF hub belongs to
-this BOM. Dronetag and the Finder buzzer are aircraft support devices; they are
-not involved in wearable command generation.
+The display does not independently move the drone from a gesture. Every commanded motion must pass through the drone MCU outputs and mechanical model. Any simplified model must state what it approximates; a processor catalog entry is not an exact flight-controller board model.
 
-## Pin and power contract
+## ESP32 bench interfaces
 
-| Interface | Connection |
+| Interface | Starting circuit |
 |---|---|
-| Both hands | Thumb/index/middle/ring/little = A0/A1/A2/A3/A4 respectively |
-| Every flex input | Own-board 3V -> flex -> ADC node; 47k and 100nF from node to own-board GND |
-| Left enable | U6 D5 through the filtered SW4 circuit |
-| Hub calibration | U8 D6 through the filtered SW5 circuit |
-| Hub trainer | U8 D5 -> buffer A; U8 D9 -> active-low /OE |
-| Three power switches | Own-board EN to own-board GND when OFF; open when ON |
-| Trainer cable | Mono TS tip = buffered PPM through JP301; sleeve = hub/Pocket ground |
-| Aircraft receiver | RP1 TX -> FC R3; RP1 RX <- FC T3 |
-| Aircraft navigation | Matek TX -> R4; RX <- T4; CL -> SCL; DA -> SDA |
+| Both hands | Thumb/index/middle/ring/little = GPIO1/2/4/5/6, ADC1 channels 0/1/3/4/5 |
+| Each flex input | Own-board 3V3 → flex → ADC node; separate 47 kΩ and 100 nF shunts to GND; validate ESP32 ADC attenuation/calibration |
+| Left enable / hub calibration | GPIO7 on the respective boards; filtered active-low button |
+| External motion sensors | One Adafruit #5543 LSM6DS3TR-C + LIS3MDL breakout per hand; SDA GPIO8, SCL GPIO9 |
+| Power | USB bench first; wearable charger/regulator, monitor and switch require a new design |
+| Battery measurement | GPIO10 reserved only; no inherited A6 divider or direct battery connection |
+| USB / UART | Reserve GPIO19/20 for native USB and GPIO43/44 for UART0; use board USB-to-UART connector initially |
 
-Each Feather has its own protected #1578 single-cell battery and onboard
-Micro-USB charger. Their battery and 3V rails are independent. The Pocket has
-its own radio cells. The hub and Pocket share only trainer signal ground;
-neither is wired to aircraft battery or ground. The aircraft 5V rail powers its
-peripherals, and the 4S pack powers the ESC.
+Use the [controller build guide](controller/build-guide.md) for exact header pins and ADC limits. GPIO3 is avoided because it is a strapping pin. Board header positions are not GPIO numbers. The [old drawings](../hardware/schematics/README.md) cannot be used to wire ESP32; a new complete wearable schematic remains a checkpoint. Verify received board revisions before wiring.
 
-Use the [Rev A schematics](../hardware/schematics/README.md) for resistor values,
-connector views and every terminal. GPIO names are not connector cavity numbers.
+## Command and control contract
 
-## Command and authority boundary
+The proposed transport-independent record carries protocol version, hand/hub identity as applicable, session, sequence, acquisition progress, sample freshness, roll/pitch/yaw, throttle, enable, validity and fault status. The planning convention is roll/pitch/yaw in **[-1, 1]** and throttle in **[0, 1]**. Exact gesture mapping, throttle interpretation, serialization, sample rate and accepted age/skew limits must be frozen in S3 and measured again on the prototype.
 
-The hand nodes send sensor state and health. The hub converts those states to
-pilot commands. The radio supplies aircraft arm and mode channels; the hub must
-not turn a finger gesture into an independent aircraft arming path.
+The DevKit USB-to-UART bridge is the initial physical bench path; the simulator can use a modeled UART adapter when qualified. Neither establishes native ESP32 USB-driver compatibility. Freeze the production transport and test equivalent records across both boundaries. BLE remains the planned hand link; Wi-Fi or ESP-NOW would require a separate transport decision and tests.
 
-The proposed eight-slot trainer frame has four command slots (TR1-TR4), a
-hand-data-valid slot (TR5), an application heartbeat (TR6), and two neutral
-reserved slots. These trainer slots are not the same namespace as final ELRS
-output channels. In particular, TR5 is not the aircraft arm channel.
+The hub invalidates the whole command when either required hand is unhealthy or stale. The host independently rejects malformed, out-of-range, duplicate, old-session or stale records. Host arrival time alone cannot make an old sensor acquisition fresh. Record clock units and timestamp conversion explicitly.
 
-Gesture authority requires the physical Pocket enable, a present trainer stream,
-valid hand data, recent heartbeat changes and no latched fault. Release of the
-Pocket enable returns to manual sticks. Recovery requires a new deliberate
-enable action. A stopped or repeating stale hub stream must not preserve gesture
-authority simply because the ELRS radio link remains healthy.
+The hand enable grants gesture input only within an explicitly started virtual run. It does not autonomously arm or restart the virtual drone. The host provides stop/reset controls. Startup, disconnect, stale input and restart enter a defined inhibited state; recovery requires a deliberate operator action and fresh valid data. Specify whether each stop condition pauses/resets the simulation or invokes a virtual failsafe, and verify the corresponding motor and display response. Never silently continue the last valid gesture indefinitely.
 
-The [firmware plan](controller/firmware-plan.md) defines implementation work and
-the [validation plan](controller/validation.md) defines the evidence required.
-No controller firmware or radio model has been implemented or tested in this
-repository yet.
+## Drone output and feedback contract
 
-## Open design decisions
+Complete D1 before integration after C7. The current feasibility work examines STM32H743/KakuteH7 ArduCopter; it is a virtual candidate, not a purchase requirement. Reaching firmware startup or attaching a sensor fixture does not establish a healthy closed loop.
 
-| Item | Present status | Evidence needed |
-|---|---|---|
-| Pocket trainer input voltage tolerance | Not established from the located Pocket documentation | Actual input specification or competent circuit-level verification; keep JP301 open meanwhile |
-| Hand sample freshness / loss thresholds | To be frozen during firmware work | Measured sampling, BLE and control latency, then fault-injection results |
-| Gesture-to-axis mapping | To be selected and tested | Explicit mode/throttle semantics, calibration and independent manual override |
-| Battery operating window | To be measured | Valid sensor/ADC behavior before regulator dropout; low-battery inhibition threshold |
-| Wearable fit and retention | Prototype work | Comfortable movement, sliding sensor guides and strain-relieved connectors |
-| Aircraft navigation and propulsion | Later stage | Sensor support, compass placement, measured current/thrust and structural qualification |
+Observe the chosen firmware's motor outputs at the modeled peripheral boundary. Decode their timing/protocol into actuator commands. A separate mechanical model converts these commands into force and torque and advances position, velocity, attitude and angular velocity. Return modeled IMU and any other firmware-required sensor readings to Simantic. Render the same state on screen.
 
-## Baseline changes from earlier work
+Freeze motor order, rotation, signal units, coordinate frames, simulation time step and clock synchronization before integrated runs. Save command inputs, MCU outputs, sensor feedback and motion state on a shared simulation timeline. See the [drone simulation plan](drone-simulation.md) for D1–D4 acceptance.
 
-The [historical design](archive/README.md) used XIAO controllers, BLE directly to
-the aircraft, a Kakute H7 Mini, PX4 and 3S propulsion. The attached BOM selects
-Feather hand nodes, a trainer-connected ground hub, ELRS, the full-size Kakute
-H7, ArduPilot and 4S propulsion. The user now prioritizes the controller build.
+## Open decisions and evidence
 
-The Rev A schematic deliberately moves the BOM's provisional aircraft UART1/3
-allocation to exposed UART3/4 pads. This avoids the 9V VTX connector in the
-receiver harness. It does not affect the controller-first work.
+| Decision | Required evidence |
+|---|---|
+| ESP32-S3 runtime, ADC, external IMU/I²C and chosen BLE stack | New firmware-driven tests; see [Simantic plan](controller/simantic-plan.md). nRF results do not transfer to ESP32 |
+| Gesture mapping, transport and freshness limits | Versioned interface specification, deterministic traces and measured prototype behavior |
+| Controller power and fit | New wearable power schematic, measured battery/ADC range, runtime and fit; DevKit has no Feather charger |
+| Drone MCU/firmware and actuator output protocol | Reproducible boot, supported peripherals, command input and observable outputs |
+| Mechanical model, renderer and feedback fidelity | Declared model assumptions, reference scenarios, clock and coordinate tests |
 
-## Source evidence
-
-- [Baseline BOM and provenance](reference/README.md).
-- [Hand electronics research](schematic-research-hands.md).
-- [Trainer electrical and EdgeTX research](schematic-research-trainer.md).
-- [Aircraft pinout research](schematic-research-aircraft.md).
-
-Research findings specify interfaces. Completed hardware tests are recorded
-separately in [implementation records](implementation-records/README.md).
+Record simulation and physical evidence separately in [implementation records](implementation-records/README.md). Diagnostic firmware has executed in the linked audits; production controller firmware, physical-controller qualification and the integrated drone demonstration remain pending.

@@ -1,7 +1,10 @@
-"""Generate the PalmPilot module-level schematic and assembly package.
+"""Reproduce the historical Rev A PalmPilot schematic and assembly package.
 
 Vector drawings and connection schedules are the authored design, not an ERC-
 checked PCB schematic. Source evidence lives in docs/schematic-research-*.md.
+The physical-aircraft/trainer scope was superseded on 2026-09-16. Preserve the
+original circuit records and label every export as historical. Current work is
+Simantic controller validation, a physical controller, then a virtual drone.
 """
 from pathlib import Path
 import argparse, math, json, textwrap, html, os
@@ -55,7 +58,7 @@ def register_fonts():
 class Book:
     def __init__(self):
         self.c=canvas.Canvas(str(PDF), pagesize=(W,H))
-        self.c.setTitle('PalmPilot / Manta Flow - Full Wiring Schematic and Build Guide - Rev A')
+        self.c.setTitle('HISTORICAL Rev A - PalmPilot / Manta Flow - Full Wiring Schematic and Build Guide')
         self.c.setAuthor('Prepared with Codex from the project BOM and manufacturer documentation')
         self.page=0; self.svg=[]; self.pages=[]; self.textlog=[]
     def line(self,x1,y1,x2,y2,color=INK,width=1,dash=None):
@@ -144,7 +147,7 @@ class Book:
         self.c.addOutlineEntry(title,f'page{self.page}',level=0,closed=False)
         self.rect(0,0,W,H,WHITE,WHITE)
         self.text(30,25,'PALMPILOT / MANTA FLOW',9,BLUE,True)
-        self.text(812,25,'REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC',8,MUTED,align='right')
+        self.text(812,25,'HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED',8,RED,align='right')
         self.text(30,51,title,21,INK,True)
         if subtitle:self.text(30,70,subtitle,9.5,MUTED)
         self.line(30,80,812,80,LIGHT)
@@ -154,7 +157,8 @@ class Book:
         self.c.drawImage(str(path),x,H-y-h,width=w,height=h,preserveAspectRatio=True,anchor='c',mask='auto')
     def end(self):
         self.line(30,564,812,564,LIGHT)
-        self.text(30,581,'Module-level interconnect drawing. Confirm received revisions and test with propellers removed.',8,MUTED)
+        self.text(30,575,'HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.',8,RED,True)
+        self.text(30,587,'Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.',8,MUTED)
         self.text(812,581,f'{self.page:02d}',10,BLUE,True,align='right')
         if self.sheet:
             (SVG/(self.sheet+'.svg')).write_text('<svg xmlns="http://www.w3.org/2000/svg" width="842" height="595" viewBox="0 0 842 595">'+''.join(self.svg)+'</svg>')
@@ -732,7 +736,12 @@ def photo_page():
 def save_companion():
     (OUT/'connection-netlist.json').write_text(json.dumps({'revision':'A','date':'2026-09-14','baseline':'PalmPilot_BOM.pdf 34 pages','connections':WIRES},indent=2))
     bom_link = Path(os.path.relpath(ROOT/'docs/reference/PalmPilot_BOM.pdf', OUT)).as_posix()
-    lines=['# PalmPilot / Manta Flow - connection list, Rev A','',f'Baseline: [PalmPilot_BOM.pdf]({bom_link}), 14 September 2026. Use with the [PDF schematic](PalmPilot_Full_Schematic_and_Build_Guide.pdf).','',
+    readme_link = Path(os.path.relpath(ROOT/'README.md', OUT)).as_posix()
+    architecture_link = Path(os.path.relpath(ROOT/'docs/architecture.md', OUT)).as_posix()
+    lines=['# Historical PalmPilot / Manta Flow - connection list, Rev A','',
+      '> **Archived full-system design - superseded 2026-09-16.** Original circuit records below are historical, not current procurement or build tasks. First simulate the hand controller in Simantic, then build its physical prototype. The second goal is Simantic drone hardware/microcontroller outputs driving an on-screen mechanical simulation. Physical aircraft construction, flight tests and Pocket/ELRS/trainer hardware are outside the required scope.','',
+      f'Use the [project goals]({readme_link}) and [current architecture]({architecture_link}) for active requirements.','',
+      f'Historical baseline: [PalmPilot_BOM.pdf]({bom_link}), 14 September 2026. Use with the [archived PDF schematic](PalmPilot_Full_Schematic_and_Build_Guide.pdf).','',
       '**Trainer is a bench prototype:** the exact Pocket input tolerance and dropout behavior require validation before connecting/enabling it. All power domains are independent; only hub and Pocket share trainer ground.','',
       'Connection count includes local component leads, factory battery leads, and the separate twelve motor phase leads. A shared net requires a real soldered junction.','',
       '| ID | Net | From | To | Wire | Note |','|---|---|---|---|---|---|']

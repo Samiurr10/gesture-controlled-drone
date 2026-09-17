@@ -1,4 +1,10 @@
-# Aircraft schematic research — verified 2026-09-14
+# Aircraft schematic research — historical research, 2026-09-14
+
+> **Archived Rev A research — superseded 2026-09-16.** The active goals are (1) simulate the hand controller in Simantic, then build its physical prototype, and (2) model the drone hardware/microcontroller in Simantic and feed its actuator outputs into an on-screen mechanical simulation. There is no physical drone build or flight phase. Pocket, ELRS and a trainer interface are not required.
+>
+> Follow the [project goals](../README.md) and [current architecture](architecture.md). The original September 14 research below is retained for provenance, including its historical BOM, wiring and test instructions; those are not an active procurement or implementation checklist.
+
+## Retained September 14 research
 
 Scope: selected BOM D01–D11. This records external board-level wiring, not unreleased PCB internals. Use Kakute H7 **v1.5, SKU11091**, not Mini or V2. ESC is Tekko32 F4 4in1 50A **AM32, SKU31102**, not Mini SKU31246.
 

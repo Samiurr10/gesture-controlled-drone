@@ -1,0 +1,78 @@
+{
+  "kind": "model register read diagnostic; not firmware acceptance",
+  "reads": [
+    {
+      "peripheral": "twi0",
+      "offset": "0x148",
+      "value": 0
+    },
+    {
+      "peripheral": "twi0",
+      "offset": "0x14c",
+      "value": 0
+    },
+    {
+      "peripheral": "twi0",
+      "offset": "0x150",
+      "value": 0
+    },
+    {
+      "peripheral": "twi0",
+      "offset": "0x15c",
+      "value": 0
+    },
+    {
+      "peripheral": "twi0",
+      "offset": "0x160",
+      "value": 0
+    },
+    {
+      "peripheral": "twi0",
+      "offset": "0x534",
+      "value": 0
+    },
+    {
+      "peripheral": "twi0",
+      "offset": "0x538",
+      "value": 0
+    },
+    {
+      "peripheral": "twi0",
+      "offset": "0x53c",
+      "value": 0
+    },
+    {
+      "peripheral": "twi0",
+      "offset": "0x544",
+      "value": 0
+    },
+    {
+      "peripheral": "twi0",
+      "offset": "0x548",
+      "value": 0
+    },
+    {
+      "peripheral": "twi0",
+      "offset": "0x54c",
+      "value": 0
+    }
+  ],
+  "logs": [
+    {
+      "t": 0.0,
+      "level": "Warning",
+      "source": "twi0",
+      "message": "Unhandled read from offset 0x14C."
+    },
+    {
+      "t": 0.0,
+      "level": "Warning",
+      "source": "twi0",
+      "message": "Unhandled read from offset 0x150."
+    }
+  ],
+  "sdk": "0.3.1",
+  "engine": "0.5.7",
+  "script_sha256": "6e1d0969db926d4698f81f66d8a440b06b71768b13f9e2ec0fa513b781f6b03f",
+  "model_sha256": "afda52a78972f99dba85614efb267b0e1615baa56324bdf273aa997efe3b8237"
+}

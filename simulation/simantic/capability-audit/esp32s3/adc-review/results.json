@@ -1,0 +1,167 @@
+{
+  "scope": "Independent ADC test/input/expectation review; installed CLI and SDK engine 0.5.7, model and assembly hashes pinned below",
+  "engine_assembly_sha256": "9318327b270544427e255c044f98f7fe32d222cd6a2ac513bd46e63f2b0916a4",
+  "cli_sdk_assembly_identical": true,
+  "model_sha256": "7215de036ce4bd6df989e3f522eb82249f9ed51c4b1d8a4d3813f5d77d99630e",
+  "adc_elf_sha256": "03dfd7d0f1e5866dc2d47569ec9e961ef044774bbff0c5a55e43773d0fad8278",
+  "cli_sdk_adc_uart_identical": true,
+  "adc_firmware_finished": true,
+  "completion_assertions": [
+    {
+      "name": "ADC1_RTC_DONE",
+      "status": "FAIL",
+      "observed": "0x00000000",
+      "expected": "0x00010000"
+    },
+    {
+      "name": "ADC1_RTC_DONE",
+      "status": "FAIL",
+      "observed": "0x00000000",
+      "expected": "0x00010000"
+    },
+    {
+      "name": "ADC1_RTC_DONE",
+      "status": "FAIL",
+      "observed": "0x00000000",
+      "expected": "0x00010000"
+    },
+    {
+      "name": "ADC1_RTC_DONE",
+      "status": "FAIL",
+      "observed": "0x00000000",
+      "expected": "0x00010000"
+    },
+    {
+      "name": "ADC1_RTC_DONE",
+      "status": "FAIL",
+      "observed": "0x00000000",
+      "expected": "0x00010000"
+    }
+  ],
+  "requested_analog_inputs": [
+    {
+      "adc1_channel": 0,
+      "microvolts": 0,
+      "status": "BLOCKED_NO_COMPATIBLE_ADC_INPUT",
+      "error_type": "TypeError",
+      "message": "No method matches given arguments for IADCExtensions.SetVoltage: (<class 'Antmicro.Renode.Peripherals.IPeripheral'>, <class 'System.UInt32'>, <class 'System.Int32'>)"
+    },
+    {
+      "adc1_channel": 1,
+      "microvolts": 1000000,
+      "status": "BLOCKED_NO_COMPATIBLE_ADC_INPUT",
+      "error_type": "TypeError",
+      "message": "No method matches given arguments for IADCExtensions.SetVoltage: (<class 'Antmicro.Renode.Peripherals.IPeripheral'>, <class 'System.UInt32'>, <class 'System.Int32'>)"
+    },
+    {
+      "adc1_channel": 3,
+      "microvolts": 1500000,
+      "status": "BLOCKED_NO_COMPATIBLE_ADC_INPUT",
+      "error_type": "TypeError",
+      "message": "No method matches given arguments for IADCExtensions.SetVoltage: (<class 'Antmicro.Renode.Peripherals.IPeripheral'>, <class 'System.UInt32'>, <class 'System.Int32'>)"
+    },
+    {
+      "adc1_channel": 4,
+      "microvolts": 2000000,
+      "status": "BLOCKED_NO_COMPATIBLE_ADC_INPUT",
+      "error_type": "TypeError",
+      "message": "No method matches given arguments for IADCExtensions.SetVoltage: (<class 'Antmicro.Renode.Peripherals.IPeripheral'>, <class 'System.UInt32'>, <class 'System.Int32'>)"
+    },
+    {
+      "adc1_channel": 5,
+      "microvolts": 2500000,
+      "status": "BLOCKED_NO_COMPATIBLE_ADC_INPUT",
+      "error_type": "TypeError",
+      "message": "No method matches given arguments for IADCExtensions.SetVoltage: (<class 'Antmicro.Renode.Peripherals.IPeripheral'>, <class 'System.UInt32'>, <class 'System.Int32'>)"
+    }
+  ],
+  "analog_accuracy_status": "BLOCKED, not tested. No ESP32 analog voltage input could be attached. Zero raw data is not asserted as inaccurate.",
+  "adc_implementation": {
+    "runtime_type": "Antmicro.Renode.Peripherals.Miscellaneous.ESP32S3_Sens",
+    "interfaces": [
+      "Antmicro.Renode.Peripherals.Bus.IDoubleWordPeripheral",
+      "Antmicro.Renode.Peripherals.Bus.IBusPeripheral",
+      "Antmicro.Renode.Peripherals.IPeripheral",
+      "Antmicro.Renode.IEmulationElement",
+      "Antmicro.Renode.Peripherals.IAnalyzable",
+      "Antmicro.Renode.Peripherals.IKnownSize"
+    ],
+    "fields": [
+      "UInt32[] storage",
+      "Int64 TsensCtrlOffset",
+      "UInt32 TsensDumpOutBit",
+      "UInt32 TsensReadyBit",
+      "UInt32 AmbientTsensOut"
+    ],
+    "inspection_conclusion": "WriteDoubleWord stores a value in UInt32[] storage; ReadDoubleWord retrieves it, with one temperature-sensor special case at offset 0x50. No ADC start/completion/voltage conversion behavior or analog input API was found in this implementation.",
+    "readonly_test": {
+      "reset_meas1": "0x0",
+      "after_attempt_to_write_readonly_done_and_data": "0x1007b",
+      "expected_without_conversion": "0x0 (read-only fields ignore writes)"
+    },
+    "apb_adc_type": "Antmicro.Renode.Peripherals.Memory.MappedMemory"
+  },
+  "timg_implementation": {
+    "runtime_type": "Antmicro.Renode.Peripherals.Timers.ESP32C3_Timg",
+    "fields": [
+      "System.Collections.Generic.Dictionary`2[System.Int64,System.UInt32] regs",
+      "Int64 RtcCaliCfg",
+      "Int64 RtcCaliCfg1",
+      "Int64 RtcCaliCfg2",
+      "UInt32 CaliRdy",
+      "UInt32 CaliStart",
+      "UInt64 XtalHz",
+      "UInt64 RcSlowHz"
+    ],
+    "inspection_conclusion": "Register dictionary storage and RTC calibration special cases; inspected register methods contain no general-purpose timer counting, snapshot completion or alarm scheduling."
+  },
+  "stm32_positive_control": {
+    "scope": "Same IADCExtensions voltage API, genuine H7 ADC peripheral and firmware conversions; this is a different MCU/16-bit ADC, not an ESP pass",
+    "samples": [
+      {
+        "microvolts": 0,
+        "expected": 0,
+        "actual": 0,
+        "pass": true
+      },
+      {
+        "microvolts": 825000,
+        "expected": 16384,
+        "actual": 16384,
+        "pass": true
+      },
+      {
+        "microvolts": 1650000,
+        "expected": 32768,
+        "actual": 32768,
+        "pass": true
+      },
+      {
+        "microvolts": 3300000,
+        "expected": 65535,
+        "actual": 65535,
+        "pass": true
+      }
+    ],
+    "all_pass": true
+  },
+  "official_source_review": {
+    "tag": "ESP-IDF v5.5.2",
+    "oneshot_hal_url": "https://github.com/espressif/esp-idf/blob/v5.5.2/components/hal/adc_oneshot_hal.c",
+    "oneshot_hal_sha256": "8c683f1ce36b788f564b1e4a2d7e03c27fd2171298d930774cece869091b3c0a",
+    "adc_ll_sha256": "e6fb68fe4695647bdf0cd61040948925da3dc98ca71fe572681bf805e6597c9c",
+    "sens_reg_sha256": "3113e9fbcc92c629edcc748baac4ca16c4e66b4e9cac8672cc9162212715c41c"
+  },
+  "boundaries": [
+    "No full ESP-IDF application tested.",
+    "No calibrated ESP voltage/code transfer curve tested.",
+    "Earlier diagnostic omitted full pad, analog calibration and intended high-attenuation initialization.",
+    "Firmware start/idle/DONE addressing matches pinned S3 LL source.",
+    "Backend implementation evidence independently confirms missing ADC behavior; increasing timeout or inventing an input does not implement conversion."
+  ],
+  "source_sha256": {
+    "inspect_backend.py": "d400487c8710f79f5f735c124758d376a9e513eee869d2253040aa452b4ab997",
+    "recheck.py": "4944cc70c2db1fd5319985a7f847591f46a58e212409bf5be123e49146f5317e"
+  },
+  "uart_sha256": "f4f5b66607e0eb53bddc8d318890d10fdbdb209d7171d550b269dc0498de8f78"
+}

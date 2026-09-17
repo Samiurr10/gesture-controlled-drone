@@ -1,9 +1,8 @@
 # Aircraft schematic review — 2026-09-14
 
-> Historical review snapshot from drafting. Findings below refer to an intermediate
-> builder version. Use the [delivered Rev A package](../hardware/schematics/rev-a/README.md)
-> for the current circuit and [aircraft integration](aircraft-integration.md) for
-> outstanding implementation checks; this snapshot is not the current build checklist.
+> **Archived review snapshot — superseded 2026-09-16.** These findings concern an intermediate September 14 Rev A drawing generator. They are not current build tasks or proof of testing. The [Rev A package](../hardware/schematics/rev-a/README.md) is also an archived full-system record.
+>
+> Current work is controller simulation in Simantic, then a physical controller prototype, followed by virtual drone hardware/microcontroller outputs driving an on-screen mechanical simulation. Physical aircraft, Pocket/ELRS and trainer construction are outside the required scope. Use the [project goals](../README.md), [current architecture](architecture.md) and [controller validation](controller/validation.md). The original review below retains historical “required” and “current” wording only as part of that record.
 
 Reviewed `tools/build_palmpilot_schematic.py` while root author was adding connector/motor/firmware sheets. Scope was P/E/A/M connection records, `aircraft_power`, `peripheral_page`, and aircraft sources S02–S08. This is a source/code review, not physical electrical testing or a rendered-layout review. Parent reported label corrections in progress; findings below describe the snapshot inspected.
 

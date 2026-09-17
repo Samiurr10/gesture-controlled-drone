@@ -1,5 +1,9 @@
 # PalmPilot / Manta Flow - connection list, Rev A
 
+> **Archived Rev A connection record — superseded 2026-09-16.** These 142 circuit records preserve the original physical-aircraft/trainer design, not a current build or procurement checklist. Only the hand controller is being built physically, after Simantic controller validation. The second goal uses Simantic drone hardware/microcontroller outputs to drive an on-screen mechanical simulation. Pocket/ELRS/trainer hardware and physical aircraft construction or flight are outside the required scope.
+>
+> Follow the [project goals](../../../README.md), [current architecture](../../../docs/architecture.md), [controller build guide](../../../docs/controller/build-guide.md) and [archive manifest](README.md). The original connection table below is retained unchanged; historical trainer gates apply only to that abandoned interface.
+
 Baseline: [PalmPilot_BOM.pdf](../../../docs/reference/PalmPilot_BOM.pdf), 14 September 2026. Use with the [PDF schematic](PalmPilot_Full_Schematic_and_Build_Guide.pdf).
 
 **Trainer is a bench prototype:** the exact Pocket input tolerance and dropout behavior require validation before connecting/enabling it. All power domains are independent; only hub and Pocket share trainer ground.

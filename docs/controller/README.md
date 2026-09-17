@@ -1,62 +1,61 @@
-# Controller build — start here
+# ESP32-S3 controller — start here
 
-The first deliverable is a working, qualified two-hand controller: two Feather
-nRF52840 Sense wearables, a Feather nRF52840 Express ground hub, and a verified
-trainer connection to the RadioMaster Pocket. Build and qualify the controller
-before starting aircraft assembly.
+**Active baseline: ESP32-S3, approved September 16, 2026.** Simulate one hand
+first, then both hands and the hub; build the physical controller after the
+simulation gates. The later drone remains an STM32-based virtual system.
 
-**Current status:** Rev A wiring is documented. Physical assembly, measurements,
-custom firmware, the final EdgeTX model, and controller qualification are still
-to be completed. A checked document is not evidence that hardware passed a test.
+The working board reference is **ESP32-S3-DevKitC-1-N8R2**, using
+ESP32-S3-WROOM-1-N8R2 (8 MB flash, 2 MB quad PSRAM). Confirm the delivered module
+marking and PCB revision before using header numbers. A different DevKit variant
+requires a recorded flash/PSRAM/board configuration; it is not an automatic swap.
+This is a USB-powered development-board baseline, not a finished wearable PCB.
 
-## First bench milestone
+Each hand has five flex inputs and an **external Adafruit #5543
+LSM6DS3TR-C + LIS3MDL** motion module. The left hand has hold-to-enable. A third
+ESP32-S3 is the BLE central hub, with CALIBRATE and a computer command link.
+BLE remains the selected topology; Wi-Fi/ESP-NOW is not part of this migration.
 
-Start with **one Sense #4516 and one flex #1070** on USB. A second flex channel is
-useful for checking that adjacent ADC readings do not affect one another. Each
-channel needs its own 47 kΩ resistor and 100 nF capacitor. Make the first channel
-work on A0, record straight/bent voltages and raw readings, and confirm that an
-unplugged sensor is rejected before adding the other fingers.
+## Read in this order
 
-## Build order
+| Need | Document |
+|---|---|
+| Current system boundaries | [Architecture](../architecture.md) |
+| ESP32-S3 capability and implementation gates | [Simantic plan](simantic-plan.md) |
+| Incremental hardware | [Controller BOM](bom.md) |
+| Exact proposed bench pin assignments | [Build guide](build-guide.md) |
+| Drivers, calibration, BLE and host contract | [Firmware plan](firmware-plan.md) |
+| Acceptance and evidence | [Validation](validation.md), [record template](test-record-template.md) |
+| Previous platform findings | [Historical nRF/H7 audit](../../simulation/simantic/capability-audit/README.md) |
 
-| Milestone | Build and demonstrate | Completion evidence |
+## Build sequence
+
+| Stage | Deliverable | Exit evidence |
 |---|---|---|
-| C0 — Prepare | Confirm actual board revisions, inspect parts, label connectors | Inventory and revision record |
-| C1 — One or two fingers | USB-powered left Sense; A0, optionally A1 | Wiring check, meter readings, serial ADC log |
-| C2 — Full left hand | All five independent divider circuits; read onboard motion sensors | Five-finger calibration and channel-isolation log |
-| C3 — Left wearable | D5 hold-to-enable button, local battery, EN switch, strain relief | Button and battery checks; enable stays inactive through faults/restarts |
-| C4 — Right wearable | Second five-finger Sense, its own battery and EN switch | Same analog, motion and power checks; distinct left/right identity |
-| C5 — Hub | Express, D6 CALIBRATE, battery/switch, both BLE links | Two-hand data logging; invalid/stale/reconnected data stays disabled |
-| C6 — Trainer | Buffer and cable; verify electrical compatibility before closing JP301; validate EdgeTX takeover | Scope captures, radio channel checks, measured fault response |
-| C7 — Qualify controller | Complete controller fault, runtime and mechanical checks | Recorded results in the [validation plan](validation.md) |
+| S0 | ESP32-S3 boot, ADC1, GPIO, I2C, timer/reset and storage probes | Tests against the selected ESP model/firmware; gaps recorded |
+| S1 | One simulated hand: one flex → five flex → external motion → enable | Acquisition, calibration and fault assertions |
+| S2 | Two ESP hand peripherals and ESP hub central | Two simultaneous BLE links and whole-command invalidation |
+| S3 | Hub output to host test sink | Versioned command, expiry, stop/recovery and regression evidence |
+| C0 | Physical board/module/revision and bench preparation | As-received record; approved ESP wiring revision |
+| C1 | USB-powered first flex on GPIO1 | Continuity, measured voltages and calibrated ADC log |
+| C2 | Five left-hand flex inputs plus external motion module | Channel independence, sensor identities/axes and calibration |
+| C3 | Left enable and reviewed wearable power/mechanics | Power design completed and measured; no assumed LiPo compatibility |
+| C4 | Right hand | Independent power, calibration and side identity |
+| C5 | ESP hub | Both BLE links, calibration and valid/invalid command states |
+| C6 | Controller/computer bridge | Independently decoded commands and disconnection/recovery tests |
+| C7 | Physical controller qualification | Complete applicable test records, firmware/configuration archive |
 
-The root [implementation checklist](../../README.md) tracks the whole project,
-including aircraft assembly and flight stages after C7. These milestones are
-planned work; none is marked passed by the documentation update.
+## Current limits and historical material
 
-## Build documents
-
-- [Incremental controller BOM](bom.md) — what each stage needs, with reconciled totals.
-- [Step-by-step controller build guide](build-guide.md) — wire and pin schedules.
-- [Firmware implementation plan](firmware-plan.md) — work required to make the circuit function.
-- [Controller validation plan](validation.md) — acceptance checks and evidence to record.
-- [Rev A schematic package](../../hardware/schematics/rev-a/) — complete project drawings and connection data.
-- [Full schematic and build guide PDF](../../hardware/schematics/rev-a/PalmPilot_Full_Schematic_and_Build_Guide.pdf).
-- [Every connection, by wire ID](../../hardware/schematics/rev-a/connection-list.md).
-
-## Open controller dependency
-
-The Pocket trainer jack's input limits have not been established for the actual
-radio. **Leave JP301 open until electrical compatibility is verified.** The
-trainer circuit is a bench design, and the final firmware/radio behavior must
-be tested. The first five controller milestones can proceed independently of
-that interface. See the [trainer research](../schematic-research-trainer.md)
-for evidence, the adapter pin map, and the proposed dropout gate.
-
-## Design baseline
-
-This controller follows the 14 September 2026 `PalmPilot_BOM.pdf` baseline and
-the source-linked [hand research](../schematic-research-hands.md). It uses
-Feather boards with built-in BLE; the Sense boards also contain the motion
-sensors. Earlier XIAO/ESP32-C3/BNO085 designs elsewhere in the repository are
-historical and have different pin maps and firmware assumptions.
+- ESP32-S3 is the working migration target; the earlier nRF52840 tests are not
+  ESP32-S3 passes. No full ESP controller firmware or qualified board has been
+  established by these documentation changes.
+- The [Rev A schematic package](../../hardware/schematics/README.md) contains
+  Feather wiring. Its A0–A4/D5/D6/A6 labels, factory battery divider, charger,
+  regulator-EN switch and onboard IMU assumptions are superseded for this build.
+- The new build guide is a sourced **bench pin plan**, not a newly verified full
+  ESP schematic. A revised schematic/netlist and wearable power design are
+  required before permanent assembly and C3 qualification.
+- Start with USB power. There is no assumed BAT socket, LiPo charger or factory
+  battery measurement on DevKitC-1. GPIO10 is reserved, not wired to a battery.
+- Pocket/PPM remains optional historical work. It does not gate the ESP controller
+  or the later STM32 drone simulation.

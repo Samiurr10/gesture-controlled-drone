@@ -4,7 +4,7 @@
     "title": "Full wiring schematic + build guide",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "Full wiring schematic + build guide",
       "A module-by-module assembly package for the attached 4S, two-hand BOM.",
       "WHAT THIS PACKAGE COVERS",
@@ -48,7 +48,8 @@
       "Colors are assembly suggestions; labels determine",
       "polarity.",
       "Basis: S01. Four separate power domains; only the hub and Pocket share ground through their trainer cable.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "01"
     ]
   },
@@ -57,7 +58,7 @@
     "title": "01 / Freeze the exact build",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "01 / Freeze the exact build",
       "The PDF BOM supersedes the older 3S / Kakute Mini / XIAO project documents for this package.",
       "Subsystem",
@@ -93,7 +94,8 @@
       "Aircraft circuits and connectors: pages 3-9. Hand circuits, power and sensor checks: pages 10-15. Hub/trainer circuit and validation: pages 16-20. Firmware, parts, unused pins and",
       "build checks: pages 21-26. Sources: pages 27-29. Print landscape, fit to page; zoom the vector PDF for pad labels.",
       "Sources: S01-S06, S09-S13, S18-S24. New interface passives and buffer are listed in the additions sheet.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "02"
     ]
   },
@@ -102,7 +104,7 @@
     "title": "02 / Aircraft power + FC-to-ESC harness",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "02 / Aircraft power + FC-to-ESC harness",
       "Use the supplied matched 8-pin cable after continuity checking. B+ is raw battery voltage.",
       "BT1 / XT60",
@@ -158,7 +160,8 @@
       "leads and body restraint. Motor current flows through U2, not through the small",
       "harness or U1 ground pads.",
       "Sources: S01-S04. Exact physical connector orientation is on sheet 04. Motor phase connections are on sheet 05.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "03"
     ]
   },
@@ -167,7 +170,7 @@
     "title": "03 / Every aircraft peripheral wire",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "03 / Every aircraft peripheral wire",
       "All pin names are board markings. UART wires cross: one board TX goes to the other board RX.",
       "U1 KAKUTE H7 v1.5",
@@ -236,7 +239,8 @@
       "goes to Z-. Dronetag uses its own GNSS; no connection to",
       "U4.",
       "Sources: S03, S05-S08, S20. Use 26 AWG power/ground and 28 AWG signals; route compass away from motor/battery leads.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "04"
     ]
   },
@@ -245,7 +249,7 @@
     "title": "Aircraft wire checklist",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "Aircraft wire checklist",
       "Check off by ID as each end is soldered, inspected and measured. Pads labeled G and GND are the same rail.",
       "ID",
@@ -329,7 +333,8 @@
       "28 AWG yellow",
       "Switched negative trigger, not GND",
       "Sources: S03, S05-S08. A wire-color mismatch is acceptable only when the pad-to-pad connection is positively identified.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "05"
     ]
   },
@@ -338,7 +343,7 @@
     "title": "04 / FC and ESC connector orientation",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "04 / FC and ESC connector orientation",
       "View the actual component face. Cable wire-entry views are mirrored; continuity-test by function.",
       "U1 TOP VIEW - USB-C ON RIGHT",
@@ -412,7 +417,8 @@
       "M4",
       "FC output -> ESC channel 4",
       "Sources: S03-S04, S30. c1-c8 are project contact indexes tied to these views. U1 ESC2 (M5-M8) remains EMPTY.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "06"
     ]
   },
@@ -421,7 +427,7 @@
     "title": "05 / Twelve motor wires + fixed motor order",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "05 / Twelve motor wires + fixed motor order",
       "Top view, nose up. This drawing requires ArduPilot BetaFlightX (FRAME_TYPE 12), not default Quad X.",
       "NOSE",
@@ -478,7 +484,8 @@
       "board, choose the motor. Keep the FC orientation arrow toward the nose or configure its measured",
       "rotation.",
       "Sources: S04, S18, S21-S23. Install CW/CCW propellers only after motor identity and direction both pass.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "07"
     ]
   },
@@ -487,7 +494,7 @@
     "title": "Connector detail / GPS, receiver and Remote ID",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "Connector detail / GPS, receiver and Remote ID",
       "Use supplied harnesses wherever possible. Colors shown below come from manufacturer photos; verify the received cable.",
       "Matek contact",
@@ -533,7 +540,8 @@
       "Red 5V -> FC 5V; black GND -> FC G; yellow BZ -> FC Z-. Its connector",
       "cavity numbering is not assumed. Keep its disarm button accessible.",
       "Sources: S05-S08, S31-S32. GH on Matek is 1.25 mm family; SH on Holybro/Dronetag is 1.0 mm. Same contact count does not imply fit.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "08"
     ]
   },
@@ -542,7 +550,7 @@
     "title": "Reference locator / actual Kakute v1.5 pads",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "Reference locator / actual Kakute v1.5 pads",
       "Manufacturer overview shown for board recognition; the schematic sheets define this project connection assignment.",
       "CHECK THE LABEL",
@@ -564,7 +572,8 @@
       "manufacturer drawing and actual",
       "firmware detection together.",
       "Figure reproduced from Holybro current Kakute H7 v1.5 diagram (S30); its promotional text is not a tested performance claim for this build.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "09"
     ]
   },
@@ -573,7 +582,7 @@
     "title": "06L / left hand - five complete flex circuits",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "06L / left hand - five complete flex circuits",
       "U6: Feather nRF52840 Sense #4516. Five circuits shown; build one independent circuit per finger.",
       "U6 / LEFT SENSE",
@@ -626,7 +635,8 @@
       "POWER / BUTTON",
       "BT2 + SWL wiring is on sheet 07. D5 = SW4 enable.",
       "Sources: S01, S09-S14. RC parts sit by the Feather. 3V is regulated 3.3 V; do not connect these dividers to BAT or USB.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "10"
     ]
   },
@@ -635,7 +645,7 @@
     "title": "06R / right hand - five complete flex circuits",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "06R / right hand - five complete flex circuits",
       "U7: Feather nRF52840 Sense #4516. Five circuits shown; build one independent circuit per finger.",
       "U7 / RIGHT SENSE",
@@ -688,7 +698,8 @@
       "POWER / BUTTON",
       "BT3 + SWR wiring is on sheet 07. No external button on this hand.",
       "Sources: S01, S09-S14. RC parts sit by the Feather. 3V is regulated 3.3 V; do not connect these dividers to BAT or USB.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "11"
     ]
   },
@@ -697,7 +708,7 @@
     "title": "07 / Three independent batteries + two physical buttons",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "07 / Three independent batteries + two physical buttons",
       "EN switches turn off the 3.3 V regulator; they do not disconnect the LiPo or disable the USB charger.",
       "L: U6 + BT2",
@@ -751,7 +762,8 @@
       "is OFF and aircraft disarmed. Use opposite contact groups of a 4-leg pushbutton;",
       "two legs from the same group are already connected.",
       "Sources: S09-S13. Use onboard Micro-USB to program/charge; charge off the wearer. No separate charger board or shared battery rail.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "12"
     ]
   },
@@ -760,7 +772,7 @@
     "title": "07B / Two filtered button circuits",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "07B / Two filtered button circuits",
       "These passives are additional to the ten flex-divider networks. Each circuit uses its own local 3.3 V and ground.",
       "HOLD TO ENABLE",
@@ -789,7 +801,8 @@
       "software debounce.",
       "A short-to-ground can imitate a press: require release-then-press after boot/reconnect. Physical radio takeover remains independent.",
       "Design-selected circuit; pin verification S35-S36. All resistors 1%, >=0.125 W; capacitors X7R >=10 V.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "13"
     ]
   },
@@ -798,7 +811,7 @@
     "title": "Hand circuit assembly checklist",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "Hand circuit assembly checklist",
       "All ten sensor connections are expanded on the two hand schematics; this table identifies the exact parts and nodes.",
       "Wire IDs",
@@ -879,7 +892,8 @@
       "IDENTICAL CIRCUIT; SEPARATE ELECTRICAL NODES",
       "Do not join left and right 3V/GND rails. Do not join A0-A4 together. Each 47k resistor and each 100nF capacitor has its own ADC connection and returns to its local hand ground.",
       "The companion connection-list.md expands each a-f suffix into both component terminals. Connector pin numbers are project assignments.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "14"
     ]
   },
@@ -888,7 +902,7 @@
     "title": "08 / Sensor voltage + calibration checks",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "08 / Sensor voltage + calibration checks",
       "An ADC converts voltage to a number. Correct wiring still needs per-finger calibration and electrical fault checks.",
       "DIVIDER EQUATION",
@@ -920,7 +934,8 @@
       "Mechanical routing: allow the sensor strip to slide in a guide. Do not cut it, fold its terminal area or rigidly glue both ends to a finger. Keep the soldered ends off bending joints",
       "and insulate them from skin.",
       "Sources: S01, S09-S14 and Nordic SAADC guidance in docs/schematic-research-hands.md. Firmware and calibration are required work.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "15"
     ]
   },
@@ -929,7 +944,7 @@
     "title": "09 / Ground hub-to-Pocket buffer - complete prototype",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "09 / Ground hub-to-Pocket buffer - complete prototype",
       "JP301 stays OPEN until the actual Pocket trainer input is confirmed compatible with the proposed 3.3 V signal.",
       "BENCH PROTOTYPE - ELECTRICAL INPUT RATING NOT YET VERIFIED",
@@ -972,7 +987,8 @@
       "shielded cable. Hub has BT4; Pocket retains its own cells. Add no capacitor to the",
       "PPM output.",
       "Sources: S11, S25-S27, S29, S36-S37. Full 14-wire buffer netlist is on the following sheet; power/button circuits on 07 / 07B.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "16"
     ]
   },
@@ -981,7 +997,7 @@
     "title": "Trainer buffer connection checklist",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "Trainer buffer connection checklist",
       "Package-specific pin numbers refer to TI SN74LVC1G125DBVR, top view, SOT-23-5.",
       "ID",
@@ -1045,7 +1061,8 @@
       "J301 TS sleeve",
       "Only shared ground between hub and Pocket",
       "Source: S25. H01-H14 here are wire IDs, independent of the H01-H11 purchasing line IDs in the source BOM.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "17"
     ]
   },
@@ -1054,7 +1071,7 @@
     "title": "09B / Buffer carrier + trainer plug detail",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "09B / Buffer carrier + trainer plug detail",
       "The five-pin IC and a six-pad adapter do not have matching pin numbers at the upper-right position.",
       "ADAFRUIT #1230 SOT23 FRONT",
@@ -1101,7 +1118,8 @@
       "One insulating band = TS. Use the Pocket DSC port. Tip -> JP301.2; sleeve -> U8 GND. A",
       "headphone TRS cable is not the selected cable.",
       "Sources: S25-S27, S29, S37. Diagram is a connection locator, not a fabrication footprint or scale drawing.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "18"
     ]
   },
@@ -1110,7 +1128,7 @@
     "title": "10 / Required trainer waveform + authority logic",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "10 / Required trainer waveform + authority logic",
       "These are firmware and radio configuration requirements. Wiring alone cannot implement or validate them.",
       "Trainer slot",
@@ -1143,7 +1161,8 @@
       "Reviewed EdgeTX source permits about 1 second before trainer invalidation. Require: SE held + trainer present + TR5 valid + recently changed TR6 + no latched fault. Gate failure",
       "returns to manual sticks. Require release/re-enable after recovery. A timer must not replay old commands and heartbeat forever.",
       "Sources: S16-S17, S26, S29, S33, S38. Exact EdgeTX model and MCU firmware remain to be implemented and bench-qualified.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "19"
     ]
   },
@@ -1152,7 +1171,7 @@
     "title": "Trainer validation / the remaining interface gate",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "Trainer validation / the remaining interface gate",
       "A DMM idle-voltage measurement alone does not establish the Pocket input rating.",
       "Stage",
@@ -1187,7 +1206,8 @@
       "Two level checks on TR6 (>0 and <0), each with Delay 0.1 s and Duration 0, OR together as heartbeat_stuck. A healthy 45 ms half-cycle prevents either delay completing. Also",
       "require trainer-present and TR5 valid; latch authority faults until SE release. Validate installed EdgeTX timing and startup behavior.",
       "Sources: S17, S25-S26, S29, S33. Exact trainer circuit and receiver firmware behavior still need real hardware evidence.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "20"
     ]
   },
@@ -1196,7 +1216,7 @@
     "title": "11 / ArduPilot setup that matches these wires",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "11 / ArduPilot setup that matches these wires",
       "Save the original parameters first. Reboot after serial, frame and motor-output changes; verify each result with props off.",
       "Function",
@@ -1239,7 +1259,8 @@
       "Set and verify RCMAP accordingly. Physical radio arm/mode channels are separate from trainer",
       "TR5/TR6 health slots.",
       "Sources: S18-S24, S28. This is an interface checklist, not a complete flight tune or a prevalidated parameter file.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "21"
     ]
   },
@@ -1248,7 +1269,7 @@
     "title": "12 / Current scaling + power-rail acceptance",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "12 / Current scaling + power-rail acceptance",
       "The ESC PCB revision determines analog current conversion; the flight-controller v1.5 label does not determine it.",
       "Tekko 31102 ESC revision",
@@ -1299,7 +1320,8 @@
       "_____ mA",
       "No load below its required input voltage",
       "Sources: S02, S04-S08, S28. Component ratings do not establish aircraft maximum current or endurance.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "22"
     ]
   },
@@ -1308,7 +1330,7 @@
     "title": "13 / Small parts to make the circuit complete",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "13 / Small parts to make the circuit complete",
       "These specify the BOM allowances for H05/H06/H07/H10. Check included harnesses before purchasing duplicates.",
       "Part / reference",
@@ -1368,7 +1390,8 @@
       "Solderable boards, headers and heat-shrink",
       "26 AWG low-voltage power; 28-30 AWG signals; label both ends",
       "Sources: S01, S25, S27. Select voltage-rated insulated connector parts. No solderless breadboard or loose Dupont lead in a flying build.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "23"
     ]
   },
@@ -1377,7 +1400,7 @@
     "title": "14 / Unused pins + service connections",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "14 / Unused pins + service connections",
       "NC means deliberately leave open; an unused power output must not be shorted to ground.",
       "Board / connector",
@@ -1417,7 +1440,8 @@
       "Own correct-polarity 18650 cells; original internal ELRS antenna;",
       "DSC TS cable only.",
       "Sources: S01-S13, S29, S35-S36. Factory onboard traces, antennas, chargers and sensors are not extra user wiring.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "24"
     ]
   },
@@ -1426,7 +1450,7 @@
     "title": "15 / Build order + first power-up",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "15 / Build order + first power-up",
       "Complete each stage before closing the enclosure. Propellers remain removed throughout these electrical checks.",
       "Step",
@@ -1467,7 +1491,8 @@
       "Props off: identify every motor-test letter and direction. Inspect motor screw clearance into windings. Save wiring and",
       "parameter records.",
       "Use the matching manufacturer manuals for initial firmware loading. Wiring checks do not replace the structural/propulsion tests in the source BOM.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "25"
     ]
   },
@@ -1476,7 +1501,7 @@
     "title": "16 / Test points + completion record",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "16 / Test points + completion record",
       "Write measured values and save photos of the completed harness. These criteria identify wiring faults before flight testing.",
       "Point",
@@ -1523,7 +1548,8 @@
       "placement and motor-current interference. Matek requests 100 mm separation from power wiring, ESCs, motors and ferrous material. The current compact GPS deck does not",
       "establish that clearance.",
       "This package specifies a buildable module interconnect and a conditional trainer prototype. It is not an ERC/PCB fabrication file or proof of flight safety.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "26"
     ]
   },
@@ -1532,7 +1558,7 @@
     "title": "Source register / 1",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "Source register / 1",
       "Primary manufacturer and firmware sources checked 14 September 2026. Click a title in the PDF to open its source.",
       "S01",
@@ -1575,7 +1601,8 @@
       "Adafruit protected 500 mAh LiPo #1578",
       "Cell and charge compatibility.",
       "Project-selected assignments, calculations and circuit additions are identified in the sheets. Vendor drawings retain their source attribution.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "27"
     ]
   },
@@ -1584,7 +1611,7 @@
     "title": "Source register / 2",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "Source register / 2",
       "Primary manufacturer and firmware sources checked 14 September 2026. Click a title in the PDF to open its source.",
       "S14",
@@ -1627,7 +1654,8 @@
       "RadioMaster official trainer port pinout",
       "Mono TS tip PPM / sleeve ground; family guidance, not Pocket input rating.",
       "Project-selected assignments, calculations and circuit additions are identified in the sheets. Vendor drawings retain their source attribution.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "28"
     ]
   },
@@ -1636,7 +1664,7 @@
     "title": "Source register / 3",
     "text": [
       "PALMPILOT / MANTA FLOW",
-      "REV A  |  14 SEP 2026  |  DEVELOPMENT SCHEMATIC",
+      "HISTORICAL REV A  |  14 SEP 2026  |  SCOPE SUPERSEDED",
       "Source register / 3",
       "Primary manufacturer and firmware sources checked 14 September 2026. Click a title in the PDF to open its source.",
       "S27",
@@ -1679,7 +1707,8 @@
       "Nordic nRF52840 product specification",
       "SAADC source resistance and acquisition time.",
       "Project-selected assignments, calculations and circuit additions are identified in the sheets. Vendor drawings retain their source attribution.",
-      "Module-level interconnect drawing. Confirm received revisions and test with propellers removed.",
+      "HISTORICAL FULL-SYSTEM DESIGN - aircraft/trainer build and flight steps are outside current scope.",
+      "Current scope: Simantic controller -> physical controller -> simulated drone on screen. See project README.md.",
       "29"
     ]
   }
