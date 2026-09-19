@@ -1,83 +1,41 @@
-# PalmPilot / Gesture-Controlled Drone Simulation
+# PalmPilot / Gesture-Controlled Drone
 
-**We will physically build the hand gesture controller. The drone will be simulated and move on a computer screen.** We are not building a physical drone.
+Build an **ESP32-S3 hand controller** that controls an **STM32H7 drone simulation** on a computer screen.
 
-Scope updated **September 16, 2026**. This plan supersedes the earlier physical-aircraft build and flight plans, including the aircraft portions of the original BOM and Rev A schematics.
+## Build order
 
-**Controller decision:** use **ESP32-S3** for both hands and the controller hub. The bench target is **ESP32-S3-DevKitC-1 with ESP32-S3-WROOM-1-N8R2**, external motion sensors and USB power. ESP32-S3 is the sole controller platform. The old Rev A hand pins, onboard sensors and battery circuits are superseded; use the [ESP32 migration record](docs/controller/esp32-migration.md) and current [BOM](docs/controller/bom.md).
+1. Simulate one hand in Simantic: one flex input, then five flex inputs, motion sensing and ENABLE.
+2. Add the second ESP32-S3 hand and an ESP32-S3 BLE hub; validate the host command interface.
+3. Build and qualify the physical hand-controller prototype.
+4. Run drone firmware on a simulated STM32H7, drive dynamics from its motor outputs, and display the resulting motion.
 
-## Goals and priority
+The physical project is the controller. The drone remains virtual.
 
-1. **Make the controller work.** First simulate the hand controller in **Simantic**, starting with one flex input and expanding to the complete controller. Then build and test the physical hand-controller prototype.
-2. **Make the drone simulation.** Simulate the drone's hardware and microcontroller in **Simantic**. Use the simulated microcontroller's motor/actuator output signals to drive a mechanical/dynamics simulation, and display the resulting drone motion on screen. Connect the working physical controller to this simulation.
+## Hardware and current status
 
-The first priority is controller simulation, followed by its physical prototype. Drone simulation implementation follows controller qualification. Moving a graphic directly from hand gestures does not complete the second goal: displayed motion must come from the drone's simulated control and mechanical response.
+- **Physical bench:** Freenove ESP32-S3 WROOM N8R8. **Simulation reference:** ESP32-S3-WROOM-1-N8R2. Current validation disables PSRAM.
+- **Each hand:** five flex sensors and an external Adafruit #5543 LSM6DS3TR-C + LIS3MDL module. Left hand has ENABLE; the hub has CALIBRATE.
+- **Power:** USB for bench work. Wearable power and the complete ESP32-S3 wearable schematic remain to be designed.
+- **Simulation:** ADC support is in [Simantic PR #168](https://github.com/simantic-dev/renode-infrastructure/pull/168), ready for review. Its calibrated mode passes 51 unit tests and 2,480 firmware reads; it is not included in stock engine 0.5.7.
+- **Next:** complete one-hand acquisition and exact motion-sensor driver tests. NVS persistence, watchdog recovery and two-hand BLE still need qualification. See the [controller simulation plan](docs/controller/simantic-plan.md).
 
-**Current status — September 17:** enough is available to start one-hand firmware using the local ADC fix, `esp_timer`/FreeRTOS, GPIO7 and UART. The corrected ADC probe and full ESP-IDF ADC application pass; a public-driver test confirms the TIMG model gap. Exact IMU fixtures/drivers, calibration persistence, watchdog recovery and ESP BLE remain to be qualified. Production controller firmware and integrated drone simulation are not implemented. See the [latest readiness and test record](docs/implementation-records/2026-09-17_hand-controller-readiness.md). The physical ADC bench board is a **Freenove ESP32-S3 WROOM N8R8**, with PSRAM disabled in validation firmware; the N8R2 remains the simulation reference.
-
-## Start here
-
-1. Review the [ESP32 decision](docs/controller/esp32-migration.md) and [latest readiness record](docs/implementation-records/2026-09-17_hand-controller-readiness.md), then continue **S0** in the [controller Simantic plan](docs/controller/simantic-plan.md).
-2. Qualify the exact ESP32 model, ADC and sensor-driver path, then simulate one flex channel before adding sensors and the second hand.
-3. Complete S0–S3 with recorded simulation evidence. Then use the [controller build guide](docs/controller/build-guide.md) and [incremental parts list](docs/controller/bom.md) for C0–C7.
-4. After the controller works, follow the [drone simulation plan](docs/drone-simulation.md) for D1–D4.
-
-## System we are building
-
-```text
-Phase 1: Simantic hand-controller models + controller firmware
-         simulated sensors -> hand nodes -> hub -> validated commands
-                                      |
-Phase 2: Physical hand-controller prototype replaces simulated controller
-         flex/external IMUs -> two ESP32-S3 hands -> BLE -> ESP32-S3 hub
-                                      |
-                            computer command bridge
-                                      |
-Phase 3: Simantic drone hardware + microcontroller/flight-control firmware
-                                      |
-                            motor/actuator output signals
-                                      v
-                         mechanical / dynamics simulation
-                             |                   |
-                    simulated sensor feedback   position + orientation
-                             |                   v
-                      back to drone MCU     on-screen drone display
-```
-
-| Part | Current scope |
-|---|---|
-| Hand controller | Two ESP32-S3-DevKitC-1 N8R2 bench targets, five flex inputs and an external motion-sensor breakout per hand; simulate, then prototype |
-| Controller hub | ESP32-S3, planned two-peer BLE input validation and command output to the computer; stack compatibility remains to be tested |
-| Computer connection | USB-to-UART bridge for bench diagnostics; freeze the production host transport after driver tests |
-| Drone electronics | STM32H743 / KakuteH7 ArduCopter candidate in Simantic; full board behavior remains under qualification |
-| Drone motion | Dynamics model driven by simulated MCU actuator outputs, with sensor feedback and an on-screen view |
-| Pocket, trainer buffer and ELRS | Optional historical interface work; not required purchases or completion gates |
-| Airframe, physical FC/ESC, motors, propellers, aircraft battery and flight tests | Outside the current project scope |
-
-The [architecture](docs/architecture.md) defines responsibilities and interfaces. Begin with one ESP32 hand and one sensor. USB bench wiring is defined in the controller guides; a complete ESP32 wearable schematic and battery design remain implementation checkpoints.
-
-## Documentation
+## Project documents
 
 | Need | Document |
 |---|---|
-| Current scope, system boundaries and open decisions | [Architecture](docs/architecture.md) |
-| Latest ADC/timer results and remaining controller work | [September 17 readiness](docs/implementation-records/2026-09-17_hand-controller-readiness.md) |
-| ESP32 decision, simulation and model gaps | [ESP32 migration](docs/controller/esp32-migration.md), [Simantic plan](docs/controller/simantic-plan.md), [current assessment](docs/implementation-records/2026-09-16_esp32-full-drone-feasibility.md) |
-| Executed simulator tests and concrete platform requests | [ESP32-S3 and STM32H7 audit](simulation/simantic/capability-audit/README.md), [Simantic handoff](simulation/simantic/capability-audit/SIMANTIC-REQUESTS.md) |
-| Controller stages and physical construction | [Controller overview](docs/controller/README.md), [BOM](docs/controller/bom.md), [build guide](docs/controller/build-guide.md) |
-| Controller software and acceptance | [Firmware plan](docs/controller/firmware-plan.md), [validation](docs/controller/validation.md) |
-| Drone MCU outputs, dynamics and display | [Drone simulation plan](docs/drone-simulation.md) |
-| Record simulation and physical results separately | [Test template](docs/controller/test-record-template.md), [implementation records](docs/implementation-records/README.md) |
-| Revised schedule and course milestones | [Schedule status and workbook](outputs/palmpilot-fall-2026/README.md) |
-| Circuit reference and historical drawings | [Schematic index and scope labels](hardware/schematics/README.md) |
-| Simulation inventory and scope classification | [Simantic inventory guide](simulation/simantic/README.md) |
-| Original source material and older designs | [BOM provenance](docs/reference/README.md), [design archive](docs/archive/README.md) |
-
-Historical PDFs, circuit schedules and research preserve earlier design decisions. Aircraft parts in those records are not a shopping list or a later physical build phase. Controller instructions and the scope above take precedence.
+| System boundaries and command flow | [Architecture](docs/architecture.md) |
+| Controller build sequence | [Controller overview](docs/controller/README.md) |
+| Parts to order | [Controller BOM](docs/controller/bom.md) |
+| Pins and circuit connections | [Build guide](docs/controller/build-guide.md) |
+| Firmware implementation | [Firmware plan](docs/controller/firmware-plan.md) |
+| Simantic setup and remaining work | [Controller simulation plan](docs/controller/simantic-plan.md) |
+| Controller acceptance tests | [Validation checklist](docs/controller/validation.md) |
+| STM32H7, dynamics and display | [Drone simulation plan](docs/drone-simulation.md) |
+| Timeline and course milestones | [Gantt schedule](outputs/palmpilot-fall-2026/README.md) |
 
 ## Full implementation checkpoints
 
-Only check an implementation milestone when its exit criteria pass and link to a record in [implementation records](docs/implementation-records/README.md). Label evidence as simulation, physical prototype or integrated demonstration. Planned dates and written instructions are not completed tests.
+Check milestones when their exit criteria pass. Keep automated tests with the firmware and record concise results in the relevant pull request. Simulation and physical-controller checks are separate.
 
 ### Goal 1A — Simulate the controller first
 
@@ -105,17 +63,3 @@ Begin after the controller simulation exit criteria are met. Resolve missing req
 - [ ] **D2 — Output-driven mechanics:** decode MCU motor signals, compute forces/torques, integrate drone motion and return simulated sensor data to the MCU.
 - [ ] **D3 — Display and controller integration:** render the dynamics state and connect the qualified physical controller through the command bridge; provide explicit start, stop and reset controls.
 - [ ] **D4 — End-to-end qualification:** demonstrate individual axes and combined motion, loss/fault behavior and reproducible runs; save synchronized command, actuator and motion traces.
-
-No milestone requires aircraft assembly, physical motor tests or real flight. The old A0–A5 aircraft checkpoints are retired. [Aircraft integration](docs/aircraft-integration.md) now directs older links to the virtual-drone plan.
-
-## Repository maintenance
-
-Active controller instructions live in `docs/controller/`; drone simulation requirements live in `docs/drone-simulation.md`. Preserve schematic circuit revisions when changing wiring, and identify affected tests. Keep original source evidence distinguishable from the current implementation plan.
-
-Run the documentation and schematic consistency check from the repository root:
-
-```sh
-python3 tools/verify_schematic_package.py --paths README.md docs hardware/schematics simulation outputs
-```
-
-This checks local link targets and historical schematic structure; it does not validate electronics, firmware or simulation behavior. See the [Rev A regeneration instructions](hardware/schematics/rev-a/README.md#regenerate-for-review) when updating historical schematic exports.

@@ -36,7 +36,7 @@ requiring its own compatibility checks on ESP32-S3.
 | Framework/toolchain/BLE version | ESP-IDF baseline; exact versions and stack to pin at S0/S2 |
 | Controller firmware | Not implemented by this migration |
 | Full ESP schematic and wearable power | Pending; current guide is a bench pin plan |
-| Peripheral and BLE support | Use the current ESP32-S3 readiness record; complete driver/stack qualification remains open |
+| Peripheral and BLE support | Use the [Simantic plan](simantic-plan.md); complete driver/stack qualification remains open |
 | Host command schema | Proposed below; serialization and timing limits to freeze |
 
 ## 2. One-hand acquisition and diagnostics — FW-02
@@ -217,5 +217,3 @@ directly from gestures and label that drone-MCU validation.
   packet and host command specifications, and diagnostic instructions are saved.
 - [ ] The physical controller produces the same frozen command contract accepted
   in simulation, with measured freshness, latency and recovery behavior.
-- [ ] Optional trainer results, if any, are recorded separately; Pocket/PPM/ELRS
-  and a physical drone are not prerequisites for goal 1 or goal 2.

@@ -8,15 +8,13 @@ after one-hand acquisition works. This preserves BLE; no Wi-Fi/ESP-NOW migration
 is selected.
 
 The physical controller follows S0–S3. The later drone remains an STM32 virtual
-system whose motor/actuator outputs drive dynamics and display. No physical
-drone is planned. See the [migration](esp32-migration.md) and
-[complete-drone feasibility record](../implementation-records/2026-09-16_esp32-full-drone-feasibility.md).
+system whose motor/actuator outputs drive dynamics and display. See the [drone simulation plan](../drone-simulation.md) for the later phase.
 
 ## Current evidence and its scope
 
-**September 18 ADC follow-up:** [measured response, diagnosis and candidate fix](../implementation-records/2026-09-18_adc-transfer-diagnosis.md#candidate-fix-and-validation). An opt-in calibrated-state model passes 2480 public-driver voltage checks with a worst error of 3 mV and no fitted correction multiplier. It requires `CalibrationEfuse: efuse` in the platform. Full electrical behavior and release integration remain unqualified.
+**ADC support:** [Simantic PR #168](https://github.com/simantic-dev/renode-infrastructure/pull/168), ready for review, contains the implementation and detailed validation results. An opt-in calibrated-state model passes 2480 public-driver voltage checks with a worst error of 3 mV and no fitted correction multiplier. It requires `CalibrationEfuse: efuse` in the platform. Full electrical behavior and release integration remain unqualified.
 
-**Updated September 17, 2026: enough is available to start one-hand firmware;
+**Enough is available to start one-hand firmware;
 the complete controller stack is not yet qualified.**
 
 | Capability | Evidence / remaining work |
@@ -30,21 +28,10 @@ the complete controller stack is not yet qualified.**
 | Calibration storage / recovery | NVS persistence and watchdog recovery are not qualified. Successful boot does not prove watchdog behavior. |
 | ESP32 BLE / hub | Selected stack and two concurrent hand links remain untested. |
 
-The historical [ESP audit](../../simulation/simantic/capability-audit/esp32s3/README.md)
-records earlier diagnostic results. Its ADC probe omitted a SENS clock-enable bit;
-the corrected copy passes only with the ADC fix. Do not use that original test
-alone to diagnose driver readiness. The [September 17 readiness record](../implementation-records/2026-09-17_hand-controller-readiness.md)
-records the full ADC application and physical input tests.
-
 The working simulation uses the N8R2 platform; the physical bench board was
 identified as a Freenove ESP32-S3 WROOM with 8 MB flash and 8 MB PSRAM. PSRAM is
 disabled in the current validation firmware. Freeze the deployed memory settings
 when establishing the hand application's build configuration.
-
-Detailed September 17 rerun and timer-debug scripts/results remain in ignored
-`tmp/simantic/rerun-2026-09-17/` and `tmp/simantic/hand-setup-review/`; no bench
-artifacts were added back to the ADC PR. STM32 drone work is deferred while the
-hand controller is built and qualified.
 
 ## Coverage and ownership
 
@@ -172,13 +159,11 @@ wearable power design before permanent wearable assembly and C3 acceptance.
 Repeat on RIGHT; add the USB-powered ESP hub and physical serial bridge. Freeze
 operating limits from actual measurements and rerun related simulation cases.
 
-C7 establishes the physical controller command boundary. Optional historical
-Pocket/PPM wiring is outside the active controller assignments and milestones.
+C7 establishes the physical controller command boundary.
 
 ## Later — STM32 drone, dynamics and display
 
-Follow [drone simulation](../drone-simulation.md) and the
-[full-drone feasibility record](../implementation-records/2026-09-16_esp32-full-drone-feasibility.md).
+Follow the [drone simulation plan](../drone-simulation.md).
 The controller remains the delivery priority while authorized drone feasibility
 probes may proceed independently. Feed commands to the STM32 firmware, decode
 its motor/actuator outputs, advance dynamics and return sensor feedback on a
@@ -193,7 +178,6 @@ DMA or feedback behavior remains a separate unresolved dependency.
 - [ESP32-S3 ADC API and calibrated millivolts](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/adc.html).
 - [Selected Adafruit motion module](https://www.adafruit.com/product/5543).
 - [Official Simantic Python SDK](https://github.com/simantic-dev/pippy).
-- [ESP32-S3 / STM32H7 audit](../../simulation/simantic/capability-audit/README.md), retained with its original platform limitations.
 
 The next required firmware milestone is still **S0 for ESP32-S3**. No S0–S3 or
 C0–C7 checkbox is completed merely by selecting the replacement board.

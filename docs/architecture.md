@@ -2,13 +2,13 @@
 
 **Decision — September 16, 2026:** use **ESP32-S3 hands and hub**, with an **STM32H743 virtual drone candidate**. Physically build the controller only. The sequence is **controller simulation in Simantic → physical controller prototype → drone hardware/MCU simulation → mechanical simulation and screen display**. Drone feasibility tests may run now without marking controller milestones complete. The [project checkpoints](../README.md#full-implementation-checkpoints) govern execution.
 
-The original BOM and Rev A drawings are historical, including their superseded controller pins, onboard sensors and battery circuits. Active ESP32 parts and wiring are in the [controller guides](controller/README.md) and [migration record](controller/esp32-migration.md). No physical drone is part of the current deliverable.
+ESP32 parts and wiring are defined in the [controller guides](controller/README.md).
 
 ## Goal 1: a working controller
 
 Start with one simulated flex input and one ESP32-S3 firmware target. Expand to two hands with external motion sensors, enable logic and an ESP32-S3 hub. The bench target is ESP32-S3-DevKitC-1 with ESP32-S3-WROOM-1-N8R2, powered through USB. Validate commands in a host monitor before building the physical prototype.
 
-The physical controller uses the same validated application logic, with measured sensor calibration and actual BLE, power and wearable tests. C7 ends with reliable commands arriving at the computer and a demonstrated fault/recovery procedure. A Pocket radio, trainer buffer and physical flight controller are not required.
+The physical controller uses the same validated application logic, with measured sensor calibration and actual BLE, power and wearable tests. C7 ends with reliable commands arriving at the computer and a demonstrated fault/recovery procedure.
 
 ```mermaid
 flowchart LR
@@ -32,7 +32,7 @@ The hand nodes and hub are simulated during S0–S3 and physical during C0–C7.
 | Right ESP32-S3 | Independent five flex channels, external motion sensing and calibration | Same bench target; distinct hand identity |
 | ESP32-S3 hub | Validate both hands, calibration, freshness and bounds; send combined commands | Two-peer BLE and application firmware pending |
 | Host command bridge | Validate records and connection health; gate commands with operator controls; adapt to virtual drone input | USB-to-UART bench diagnostics; production protocol pending |
-| Simantic drone model | Execute flight-control firmware with required peripherals and feedback | STM32H743/KakuteH7 ArduCopter candidate; see [current assessment](implementation-records/2026-09-16_esp32-full-drone-feasibility.md) |
+| Simantic drone model | Execute flight-control firmware with required peripherals and feedback | STM32H743/KakuteH7 ArduCopter candidate; see [drone simulation plan](drone-simulation.md) |
 | Output adapter | Observe/decode actual simulated MCU outputs and map channels to virtual actuators | Signal protocol and API pending |
 | Dynamics model | Turn actuator outputs into thrust/torque, integrate rigid-body state and generate sensor feedback | Model, parameters and engine pending |
 | Display | Render dynamics state and show controller/simulation health | Implementation pending |
@@ -48,10 +48,10 @@ The display does not independently move the drone from a gesture. Every commande
 | Left enable / hub calibration | GPIO7 on the respective boards; filtered active-low button |
 | External motion sensors | One Adafruit #5543 LSM6DS3TR-C + LIS3MDL breakout per hand; SDA GPIO8, SCL GPIO9 |
 | Power | USB bench first; wearable charger/regulator, monitor and switch require a new design |
-| Battery measurement | GPIO10 reserved only; no inherited A6 divider or direct battery connection |
+| Battery measurement | GPIO10 reserved only; no direct battery connection |
 | USB / UART | Reserve GPIO19/20 for native USB and GPIO43/44 for UART0; use board USB-to-UART connector initially |
 
-Use the [controller build guide](controller/build-guide.md) for exact header pins and ADC limits. GPIO3 is avoided because it is a strapping pin. Board header positions are not GPIO numbers. The [old drawings](../hardware/schematics/README.md) cannot be used to wire ESP32; a new complete wearable schematic remains a checkpoint. Verify received board revisions before wiring.
+Use the [controller build guide](controller/build-guide.md) for exact header pins and ADC limits. GPIO3 is avoided because it is a strapping pin. Board header positions are not GPIO numbers. A complete ESP32-S3 wearable schematic remains a checkpoint. Verify received board revisions before wiring.
 
 ## Command and control contract
 
@@ -81,4 +81,4 @@ Freeze motor order, rotation, signal units, coordinate frames, simulation time s
 | Drone MCU/firmware and actuator output protocol | Reproducible boot, supported peripherals, command input and observable outputs |
 | Mechanical model, renderer and feedback fidelity | Declared model assumptions, reference scenarios, clock and coordinate tests |
 
-Record simulation and physical evidence separately in [implementation records](implementation-records/README.md). Diagnostic firmware has executed in the linked audits; production controller firmware, physical-controller qualification and the integrated drone demonstration remain pending.
+Keep automated checks with firmware and summarize their results in pull requests. Full controller qualification and the integrated drone demonstration remain pending.

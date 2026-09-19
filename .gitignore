@@ -6,7 +6,7 @@ dist/
 .idea/
 .vscode/
 
-# Local renders and regenerated download packages. Reviewed deliverables live in hardware/.
+# Local build, simulation and rendering artifacts.
 /tmp/
 /output/
 *.inspect.ndjson
@@ -14,6 +14,3 @@ __pycache__/
 *.py[cod]
 .venv/
 .venv-schematics/
-
-# Preserve deliberately saved bench evidence alongside its test record.
-!docs/implementation-records/**/*.log

@@ -1,4 +1,0 @@
-# PDF generation and JPEG/PNG embedding. The verifier uses only the standard library.
-# Compatible major versions; this file is not an exact environment lockfile.
-reportlab>=4.0,<5.0
-Pillow>=10.0,<13.0

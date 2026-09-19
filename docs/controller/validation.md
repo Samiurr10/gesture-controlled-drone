@@ -8,8 +8,7 @@ to a different ESP32-S3 build or fixture.
 
 Order: **S0–S3 ESP controller simulation → C0–C7 physical controller → later STM32
 virtual drone**. No physical drone is planned. Use the [bench plan](build-guide.md),
-[firmware packages](firmware-plan.md), [Simantic gates](simantic-plan.md) and
-[test record](test-record-template.md). Record limits before each run and retain
+[firmware packages](firmware-plan.md) and [Simantic gates](simantic-plan.md). Record limits before each run and retain
 captures; leave missing evidence open. A new reviewed ESP schematic/netlist and
 wearable power circuit are prerequisites for permanent assembly, not completed
 artifacts in this checklist.
@@ -57,7 +56,7 @@ firmware actuator outputs through dynamics to displayed movement.
 - [ ] **CTRL-002 — Unpowered wiring.** Remove all power and verify each new ESP
   connection: own 3V3 → flex → assigned GPIO, separate 47 kΩ/100 nF shunts to own
   GND. Verify connector numbering and external IMU power/bus connections. The
-  legacy Rev A wire list is not this board's continuity reference.
+  build guide is the continuity reference.
 
 ## C1 — One flex, USB powered
 
@@ -156,13 +155,3 @@ open until that power design and the actual assembly pass the following tests.
 - [ ] Rebuild, calibration, operator enable/stop/reset and deliberate recovery
   are reproducible from the archived procedure.
 - [ ] Accept the controller boundary for the later [STM32 virtual drone](../drone-simulation.md).
-  Pocket/PPM and physical aircraft/flight work are not prerequisites.
-
-## Retired physical-aircraft test ID
-
-**CTRL-090** formerly described a physical receiver/flight-controller bench and
-later flight work. It is retired from the active acceptance checklist because
-no physical drone is being built. Preserve old records under their original
-scope if any exist; use the separate [drone simulation acceptance plan](../drone-simulation.md)
-for modeled drone inputs, MCU outputs, dynamics and on-screen movement. A
-controller test alone cannot pass that second-goal integration.

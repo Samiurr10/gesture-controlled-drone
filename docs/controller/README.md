@@ -24,8 +24,7 @@ BLE remains the selected topology; Wi-Fi/ESP-NOW is not part of this migration.
 | Incremental hardware | [Controller BOM](bom.md) |
 | Exact proposed bench pin assignments | [Build guide](build-guide.md) |
 | Drivers, calibration, BLE and host contract | [Firmware plan](firmware-plan.md) |
-| Acceptance and evidence | [Validation](validation.md), [record template](test-record-template.md) |
-| Current runtime findings | [ESP32-S3 / STM32H7 audit](../../simulation/simantic/capability-audit/README.md) |
+| Acceptance and evidence | [Validation](validation.md) |
 
 ## Build sequence
 
@@ -44,17 +43,12 @@ BLE remains the selected topology; Wi-Fi/ESP-NOW is not part of this migration.
 | C6 | Controller/computer bridge | Independently decoded commands and disconnection/recovery tests |
 | C7 | Physical controller qualification | Complete applicable test records, firmware/configuration archive |
 
-## Current limits and historical material
+## Remaining design work
 
 - ESP32-S3 is the sole controller platform. The ADC and timer diagnostic results
   support starting one-hand firmware; full controller qualification is pending.
-- The [Rev A schematic package](../../hardware/schematics/README.md) contains
-  superseded wiring. Its old analog/digital labels, factory battery divider, charger,
-  regulator-EN switch and onboard IMU assumptions are superseded for this build.
 - The new build guide is a sourced **bench pin plan**, not a newly verified full
   ESP schematic. A revised schematic/netlist and wearable power design are
   required before permanent assembly and C3 qualification.
 - Start with USB power. There is no assumed BAT socket, LiPo charger or factory
   battery measurement on DevKitC-1. GPIO10 is reserved, not wired to a battery.
-- Pocket/PPM remains optional historical work. It does not gate the ESP controller
-  or the later STM32 drone simulation.

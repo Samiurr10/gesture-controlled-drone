@@ -60,8 +60,4 @@ that design review; its wiring must follow the new power design.
 
 ## Scope of purchases
 
-Buy ESP32-S3 controller parts from this list. The trainer buffer/Pocket and all
-aircraft hardware are outside the active controller purchase list. The
-[original source BOM](../reference/README.md) and
-[Rev A package](../../hardware/schematics/README.md) are archived documents and
-do not define current controller purchases or wiring.
+This list covers the ESP32-S3 hand controller and hub. Drone hardware is simulated and does not need to be purchased.

@@ -1,9 +1,8 @@
 # ESP32-S3 controller bench build guide
 
-**Migration pin plan — September 16, 2026.** Use ESP32-S3-DevKitC-1-N8R2 as the
+**ESP32-S3 bench pin plan.** Use ESP32-S3-DevKitC-1-N8R2 as the
 working board, USB powered at first. Simulate and validate drivers before the
-physical C0–C7 stages. This document supplies the new bench assignments; the
-historical Rev A PDF is not the schematic for this board. A reviewed ESP schematic,
+physical C0–C7 stages. This document supplies the bench assignments. A reviewed ESP schematic,
 connection list and wearable power circuit remain required before permanent
 assembly.
 
@@ -74,7 +73,7 @@ verify continuity instead of trusting wire colors.
 | EF-L1-5 | Signal node | 100 nF lead 1 |
 | EF-L1-6 | 100 nF lead 2 | LEFT GND |
 
-These `EF-` labels identify this new bench plan, not the old Rev A wire IDs.
+The `EF-` labels identify the connections in this bench plan.
 Check resistance/continuity unpowered. Then power through the board's
 **USB-to-UART port**, with a data cable, and measure 3V3 and the signal node.
 At exactly 3.300 V, 25 kΩ flex resistance gives about 2.154 V and 100 kΩ gives
@@ -170,11 +169,3 @@ are actually qualified.
 - **C7:** complete [validation](validation.md) and archive actual firmware,
   calibration, transport, measurements and wiring revision. Drone mechanics and
   rendering follow controller completion.
-
-## Superseded wiring
-
-Use the GPIO assignments above and the received board pinout. The historical
-[Rev A PDF/SVG/netlist](../../hardware/schematics/README.md) remains a record of
-the superseded design. Its battery/charger/EN and onboard IMU connections do not
-apply to these ESP boards. Optional PPM/Pocket circuitry has no assigned ESP
-pins in this baseline and is outside C7.

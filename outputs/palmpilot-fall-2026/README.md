@@ -1,6 +1,6 @@
 # Fall 2026 project plan
 
-**Controller baseline updated September 16:** ESP32-S3 replaces the nRF52840 hands and hub. The workbook's generic S0–S3/C0–C7/D1–D4 milestones remain applicable. Use the [ESP32 migration checkpoints](../../docs/controller/esp32-migration.md) for the new firmware, external sensors, schematic and wearable power work. Blank dates and unchecked milestones remain pending; this board change does not establish completed simulation.
+**Controller baseline: ESP32-S3 hands and hub.** The workbook follows S0–S3/C0–C7/D1–D4. Use the [controller simulation plan](../../docs/controller/simantic-plan.md) for current firmware, sensor and power-design dependencies. Blank dates and unchecked milestones remain pending.
 
 **Scope revised September 16, 2026:** fabricate the hand controller only. The
 drone's hardware and microcontroller will be simulated in Simantic; their output
@@ -17,8 +17,7 @@ in this order:
 3. **D1–D4:** simulate the drone hardware/MCU, use its actuator outputs to drive
    mechanics, integrate the screen display and qualify the complete demo.
 
-The physical controller connects through the hub/computer interface. Pocket,
-PPM trainer and ELRS work is optional and is outside the required sequence.
+The physical controller connects through the hub/computer interface.
 Physical drone procurement, fabrication, assembly, propulsion tests and flight
 are outside the project scope. S0 records the Simantic version and verifies
 first-hand peripheral models. S2 verifies both-hand and BLE modeling; S3 proves
