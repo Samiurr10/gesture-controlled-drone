@@ -139,6 +139,7 @@ README stating what it does and does not establish. They are **not** part of
 | `probes/fpu` | first Xtensa FPU instruction aborts the engine |
 | `probes/reset` | `esp_restart()` aborts the engine |
 | `probes/nvs` | `nvs_erase_key` never returns in a multi-task app |
+| `probes/gptimer` | timer group, **fixed** — pass `stock` to see the old hang |
 
 `stall N` skips N acquisition sweeps. It is a deliberate fault-injection hook
 for the FW-04 stalled-acquisition case, not production behavior.
@@ -154,12 +155,11 @@ for the FW-04 stalled-acquisition case, not production behavior.
   sampled data by a full query interval.
 - **Never write flash from the live control path.** A real flash write suspends
   the scheduler; `cal save` and `cal erase` are refused while `permitted`.
-- **The task watchdog cannot fire here.** TWDT is Timer-Group-backed and TIMG
-  has no execution behavior in this model; `ESP_TASK_WDT_USE_ESP_TIMER` is a
-  hidden symbol forced off for ESP32-S3, so the backend cannot be swapped. The
-  feed discipline is verified through a counter; timeout, panic and reset are
-  physical-only at C2.
-- **Do not use GPTimer.** `gptimer_*` setup returns `ESP_OK`, but no alarm
+- **The interrupt watchdog is off in simulation** (`CONFIG_ESP_INT_WDT=n`). A
+  working timer group makes it expire at 300 ms on healthy firmware. This is a
+  divergence from the production configuration and production must re-enable it.
+- The timer group is fixed by a **local overlay, not the shipped engine**. Hand
+  tests pass `timg=True`; without it GPTimer hangs and the watchdog cannot fire. `gptimer_*` setup returns `ESP_OK`, but no alarm
   callbacks fire and `gptimer_get_raw_count` hangs — a confirmed model gap in
   `Timers.ESP32C3_Timg`. Use `esp_timer` (SYSTIMER-backed), which is verified.
 - The platform models **two CPU cores** while our `sdkconfig` sets

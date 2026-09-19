@@ -44,7 +44,7 @@ def command(sim, line, kind, timeout=6.0, step=0.05):
 
 
 imu_state.reset()
-with PalmPilotSim(i2c=FIXTURES) as sim:
+with PalmPilotSim(i2c=FIXTURES, timg=True) as sim:
     sim.set_enable(False)
     sim.wait_ready(timeout=5.0)
     info = next(r for r in sim.records() if r.get("type") == "info")
@@ -133,7 +133,8 @@ with PalmPilotSim(i2c=FIXTURES) as sim:
 print("\nwrong sensor at the expected address (separate boot):", flush=True)
 imu_state.reset()
 imu_state.whoami_accel_gyro = 0x69          # some other device answering 0x6A
-with PalmPilotSim(i2c=FIXTURES, out=Path("tmp/palmpilot/hand/identity")) as sim:
+with PalmPilotSim(i2c=FIXTURES, timg=True,
+                  out=Path("tmp/palmpilot/hand/identity")) as sim:
     sim.set_enable(False)
     sim.wait_ready(timeout=5.0)
     sim.run_for(0.2)

@@ -10,3 +10,13 @@ CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y
 CONFIG_FREERTOS_UNICORE=y
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=6144
 
+# Interrupt watchdog OFF. It measures how long interrupts stay disabled, and a
+# virtual-time emulator cannot represent that faithfully: with a working timer
+# group model it expires at its designed 300 ms even though the firmware is
+# healthy, panics, and the resulting reset aborts the engine.
+#
+# SIMULATION-ONLY DIVERGENCE. Production must re-enable this; it is a real
+# safety net on silicon. Recorded so the deployed configuration is never
+# assumed to match what was tested here.
+CONFIG_ESP_INT_WDT=n
+

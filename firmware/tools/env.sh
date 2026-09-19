@@ -28,6 +28,7 @@ export PALMPILOT_SIM_PYTHON="$PALMPILOT_ROOT/.venv-simantic/bin/python"
 export PALMPILOT_PLATFORM="$PALMPILOT_ROOT/tmp/simantic/audit/esp32s3/ESP32-S3-WROOM-1-N8R2.repl"
 export PALMPILOT_ROM="$PALMPILOT_ROOT/tmp/simantic/esp-idf-tools/esp32s3_rev0_rom.bin"
 export PALMPILOT_ADC_OVERLAY="$PALMPILOT_ROOT/tmp/simantic/adc-s3-validation/repro/model/bin/Debug/net10.0/S3AdcUnderTest.dll"
+export PALMPILOT_TIMG_OVERLAY="$PALMPILOT_ROOT/tmp/simantic/timg-overlay/bin/Debug/net10.0/TimgUnderTest.dll"
 export PALMPILOT_IMAGE_PACKER="$PALMPILOT_ROOT/tmp/simantic/audit/source-review/esp32s3_build_image.py"
 
 # --- Build output root (gitignored) ------------------------------------------

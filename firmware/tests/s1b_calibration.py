@@ -61,7 +61,7 @@ def capture(sim, end, timeout=6.0):
 
 
 imu_state.reset()
-with PalmPilotSim(i2c=FIXTURES) as sim:
+with PalmPilotSim(i2c=FIXTURES, timg=True) as sim:
     sim.set_enable(False)
     all_flex(sim, EXTENDED_UV)
     sim.wait_ready(timeout=5.0)

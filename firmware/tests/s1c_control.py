@@ -77,7 +77,7 @@ def calibrate(sim):
 
 
 imu_state.reset()
-with PalmPilotSim(i2c=FIXTURES) as sim:
+with PalmPilotSim(i2c=FIXTURES, timg=True) as sim:
     # ENABLE is pressed before the firmware ever runs.
     sim.set_enable(True)
     set_all(sim, EXTENDED_UV, settle=0.0)

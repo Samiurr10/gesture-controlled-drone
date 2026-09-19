@@ -38,6 +38,14 @@ ENABLE_GPIO = 7          # LEFT hand ENABLE / HUB CALIBRATE, active low
 # routes SDA/SCL to GPIO8/9 through the GPIO matrix; the model does not
 # simulate that routing, so pin selection is NOT covered by these tests.
 I2C_BUS = "i2c0"
+
+# Timer-group interrupt sources on ESP32-S3, counted from
+# ETS_TIMER1_INTR_SOURCE = 48 in soc/interrupts.h and anchored against the
+# platform's own systimer wiring (TARGET0 = 57).
+TIMG_IRQ = {
+    "timg0": {0: 50, 1: 52},        # T0 alarm, watchdog
+    "timg1": {0: 53, 1: 55},
+}
 BATTERY_GPIO = 10        # reserved, must stay disconnected
 I2C_SDA_GPIO, I2C_SCL_GPIO = 8, 9
 LSM6DS3TRC_ADDRESS, LIS3MDL_ADDRESS = 0x6A, 0x1C
@@ -52,7 +60,11 @@ class PalmPilotSim:
     """Context manager wrapping simantic.Sim with the PalmPilot fixtures."""
 
     def __init__(self, sim_elf=None, out=None, platform=None, adc=True,
-                 uart="uart0", show_logs=False, scenario=None, i2c=None):
+                 uart="uart0", show_logs=False, scenario=None, i2c=None,
+                 timg=False):
+        # timg=True swaps in the timer-group model under development and wires
+        # its IRQ lines, which the stock platform leaves unconnected.
+        self.timg = timg
         # i2c maps a 7-bit address to a ScriptedI2cSlave script, e.g.
         # {0x6A: "firmware/tests/fixtures/lsm6ds3trc.py"}. The scripts run in
         # this interpreter, so a test mutates their shared state directly.
@@ -77,6 +89,27 @@ class PalmPilotSim:
 
         platform = self.platform
         platform_text = platform.read_text()
+
+        if self.timg:
+            import clr
+            from Antmicro.Renode.Utilities import TypeManager
+            overlay = os.environ["PALMPILOT_TIMG_OVERLAY"]
+            clr.AddReference(overlay)
+            if not TypeManager.Instance.ScanFile(overlay):
+                raise RuntimeError(f"TIMG overlay type scan failed: {overlay}")
+            lines = []
+            for line in platform_text.split("\n"):
+                stripped = line.strip()
+                name = stripped.split(":", 1)[0] if ":" in stripped else ""
+                if name in TIMG_IRQ and "Timers.ESP32C3_Timg" in line:
+                    lines.append(line.replace("Timers.ESP32C3_Timg",
+                                              "TimgUnderTest.ESP32C3_Timg"))
+                    for index, source in sorted(TIMG_IRQ[name].items()):
+                        lines.append(f"    {index} -> intmatrix@{source} "
+                                     f"| intmatrix1@{source}")
+                else:
+                    lines.append(line)
+            platform_text = "\n".join(lines)
 
         if self.i2c:
             # The fixture scripts import each other (imu_state), so their
@@ -104,7 +137,7 @@ class PalmPilotSim:
             platform_text = platform_text.replace(
                 "Miscellaneous.ESP32S3_Sens", "AdcUnderTest.ESP32S3_Sens")
 
-        if self.adc or self.i2c:
+        if self.adc or self.i2c or self.timg:
             self.out.mkdir(parents=True, exist_ok=True)
             platform = self.out / "platform.repl"
             platform.write_text(platform_text)

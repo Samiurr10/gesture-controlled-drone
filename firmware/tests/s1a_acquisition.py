@@ -44,7 +44,7 @@ def sample(sim):
 
 
 imu_state.reset()
-with PalmPilotSim(i2c=FIXTURES) as sim:
+with PalmPilotSim(i2c=FIXTURES, timg=True) as sim:
     print("boot and identity:", flush=True)
     sim.set_enable(False)                      # released before anything else
     ready = sim.wait_ready(timeout=5.0)

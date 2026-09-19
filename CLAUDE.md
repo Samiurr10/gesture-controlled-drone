@@ -139,7 +139,8 @@ Do not re-litigate these; they are measured, with evidence in
 | NVS read + `set_blob` | **WORKS** | init, open, get, set and commit all return; 29 consecutive saves pass |
 | **NVS `erase_key`** | **BROKEN — hangs** | never returns in a multi-task app; no error, no panic, silent for 60+ simulated seconds. Probe: `firmware/probes/nvs` |
 | **`esp_restart`** | **BROKEN — engine aborts** | same "Collection was modified" error as the FPU gap. Blocks reboot persistence and all watchdog-recovery testing. Probe: `firmware/probes/reset` |
-| **Task watchdog (TWDT)** | **CANNOT FIRE** | TIMG-backed, and TIMG has no execution behavior. `ESP_TASK_WDT_USE_ESP_TIMER` is hidden and forced off for ESP32-S3, so the backend cannot be swapped. Feed discipline is verifiable; timeout/panic/reset are not |
+| Task watchdog (TWDT) | **FIXED (local overlay)** | now fires with the timer-group model; `firmware/tests/s1h_watchdog.py` asserts the real timeout. Panic/reset after a trip remain blocked by the reset gap |
+| **Interrupt watchdog (IWDT)** | **DISABLED IN SIM** | a working timer group makes it expire at 300 ms on healthy firmware, panicking and resetting. `CONFIG_ESP_INT_WDT=n` is a **simulation-only divergence**; production must re-enable it |
 | ESP32 BLE, two concurrent links | **UNQUALIFIED** | Nordic BLE passes do **not** transfer |
 | ADC2, DMA/continuous, ADC interrupts | **OUT OF SCOPE** | not modeled |
 
@@ -211,7 +212,6 @@ settling interval (50 ms provisional), filter/deadband/slew values.
 - **No invented battery data.** Bench firmware reports
   *"USB bench power; battery unavailable"*. Never synthesize a voltage from a
   floating GPIO10.
-- **No GPTimer** in controller firmware while the TIMG model gap stands.
 - **No floating point anywhere on the control path.** Fixed-point milli-units
   (0–1000). See the [FPU record](firmware/probes/fpu/README.md).
 - **Do not pace a periodic task with `vTaskDelay`** — use `esp_timer`.
@@ -270,6 +270,7 @@ firmware/                    ACTIVE firmware workspace
   probes/fpu/                FPU-gap probe and its finding
   probes/reset/              esp_restart gap
   probes/nvs/                NVS erase gap
+  probes/gptimer/            timer-group fix and its before/after
 simulation/simantic/
   README.md                  simulation scope
   hardware-validation/esp32s3-adc/   ADC reference app, runs on silicon and sim
@@ -295,15 +296,17 @@ this session owns the repository. If concurrent edits reappear, stop and check
 `firmware/apps/hand` implements S1 acquisition, calibration, the external
 motion module, gravity-referenced attitude mapping, the control state machine
 and calibration persistence. `sh firmware/tests/run_all.sh` runs every suite;
-**179 checks across 9 suites pass** as of 2026-09-18.
+**183 checks across 9 suites pass** as of 2026-09-19, against the fixed
+timer-group model.
 
 The hand→hub packet payload is frozen in `firmware/apps/hand/main/packet.h`
 (59 bytes, little-endian, versioned, CRC-32) and decoded independently in
 `firmware/tests/s1g_packet.py`.
 
 No S or C milestone is claimed. Still open: the BLE stack and transport
-binding, and the right-hand and hub targets. The watchdog is implemented with
-FW-06's service discipline, but its timeout and reset are physical-only. Persistence is implemented
+binding, and the right-hand and hub targets. The watchdog is implemented with FW-06's service
+discipline and its timeout is now exercised; only the panic and reset after a
+trip remain physical-only. Persistence is implemented
 but **not qualified** — reboot restore, erase and on-device CRC rejection are
 all blocked by model gaps and are physical-only at C2/CTRL-022.
 
