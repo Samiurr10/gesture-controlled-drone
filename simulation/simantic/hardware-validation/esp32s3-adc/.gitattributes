@@ -1,0 +1,2 @@
+# Preserve the CRLF byte stream captured from firmware UART.
+evidence/**/uart.txt whitespace=cr-at-eol

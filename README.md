@@ -28,6 +28,8 @@ The physical project is the controller. The drone remains virtual.
 | Parts to order | [Controller BOM](docs/controller/bom.md) |
 | Pins and circuit connections | [Build guide](docs/controller/build-guide.md) |
 | Firmware implementation | [Firmware plan](docs/controller/firmware-plan.md) |
+| How gestures map to drone commands | [Gesture mapping](docs/controller/gesture-mapping.md) |
+| Controller firmware source and tests | [Firmware workspace](firmware/README.md) |
 | Simantic setup and remaining work | [Controller simulation plan](docs/controller/simantic-plan.md) |
 | Controller acceptance tests | [Validation checklist](docs/controller/validation.md) |
 | STM32H7, dynamics and display | [Drone simulation plan](docs/drone-simulation.md) |

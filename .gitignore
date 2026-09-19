@@ -10,7 +10,13 @@ dist/
 /tmp/
 /output/
 *.inspect.ndjson
+
+# Simulator evidence dumps are regenerable by re-running the harness, so they
+# are kept locally but not committed. Physical bench captures ARE committed:
+# they are measurements of real hardware and cannot be regenerated.
+simulation/simantic/hardware-validation/*/evidence/simantic-*/
 __pycache__/
 *.py[cod]
 .venv/
 .venv-schematics/
+.venv-simantic/

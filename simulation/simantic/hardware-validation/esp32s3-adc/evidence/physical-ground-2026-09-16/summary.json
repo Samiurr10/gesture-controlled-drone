@@ -1,0 +1,61 @@
+{
+  "board": "Freenove ESP32-S3 WROOM",
+  "silicon_revision": "v0.2",
+  "flash_mb": 8,
+  "psram_mb": 8,
+  "psram_enabled": false,
+  "input": "User-confirmed header 1 (GPIO1 / ADC1 channel 0) directly connected to GND",
+  "firmware_elf_sha256": "2d73a7965812ac26e164f993271bd960769ae1ad03bc12656418baf7f1d7e881",
+  "physical_samples": 256,
+  "passed_conversion_status": true,
+  "ground_smoke_threshold_counts": 64,
+  "analog_accuracy_qualified": false,
+  "timing_qualified": false,
+  "rows": [
+    {
+      "attenuation": 0,
+      "samples": 64,
+      "raw_min": 0,
+      "raw_max": 45,
+      "raw_mean": 4.78125,
+      "read_us_min": 48,
+      "read_us_max": 300,
+      "power_field": 3,
+      "clock_enabled": true
+    },
+    {
+      "attenuation": 1,
+      "samples": 64,
+      "raw_min": 0,
+      "raw_max": 19,
+      "raw_mean": 3.109375,
+      "read_us_min": 48,
+      "read_us_max": 301,
+      "power_field": 3,
+      "clock_enabled": true
+    },
+    {
+      "attenuation": 2,
+      "samples": 64,
+      "raw_min": 0,
+      "raw_max": 9,
+      "raw_mean": 1.40625,
+      "read_us_min": 48,
+      "read_us_max": 301,
+      "power_field": 3,
+      "clock_enabled": true
+    },
+    {
+      "attenuation": 3,
+      "samples": 64,
+      "raw_min": 0,
+      "raw_max": 6,
+      "raw_mean": 0.15625,
+      "read_us_min": 47,
+      "read_us_max": 301,
+      "power_field": 3,
+      "clock_enabled": true
+    }
+  ],
+  "communication_note": "USB bridge enumerated but was silent across software/manual resets; USB unplug/replug restored startup and command response. Root cause not established. No firmware changes needed."
+}

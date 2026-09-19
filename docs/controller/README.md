@@ -24,6 +24,8 @@ BLE remains the selected topology; Wi-Fi/ESP-NOW is not part of this migration.
 | Incremental hardware | [Controller BOM](bom.md) |
 | Exact proposed bench pin assignments | [Build guide](build-guide.md) |
 | Drivers, calibration, BLE and host contract | [Firmware plan](firmware-plan.md) |
+| Gesture table, axes and safety interlocks | [Gesture mapping](gesture-mapping.md) |
+| Firmware source, build and simulation tests | [Firmware workspace](../../firmware/README.md) |
 | Acceptance and evidence | [Validation](validation.md) |
 
 ## Build sequence
