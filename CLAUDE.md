@@ -139,7 +139,7 @@ Do not re-litigate these; they are measured, with evidence in
 | NVS read + `set_blob` | **WORKS** | init, open, get, set and commit all return; 29 consecutive saves pass |
 | **NVS `erase_key`** | **BROKEN — hangs** | never returns in a multi-task app; no error, no panic, silent for 60+ simulated seconds. Probe: `firmware/probes/nvs` |
 | **`esp_restart`** | **BROKEN — engine aborts** | same "Collection was modified" error as the FPU gap. Blocks reboot persistence and all watchdog-recovery testing. Probe: `firmware/probes/reset` |
-| Watchdog recovery | **UNTESTABLE HERE** | a watchdog reset is a reset; detection could be tested, recovery cannot |
+| **Task watchdog (TWDT)** | **CANNOT FIRE** | TIMG-backed, and TIMG has no execution behavior. `ESP_TASK_WDT_USE_ESP_TIMER` is hidden and forced off for ESP32-S3, so the backend cannot be swapped. Feed discipline is verifiable; timeout/panic/reset are not |
 | ESP32 BLE, two concurrent links | **UNQUALIFIED** | Nordic BLE passes do **not** transfer |
 | ADC2, DMA/continuous, ADC interrupts | **OUT OF SCOPE** | not modeled |
 
@@ -295,14 +295,15 @@ this session owns the repository. If concurrent edits reappear, stop and check
 `firmware/apps/hand` implements S1 acquisition, calibration, the external
 motion module, gravity-referenced attitude mapping, the control state machine
 and calibration persistence. `sh firmware/tests/run_all.sh` runs every suite;
-**143 checks across 7 suites pass** as of 2026-09-18.
+**179 checks across 9 suites pass** as of 2026-09-18.
 
 The hand→hub packet payload is frozen in `firmware/apps/hand/main/packet.h`
 (59 bytes, little-endian, versioned, CRC-32) and decoded independently in
 `firmware/tests/s1g_packet.py`.
 
-No S or C milestone is claimed. Still open: the watchdog, the BLE stack and
-transport binding, and the right-hand/hub targets. Persistence is implemented
+No S or C milestone is claimed. Still open: the BLE stack and transport
+binding, and the right-hand and hub targets. The watchdog is implemented with
+FW-06's service discipline, but its timeout and reset are physical-only. Persistence is implemented
 but **not qualified** — reboot restore, erase and on-device CRC rejection are
 all blocked by model gaps and are physical-only at C2/CTRL-022.
 

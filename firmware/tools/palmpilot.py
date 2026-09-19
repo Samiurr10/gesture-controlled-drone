@@ -95,6 +95,14 @@ def project_name(app: Path) -> str:
 def cmd_build(env: dict, app: Path) -> Path:
     out = build_dir(env, app)
     out.mkdir(parents=True, exist_ok=True)
+    # idf.py applies sdkconfig.defaults only when generating a fresh sdkconfig,
+    # so an edited defaults file is silently ignored and the build keeps the
+    # old configuration. Regenerate when the defaults are newer.
+    defaults, generated = app / "sdkconfig.defaults", out / "sdkconfig"
+    if (defaults.exists() and generated.exists()
+            and defaults.stat().st_mtime > generated.stat().st_mtime):
+        print(f"+ sdkconfig.defaults changed — regenerating {generated}")
+        generated.replace(generated.with_suffix(".superseded"))
     run([f"{env['IDF_PYTHON_ENV_PATH']}/bin/python", f"{env['IDF_PATH']}/tools/idf.py",
          "-C", str(app), "-B", str(out), "-D", f"SDKCONFIG={out}/sdkconfig",
          "-D", "IDF_TARGET=esp32s3", "build"], env)

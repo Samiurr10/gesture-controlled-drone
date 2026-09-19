@@ -12,6 +12,7 @@
 #include "driver/uart.h"
 #include "esp_chip_info.h"
 #include "esp_system.h"
+#include "esp_task_wdt.h"
 #include "esp_timer.h"
 #include "motion.h"
 #include "esp_random.h"
@@ -34,6 +35,10 @@
 // PROVISIONAL. Five missed sweeps at the 100 Hz sample rate. FW-04 leaves the
 // real freshness limit UNSET pending measurement.
 #define SAMPLE_STALE_LIMIT_US 50000
+
+// PROVISIONAL watchdog period. Long enough that ordinary jitter cannot trip it,
+// short enough that a stalled loop is caught quickly. UNSET until measured.
+#define WATCHDOG_TIMEOUT_MS 1000
 
 static SemaphoreHandle_t s_tick;
 static struct hand_sample s_latest;
@@ -75,6 +80,16 @@ static int s_out_throttle;
 // detectable (FW-04).
 static uint32_t s_session;
 static uint32_t s_packet_sequence;
+
+// Watchdog bookkeeping. The count is incremented from the timeout handler, so
+// a trip is observable without requiring the reset that this platform cannot
+// execute (firmware/probes/reset).
+static volatile uint32_t s_watchdog_trips;
+// Counts services. The watchdog hardware cannot fire in this model (TIMG has
+// no execution behavior), so the feed count is how the FW-06 rule - service
+// only after real work - is actually verified.
+static volatile uint32_t s_watchdog_feeds;
+static bool s_watchdog_ready;
 static volatile uint32_t s_stall_sweeps;  // deliberate acquisition stall, test hook
 static SemaphoreHandle_t s_control_tick;
 static volatile uint32_t s_control_updates;
@@ -190,6 +205,12 @@ static void print_control(void)
     fflush(stdout);
 }
 
+// Overrides the weak ESP-IDF symbol. Runs in ISR context: count only.
+void esp_task_wdt_isr_user_handler(void)
+{
+    ++s_watchdog_trips;
+}
+
 static void on_control_tick(void *argument)
 {
     (void)argument;
@@ -253,8 +274,21 @@ static void control_task(void *argument)
             .enable = sample.enable_raw,
             .throttle_milli = s_throttle_milli,
         };
+        if (!s_watchdog_ready) {
+            // Subscribe from inside the task that must prove liveness.
+            s_watchdog_ready = esp_task_wdt_add(NULL) == ESP_OK;
+        }
         hand_control_update(&s_control, &inputs);
         ++s_control_updates;
+
+        // FW-06: feed only after the loop has actually done its work on fresh
+        // data - acquisition progressed, validation ran and the output stage
+        // was updated. A timer-driven feed would prove only that the timer
+        // still ticks, which is exactly what a watchdog must not accept.
+        if (s_watchdog_ready && inputs.started && inputs.fresh) {
+            esp_task_wdt_reset();
+            ++s_watchdog_feeds;
+        }
     }
 }
 
@@ -403,8 +437,11 @@ static void emit_stats(void)
     struct hand_sample sample;
     copy_latest(&sample);
     printf("{\"type\":\"stats\",\"ticks\":%" PRIu32 ",\"acq\":%" PRIu32
-           ",\"overruns\":%" PRIu32 ",\"uptime_us\":%" PRId64 "}\n",
-           s_ticks, sample.acquisition, s_overruns, esp_timer_get_time());
+           ",\"overruns\":%" PRIu32 ",\"uptime_us\":%" PRId64
+           ",\"watchdog_trips\":%" PRIu32 ",\"watchdog_feeds\":%" PRIu32
+           ",\"watchdog\":%d}\n",
+           s_ticks, sample.acquisition, s_overruns, esp_timer_get_time(),
+           s_watchdog_trips, s_watchdog_feeds, s_watchdog_ready ? 1 : 0);
 }
 
 static void handle_command(const char *line)
@@ -585,6 +622,26 @@ void app_main(void)
         printf("{\"type\":\"error\",\"op\":\"control_task\"}\n");
         return;
     }
+    // The ESP32-S3 task watchdog is backed by the Timer Group watchdog, which
+    // has no execution behavior in this model, so it can never fire here. The
+    // subscription and the feed discipline are still correct firmware and are
+    // verified through the feed counter; the timeout, the panic and the reset
+    // are physical-only at C2 (firmware/probes/reset).
+    // PRODUCTION MUST ENABLE trigger_panic.
+    const esp_task_wdt_config_t watchdog = {
+        .timeout_ms = WATCHDOG_TIMEOUT_MS,
+        .idle_core_mask = 0,
+        .trigger_panic = false,
+    };
+    esp_err_t watchdog_status = esp_task_wdt_reconfigure(&watchdog);
+    if (watchdog_status == ESP_ERR_INVALID_STATE) {
+        watchdog_status = esp_task_wdt_init(&watchdog);
+    }
+    if (watchdog_status != ESP_OK) {
+        printf("{\"type\":\"error\",\"op\":\"watchdog_init\",\"status\":%d}\n",
+               watchdog_status);
+    }
+
     const esp_timer_create_args_t control_timer = {
         .callback = on_control_tick, .name = "ctl_tick",
         .dispatch_method = ESP_TIMER_TASK,

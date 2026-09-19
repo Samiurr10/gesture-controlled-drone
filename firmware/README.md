@@ -122,6 +122,7 @@ sh firmware/tests/run_all.sh          # every suite
 | `tests/s1e_attitude.py` | tilt mapping, deadband, saturation, slew, PRECISION, HOLD |
 | `tests/s1f_persistence.py` | NVS save and reload; reboot/erase/CRC are blocked |
 | `tests/s1g_packet.py` | hand→hub packet framing, counters, bounds, frozen-sampling case |
+| `tests/s1h_watchdog.py` | watchdog serviced only after real work; timeout is blocked |
 
 Motion stimulus comes from `tests/fixtures/`: two register fixtures plus a
 shared `imu_state` module a test mutates directly. They are register fixtures,
@@ -153,6 +154,11 @@ for the FW-04 stalled-acquisition case, not production behavior.
   sampled data by a full query interval.
 - **Never write flash from the live control path.** A real flash write suspends
   the scheduler; `cal save` and `cal erase` are refused while `permitted`.
+- **The task watchdog cannot fire here.** TWDT is Timer-Group-backed and TIMG
+  has no execution behavior in this model; `ESP_TASK_WDT_USE_ESP_TIMER` is a
+  hidden symbol forced off for ESP32-S3, so the backend cannot be swapped. The
+  feed discipline is verified through a counter; timeout, panic and reset are
+  physical-only at C2.
 - **Do not use GPTimer.** `gptimer_*` setup returns `ESP_OK`, but no alarm
   callbacks fire and `gptimer_get_raw_count` hangs — a confirmed model gap in
   `Timers.ESP32C3_Timg`. Use `esp_timer` (SYSTIMER-backed), which is verified.
