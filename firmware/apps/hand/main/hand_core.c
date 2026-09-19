@@ -77,7 +77,9 @@ void hand_calibration_reset(struct hand_calibration *c, enum hand_side side)
     c->side = (uint8_t)side;
     c->extended_captured = false;
     c->curled_captured = false;
+    c->motion_captured = false;
     c->valid = false;
+    for (int axis = 0; axis < 3; ++axis) c->neutral_ratio[axis] = 0;
     for (int i = 0; i < HAND_FLEX_COUNT; ++i) {
         c->flex[i].extended_raw = -1;
         c->flex[i].curled_raw = -1;
@@ -113,7 +115,7 @@ enum calibration_result hand_calibration_store(
 enum calibration_result hand_calibration_finish(struct hand_calibration *c)
 {
     c->valid = false;
-    if (!c->extended_captured || !c->curled_captured) {
+    if (!c->extended_captured || !c->curled_captured || !c->motion_captured) {
         return CALIBRATION_ERR_INCOMPLETE;
     }
     for (int i = 0; i < HAND_FLEX_COUNT; ++i) {
@@ -205,6 +207,7 @@ void hand_control_update(struct hand_control *c, const struct hand_inputs *in)
     // Faults are evaluated next and latch: nothing below can override them.
     enum hand_fault_reason fault = HAND_FAULT_NONE;
     if (!in->healthy) fault = HAND_FAULT_SENSOR;
+    else if (!in->motion_ok) fault = HAND_FAULT_MOTION;
     else if (!in->fresh) fault = HAND_FAULT_STALE;
 
     if (fault != HAND_FAULT_NONE) {
@@ -282,4 +285,87 @@ void hand_control_update(struct hand_control *c, const struct hand_inputs *in)
     c->refusal = HAND_INHIBIT_NONE;
     c->state = HAND_STATE_PERMITTED;
     c->command_valid = true;
+}
+
+// --- tilt ------------------------------------------------------------------
+
+int32_t hand_isqrt(int64_t value)
+{
+    if (value <= 0) return 0;
+    // Newton's method from a power-of-two seed; integer only, no FPU.
+    int64_t guess = value, previous = 0;
+    while (guess != previous) {
+        previous = guess;
+        guess = (guess + value / guess) / 2;
+        if (guess <= 0) return 0;
+    }
+    return (int32_t)guess;
+}
+
+int hand_tilt_ratio_milli(const int16_t *accel, int axis)
+{
+    if (axis < 0 || axis > 2) return 0;
+    int64_t sum = 0;
+    for (int i = 0; i < 3; ++i) {
+        sum += (int64_t)accel[i] * (int64_t)accel[i];
+    }
+    const int32_t magnitude = hand_isqrt(sum);
+    // Free fall or a dead sensor gives no usable direction; report level
+    // rather than inventing a tilt.
+    if (magnitude < MOTION_MAGNITUDE_FLOOR) return 0;
+    return (int)(((int64_t)accel[axis] * HAND_MILLI) / magnitude);
+}
+
+int hand_axis_command_milli(int ratio_milli, int neutral_milli)
+{
+    int delta = ratio_milli - neutral_milli;
+    const int sign = delta < 0 ? -1 : 1;
+    int magnitude = delta < 0 ? -delta : delta;
+
+    if (magnitude <= HAND_TILT_DEADBAND_MILLI) return 0;
+    magnitude -= HAND_TILT_DEADBAND_MILLI;
+
+    const int span = HAND_TILT_SATURATION_MILLI - HAND_TILT_DEADBAND_MILLI;
+    int command = span > 0 ? (int)(((long)magnitude * HAND_MILLI) / span) : 0;
+    if (command > HAND_MILLI) command = HAND_MILLI;
+    return sign * command;
+}
+
+int hand_slew(int current, int target, int max_step)
+{
+    if (max_step <= 0) return target;
+    const int delta = target - current;
+    if (delta > max_step) return current + max_step;
+    if (delta < -max_step) return current - max_step;
+    return target;
+}
+
+int hand_apply_precision(int command_milli, bool precision)
+{
+    if (!precision) return command_milli;
+    return (int)(((long)command_milli * HAND_PRECISION_NUMERATOR)
+                 / HAND_PRECISION_DENOMINATOR);
+}
+
+enum calibration_result hand_calibration_store_neutral(
+    struct hand_calibration *c, const int16_t *accel)
+{
+    int64_t sum = 0;
+    for (int i = 0; i < 3; ++i) {
+        sum += (int64_t)accel[i] * (int64_t)accel[i];
+    }
+    const int32_t magnitude = hand_isqrt(sum);
+    const int32_t expected = MOTION_ACCEL_LSB_PER_G;
+    const int32_t tolerance = (int32_t)(((int64_t)expected
+                                         * HAND_GRAVITY_TOLERANCE_MILLI) / HAND_MILLI);
+    // A hand that is accelerating is not showing its resting orientation.
+    if (magnitude < expected - tolerance || magnitude > expected + tolerance) {
+        return CALIBRATION_ERR_UNSTABLE;
+    }
+    for (int axis = 0; axis < 3; ++axis) {
+        c->neutral_ratio[axis] = hand_tilt_ratio_milli(accel, axis);
+    }
+    c->motion_captured = true;
+    c->valid = false;              // revalidate through hand_calibration_finish
+    return CALIBRATION_OK;
 }

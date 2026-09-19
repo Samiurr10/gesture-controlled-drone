@@ -8,6 +8,13 @@
 
 #include "board.h"
 
+// Mirrored from motion.h so this translation unit stays free of ESP-IDF
+// headers and can be compiled in host tests.
+#define MOTION_ACCEL_LSB_PER_G 16384
+// Below this magnitude the gravity direction is meaningless (free fall, or a
+// dead sensor reading zeros).
+#define MOTION_MAGNITUDE_FLOOR 2000
+
 // Flex channel health. A near-rail reading is a FAULT, never a command
 // (FW-02, CTRL-011): an unplugged sensor is pulled toward GND through the
 // 47 kOhm shunt, and a shorted one saturates at the local 3V3 rail.
@@ -85,6 +92,54 @@ bool debounce_update(struct debounce *d, bool observation);
 
 enum hand_side { HAND_SIDE_LEFT = 0, HAND_SIDE_RIGHT = 1 };
 
+// ---------------------------------------------------------------------------
+// Tilt (FW-05)
+//
+// Roll and pitch come from where gravity sits in the hand's frame, which has a
+// fixed external reference and cannot drift. The magnetometer and integrated
+// gyro yaw are deliberately excluded from the command path.
+//
+// The measure is sin(tilt angle), not the angle: the command is the gravity
+// component along an axis divided by the measured gravity magnitude. That is
+// monotonic in angle over the useful range, needs no trigonometry, and is
+// independent of the accelerometer's scale factor. It is a control law, not an
+// attitude estimate, and it is NOT linear in degrees.
+// ---------------------------------------------------------------------------
+
+// PROVISIONAL. sin(30 deg) and sin(3 deg) in milli-units; CTRL-051 must
+// measure comfortable travel and real hand tremor before these are frozen.
+#define HAND_TILT_SATURATION_MILLI 500
+#define HAND_TILT_DEADBAND_MILLI 52
+
+// A hand at rest reads one gravity. A magnitude far from that means the hand is
+// accelerating, so the reading is not a pure tilt and neutral capture must be
+// refused. PROVISIONAL +-20%.
+#define HAND_GRAVITY_TOLERANCE_MILLI 200
+
+// Slew limits per control update, from the candidate rates in the gesture
+// mapping: 4.0/s attitude and 1.5/s throttle at a 20 ms control period.
+#define HAND_SLEW_ATTITUDE_MILLI 80
+#define HAND_SLEW_THROTTLE_MILLI 30
+
+// PRECISION halves every axis.
+#define HAND_PRECISION_NUMERATOR 1
+#define HAND_PRECISION_DENOMINATOR 2
+
+// Integer square root; accepts the sum of three squared int16 values.
+int32_t hand_isqrt(int64_t value);
+
+// Gravity component along `axis` (0=x, 1=y, 2=z) as a fraction of the measured
+// magnitude, in milli-units. Returns 0 when the magnitude is unusable.
+int hand_tilt_ratio_milli(const int16_t *accel, int axis);
+
+// Deadband, scale to saturation and clamp to [-1000, 1000].
+int hand_axis_command_milli(int ratio_milli, int neutral_milli);
+
+// Moves `current` toward `target` by at most `max_step`.
+int hand_slew(int current, int target, int max_step);
+
+int hand_apply_precision(int command_milli, bool precision);
+
 enum calibration_result {
     CALIBRATION_OK = 0,
     CALIBRATION_ERR_FAULT = 1,        // a channel faulted during capture
@@ -111,9 +166,17 @@ struct hand_calibration {
     uint8_t side;
     bool extended_captured;
     bool curled_captured;
+    bool motion_captured;
     bool valid;
     struct flex_calibration flex[HAND_FLEX_COUNT];
+    // Gravity ratios at the hand's resting orientation, in milli-units.
+    int neutral_ratio[3];
 };
+
+// Captures the resting orientation. Refuses a hand that is moving, which a
+// magnitude far from one gravity reveals.
+enum calibration_result hand_calibration_store_neutral(
+    struct hand_calibration *c, const int16_t *accel);
 
 void capture_reset(struct capture_accumulator *a);
 void capture_add(struct capture_accumulator *a, int raw);
@@ -162,6 +225,7 @@ enum hand_fault_reason {
     HAND_FAULT_SENSOR = 1,         // a flex channel is open or shorted
     HAND_FAULT_UNCALIBRATED = 2,   // no valid profile
     HAND_FAULT_STALE = 3,          // acquisition stopped progressing
+    HAND_FAULT_MOTION = 4,         // motion module missing, wrong or silent
 };
 
 // Why a new ENABLE press was refused. Reported so a refusal is never silent.
@@ -178,6 +242,7 @@ struct hand_inputs {
     bool healthy;          // no flex channel fault
     bool calibrated;       // valid profile
     bool calibrating;      // capture in progress
+    bool motion_ok;        // accelerometer readable; required for attitude
     bool fresh;            // acquisition progressed since the last update
     bool enable;           // debounced ENABLE, true = pressed
     int throttle_milli;    // 0..1000, or -1 when uncalibrated

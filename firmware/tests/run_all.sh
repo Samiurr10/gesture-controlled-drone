@@ -20,6 +20,9 @@ run simulation/simantic/hardware-validation/esp32s3-adc firmware/tools/selftest.
 run firmware/apps/hand firmware/tests/s1a_acquisition.py "S1-A acquisition"
 run firmware/apps/hand firmware/tests/s1b_calibration.py "S1-B calibration"
 run firmware/apps/hand firmware/tests/s1c_control.py "S1-C control and safety"
+run firmware/apps/hand firmware/tests/s1d_motion.py "S1-D motion module"
+run firmware/apps/hand firmware/tests/s1e_attitude.py "S1-E attitude and gestures"
+run firmware/apps/hand firmware/tests/s1f_persistence.py "S1-F persistence"
 
 printf '\n===========================================\n'
 if [ "$failed" -eq 0 ]; then

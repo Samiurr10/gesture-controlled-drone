@@ -132,12 +132,14 @@ Do not re-litigate these; they are measured, with evidence in
 | `esp_timer` (SYSTIMER-backed) | **WORKS** | create/start/stop/delete; periodic callbacks fire |
 | FreeRTOS task delay | **WORKS, runs long** | returns, but a requested delay takes materially longer. Pace periodic work with `esp_timer`, not `vTaskDelay` |
 | GPIO1/2/4/5/6/7 digital input | **WORKS** | register-level injection followed |
-| I2C0 repeated-start / NACK | **WORKS (bounded)** | BME280 fixture only — **not** IMU driver coverage |
+| I2C0 via `i2c_master` driver | **WORKS** | LSM6DS3TR-C + LIS3MDL fixtures pass identity, config, status gating and burst reads. GPIO-matrix routing is NOT modeled, so SDA/SCL pin choice is untested |
 | Scripted I2C/SPI slaves in Python | **WORKS** | `I2C.ScriptedI2cSlave` with a `file:` in the `.repl` |
 | **GPTimer / TIMG0** | **BROKEN — model gap** | setup returns `ESP_OK`, no alarm callbacks; `gptimer_get_raw_count` hangs at `timer_ll_trigger_soft_capture` (`timer_ll.h:194`). Model `Timers.ESP32C3_Timg` stores registers only. **Use `esp_timer`, not GPTimer.** |
 | GPIO43 | **BROKEN** | high-bank GPIO unhandled; reserved for UART0 anyway |
-| NVS persistence | **UNQUALIFIED** | |
-| Watchdog recovery | **UNQUALIFIED** | successful boot is not watchdog evidence |
+| NVS read + `set_blob` | **WORKS** | init, open, get, set and commit all return; 29 consecutive saves pass |
+| **NVS `erase_key`** | **BROKEN — hangs** | never returns in a multi-task app; no error, no panic, silent for 60+ simulated seconds. Probe: `firmware/probes/nvs` |
+| **`esp_restart`** | **BROKEN — engine aborts** | same "Collection was modified" error as the FPU gap. Blocks reboot persistence and all watchdog-recovery testing. Probe: `firmware/probes/reset` |
+| Watchdog recovery | **UNTESTABLE HERE** | a watchdog reset is a reset; detection could be tested, recovery cannot |
 | ESP32 BLE, two concurrent links | **UNQUALIFIED** | Nordic BLE passes do **not** transfer |
 | ADC2, DMA/continuous, ADC interrupts | **OUT OF SCOPE** | not modeled |
 
@@ -213,6 +215,9 @@ settling interval (50 ms provisional), filter/deadband/slew values.
 - **No floating point anywhere on the control path.** Fixed-point milli-units
   (0–1000). See the [FPU record](firmware/probes/fpu/README.md).
 - **Do not pace a periodic task with `vTaskDelay`** — use `esp_timer`.
+- **Never write flash from the live control path.** A real ESP-IDF flash write
+  suspends the scheduler. `cal save` / `cal erase` are refused while the hand is
+  in `permitted`.
 - Do not treat a catalog entry, an address scan, a successful API return or a
   boot as a peripheral pass.
 
@@ -262,7 +267,9 @@ firmware/                    ACTIVE firmware workspace
   tools/                     env.sh, palmpilot.py, harness.py, selftest.py
   apps/hand/                 hand-node firmware
   tests/                     simulation suites; run_all.sh runs every one
-  probes/fpu/                minimal FPU-gap probe and its finding
+  probes/fpu/                FPU-gap probe and its finding
+  probes/reset/              esp_restart gap
+  probes/nvs/                NVS erase gap
 simulation/simantic/
   README.md                  simulation scope
   hardware-validation/esp32s3-adc/   ADC reference app, runs on silicon and sim
@@ -285,10 +292,15 @@ this session owns the repository. If concurrent edits reappear, stop and check
 
 ## 10. Firmware status
 
-`firmware/apps/hand` implements S1 acquisition, calibration and the control
-state machine. `sh firmware/tests/run_all.sh` runs every suite; all pass as of
-2026-09-18 (8 + 23 + 20 + 26 checks). No S or C milestone is claimed: the IMU
-path, NVS persistence, watchdog recovery and BLE remain unimplemented.
+`firmware/apps/hand` implements S1 acquisition, calibration, the external
+motion module, gravity-referenced attitude mapping, the control state machine
+and calibration persistence. `sh firmware/tests/run_all.sh` runs every suite;
+**143 checks across 7 suites pass** as of 2026-09-18.
+
+No S or C milestone is claimed. Still open: the watchdog, the BLE peripheral and
+its packet contract, and the right-hand/hub targets. Persistence is implemented
+but **not qualified** — reboot restore, erase and on-device CRC rejection are
+all blocked by model gaps and are physical-only at C2/CTRL-022.
 
 ## 11. Next firmware milestone
 

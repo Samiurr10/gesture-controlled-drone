@@ -13,6 +13,8 @@
 #include "esp_chip_info.h"
 #include "esp_system.h"
 #include "esp_timer.h"
+#include "motion.h"
+#include "persist.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
@@ -57,9 +59,22 @@ static int s_curl_milli[HAND_FLEX_COUNT];
 static int s_throttle_milli = -1;
 static bool s_hold_gesture;
 static bool s_precision_gesture;
+
+// Output stage: slew-limited commands actually published by this hand. The hand
+// reports normalised tilt; the hub decides which drone axis each drives
+// (docs/controller/gesture-mapping.md).
+static int s_out_roll;
+static int s_out_pitch;
+static int s_out_throttle;
 static volatile uint32_t s_stall_sweeps;  // deliberate acquisition stall, test hook
 static SemaphoreHandle_t s_control_tick;
 static volatile uint32_t s_control_updates;
+
+// Motion is acquired on the same sweep as the flex channels so a command can
+// be traced to one coherent set of inputs.
+static struct motion_sample s_motion;
+static portMUX_TYPE s_motion_lock = portMUX_INITIALIZER_UNLOCKED;
+static bool s_motion_available;
 
 static void copy_latest(struct hand_sample *out)
 {
@@ -81,6 +96,15 @@ static const char *calibration_reason(enum calibration_result result)
     return "unknown";
 }
 
+static void print_storage(const char *operation, enum persist_status status)
+{
+    printf("{\"type\":\"storage\",\"op\":\"%s\",\"status\":%d,"
+           "\"available\":%d,\"calibrated\":%d}\n",
+           operation, (int)status, persist_available() ? 1 : 0,
+           s_calibration.valid ? 1 : 0);
+    fflush(stdout);
+}
+
 static const char *state_name(enum hand_state state)
 {
     switch (state) {
@@ -98,10 +122,12 @@ static void print_control(void)
 {
     printf("{\"type\":\"control\",\"state\":\"%s\",\"valid\":%d,\"fault\":%d,"
            "\"inhibit\":%d,\"throttle_milli\":%d,\"hold\":%d,\"precision\":%d,"
-           "\"updates\":%" PRIu32 ",\"curl_milli\":[",
+           "\"updates\":%" PRIu32 ",\"roll_milli\":%d,\"pitch_milli\":%d,"
+           "\"out_throttle_milli\":%d,\"curl_milli\":[",
            state_name(s_control.state), s_control.command_valid ? 1 : 0,
            (int)s_control.fault, (int)s_control.inhibit, s_throttle_milli,
-           s_hold_gesture ? 1 : 0, s_precision_gesture ? 1 : 0, s_control_updates);
+           s_hold_gesture ? 1 : 0, s_precision_gesture ? 1 : 0, s_control_updates,
+           s_out_roll, s_out_pitch, s_out_throttle);
     for (int i = 0; i < HAND_FLEX_COUNT; ++i) {
         printf("%s%d", i ? "," : "", s_curl_milli[i]);
     }
@@ -131,12 +157,42 @@ static void control_task(void *argument)
         s_hold_gesture = hand_hold_gesture(s_curl_milli);
         s_precision_gesture = hand_precision_gesture(s_curl_milli);
 
+        struct motion_sample motion;
+        portENTER_CRITICAL(&s_motion_lock);
+        motion = s_motion;
+        portEXIT_CRITICAL(&s_motion_lock);
+        const bool motion_ok = s_motion_available && motion.accel_gyro == MOTION_OK;
+
+        int roll_target = 0, pitch_target = 0;
+        int throttle_target = s_throttle_milli < 0 ? 0 : s_throttle_milli;
+        if (motion_ok && s_calibration.valid) {
+            roll_target = hand_axis_command_milli(
+                hand_tilt_ratio_milli(motion.accel, 1), s_calibration.neutral_ratio[1]);
+            pitch_target = hand_axis_command_milli(
+                hand_tilt_ratio_milli(motion.accel, 0), s_calibration.neutral_ratio[0]);
+        }
+        if (s_hold_gesture) {
+            // HOLD only ever reduces authority: attitude to neutral, throttle
+            // frozen where it is.
+            roll_target = 0;
+            pitch_target = 0;
+            throttle_target = s_out_throttle;
+        }
+        roll_target = hand_apply_precision(roll_target, s_precision_gesture);
+        pitch_target = hand_apply_precision(pitch_target, s_precision_gesture);
+
+        s_out_roll = hand_slew(s_out_roll, roll_target, HAND_SLEW_ATTITUDE_MILLI);
+        s_out_pitch = hand_slew(s_out_pitch, pitch_target, HAND_SLEW_ATTITUDE_MILLI);
+        s_out_throttle = hand_slew(s_out_throttle, throttle_target,
+                                   HAND_SLEW_THROTTLE_MILLI);
+
         const int64_t age = esp_timer_get_time() - sample.timestamp_us;
         const struct hand_inputs inputs = {
             .started = sample.acquisition != 0,
             .healthy = hand_sample_healthy(&sample),
             .calibrated = s_calibration.valid,
             .calibrating = s_capture_active,
+            .motion_ok = motion_ok,
             // A live control loop must not treat an old sample as current.
             .fresh = age < SAMPLE_STALE_LIMIT_US,
             .enable = sample.enable_raw,
@@ -145,6 +201,23 @@ static void control_task(void *argument)
         hand_control_update(&s_control, &inputs);
         ++s_control_updates;
     }
+}
+
+static void print_motion(void)
+{
+    struct motion_sample motion;
+    portENTER_CRITICAL(&s_motion_lock);
+    motion = s_motion;
+    portEXIT_CRITICAL(&s_motion_lock);
+    printf("{\"type\":\"motion\",\"accel_gyro\":%d,\"mag_status\":%d,"
+           "\"accel\":[%d,%d,%d],\"gyro\":[%d,%d,%d],\"mag\":[%d,%d,%d],"
+           "\"id_accel_gyro\":%u,\"id_mag\":%u}\n",
+           (int)motion.accel_gyro, (int)motion.mag_status,
+           motion.accel[0], motion.accel[1], motion.accel[2],
+           motion.gyro[0], motion.gyro[1], motion.gyro[2],
+           motion.mag[0], motion.mag[1], motion.mag[2],
+           motion_accel_gyro_identity(), motion_mag_identity());
+    fflush(stdout);
 }
 
 static void print_sample(const char *kind, const struct hand_sample *sample)
@@ -200,6 +273,13 @@ static void acquisition_task(void *argument)
         }
         struct hand_sample sample;
         hand_acquire_sweep(&sample);
+        if (s_motion_available) {
+            struct motion_sample motion;
+            motion_read(&motion);
+            portENTER_CRITICAL(&s_motion_lock);
+            s_motion = motion;
+            portEXIT_CRITICAL(&s_motion_lock);
+        }
         portENTER_CRITICAL(&s_latest_lock);
         s_latest = sample;
         portEXIT_CRITICAL(&s_latest_lock);
@@ -252,13 +332,15 @@ static void emit_info(void)
     printf("{\"type\":\"info\",\"fixture\":\"%s\",\"idf\":\"%s\","
            "\"sample_period_us\":%d,\"adc_attenuation\":%d,\"adc_bits\":%d,"
            "\"adc_calibrated\":%d,\"flex_gpio\":[%d,%d,%d,%d,%d],"
-           "\"enable_gpio\":%d,\"debounce_samples\":%d}\n",
+           "\"enable_gpio\":%d,\"debounce_samples\":%d,\"i2c_sda\":%d,"
+           "\"i2c_scl\":%d,\"motion_init\":%d}\n",
            FIRMWARE_FIXTURE, esp_get_idf_version(), SAMPLE_PERIOD_US,
            HAND_ADC_ATTENUATION, HAND_ADC_BITWIDTH,
            hand_acquire_calibrated() ? 1 : 0,
            HAND_FLEX_GPIO[0], HAND_FLEX_GPIO[1], HAND_FLEX_GPIO[2],
            HAND_FLEX_GPIO[3], HAND_FLEX_GPIO[4], HAND_ENABLE_GPIO,
-           HAND_ENABLE_DEBOUNCE_SAMPLES);
+           HAND_ENABLE_DEBOUNCE_SAMPLES, HAND_I2C_SDA_GPIO, HAND_I2C_SCL_GPIO,
+           s_motion_available ? 1 : 0);
 }
 
 static void emit_stats(void)
@@ -282,6 +364,8 @@ static void handle_command(const char *line)
         print_sample("sample", &sample);
     } else if (!strcmp(line, "stats")) {
         emit_stats();
+    } else if (!strcmp(line, "motion")) {
+        print_motion();
     } else if (!strcmp(line, "control")) {
         print_control();
     } else if (sscanf(line, "stall %d %c", &count, &extra) == 1
@@ -299,6 +383,49 @@ static void handle_command(const char *line)
             printf("{\"type\":\"capturing\",\"end\":\"%s\",\"samples\":%d}\n",
                    s_capture_extended ? "extended" : "curled", HAND_CALIBRATION_SAMPLES);
         }
+    } else if (!strcmp(line, "cal save")) {
+        // A flash write suspends the scheduler on real hardware, so it must
+        // never run while this hand is permitting commands. Only a validated
+        // profile is worth persisting.
+        if (s_control.state == HAND_STATE_PERMITTED) {
+            print_storage("save", PERSIST_ERR_WRITE);
+        } else {
+            print_storage("save", s_calibration.valid
+                          ? persist_save(&s_calibration)
+                          : PERSIST_ERR_VERSION);
+        }
+    } else if (!strcmp(line, "cal load")) {
+        struct hand_calibration loaded;
+        const enum persist_status status =
+            persist_load(&loaded, (uint8_t)HAND_SIDE_DEFAULT);
+        if (status == PERSIST_OK) {
+            // Re-derive validity rather than trusting the stored flag.
+            hand_calibration_finish(&loaded);
+            s_calibration = loaded;
+        }
+        print_storage("load", status);
+    } else if (!strcmp(line, "cal erase")) {
+        print_storage("erase", s_control.state == HAND_STATE_PERMITTED
+                      ? PERSIST_ERR_WRITE : persist_erase());
+    } else if (!strcmp(line, "cal corrupt")) {
+        print_storage("corrupt", persist_corrupt_stored_crc());
+    } else if (!strcmp(line, "reboot")) {
+        printf("{\"type\":\"rebooting\"}\n");
+        fflush(stdout);
+        esp_restart();
+    } else if (!strcmp(line, "cal neutral")) {
+        struct motion_sample motion;
+        portENTER_CRITICAL(&s_motion_lock);
+        motion = s_motion;
+        portEXIT_CRITICAL(&s_motion_lock);
+        enum calibration_result result = CALIBRATION_ERR_FAULT;
+        if (s_motion_available && motion.accel_gyro == MOTION_OK) {
+            result = hand_calibration_store_neutral(&s_calibration, motion.accel);
+        }
+        printf("{\"type\":\"neutral\",\"result\":%d,\"reason\":\"%s\","
+               "\"ratio\":[%d,%d,%d]}\n", (int)result, calibration_reason(result),
+               s_calibration.neutral_ratio[0], s_calibration.neutral_ratio[1],
+               s_calibration.neutral_ratio[2]);
     } else if (!strcmp(line, "cal finish")) {
         const enum calibration_result result = hand_calibration_finish(&s_calibration);
         printf("{\"type\":\"calibration\",\"result\":%d,\"reason\":\"%s\","
@@ -320,7 +447,9 @@ static void handle_command(const char *line)
         for (int i = 0; i < HAND_FLEX_COUNT; ++i) {
             printf("%s%d", i ? "," : "", s_calibration.flex[i].curled_raw);
         }
-        printf("]}\n");
+        printf("],\"neutral\":[%d,%d,%d],\"motion_captured\":%d}\n",
+               s_calibration.neutral_ratio[0], s_calibration.neutral_ratio[1],
+               s_calibration.neutral_ratio[2], s_calibration.motion_captured ? 1 : 0);
     } else if (sscanf(line, "stream %d %c", &count, &extra) == 1
                && count >= 0 && count <= 4096) {
         s_stream_remaining = count;
@@ -328,7 +457,9 @@ static void handle_command(const char *line)
     } else {
         printf("{\"type\":\"error\",\"op\":\"command\","
                "\"help\":\"info | sample | stats | control | stream N | stall MS | "
-               "cal extended | cal curled | cal finish | cal reset | profile\"}\n");
+               "cal extended | cal curled | cal neutral | cal finish | cal reset | "
+               "cal save | cal load | cal erase | cal corrupt | profile | "
+               "reboot\"}\n");
     }
     fflush(stdout);
 }
@@ -339,12 +470,30 @@ void app_main(void)
     emit_boot();
 
     hand_calibration_reset(&s_calibration, (enum hand_side)HAND_SIDE_DEFAULT);
+    // Restore a stored profile if one survives; a rejected profile simply
+    // leaves the hand uncalibrated rather than loading partial data.
+    const bool storage_ready = persist_init() == ESP_OK;
+    enum persist_status restore = PERSIST_ERR_UNAVAILABLE;
+    if (storage_ready) {
+        struct hand_calibration loaded;
+        restore = persist_load(&loaded, (uint8_t)HAND_SIDE_DEFAULT);
+        if (restore == PERSIST_OK) {
+            hand_calibration_finish(&loaded);
+            s_calibration = loaded;
+        }
+    }
     hand_control_init(&s_control);
     for (int i = 0; i < HAND_FLEX_COUNT; ++i) s_curl_milli[i] = -1;
     esp_err_t status = hand_acquire_init();
     if (status != ESP_OK) {
         printf("{\"type\":\"error\",\"op\":\"acquire_init\",\"status\":%d}\n", status);
         return;
+    }
+    // A missing or wrong sensor must not stop acquisition; it is reported as
+    // a motion fault instead (FW-02).
+    s_motion_available = motion_init() == ESP_OK;
+    if (!s_motion_available) {
+        printf("{\"type\":\"error\",\"op\":\"motion_init\"}\n");
     }
     s_tick = xSemaphoreCreateBinary();
     if (!s_tick) {
@@ -395,6 +544,7 @@ void app_main(void)
         return;
     }
     emit_info();
+    print_storage("restore", restore);
     printf("{\"type\":\"ready\",\"side\":%u}\n", s_calibration.side);
 
     char line[96];

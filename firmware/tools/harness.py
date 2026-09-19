@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 
 # Frozen bench pin map — CLAUDE.md section 2. Keys are the finger names used in
@@ -33,6 +34,10 @@ FLEX: dict[str, dict[str, int]] = {
     "little": {"gpio": 6, "channel": 5},
 }
 ENABLE_GPIO = 7          # LEFT hand ENABLE / HUB CALIBRATE, active low
+# The platform exposes one I2C controller the fixtures attach to. The design
+# routes SDA/SCL to GPIO8/9 through the GPIO matrix; the model does not
+# simulate that routing, so pin selection is NOT covered by these tests.
+I2C_BUS = "i2c0"
 BATTERY_GPIO = 10        # reserved, must stay disconnected
 I2C_SDA_GPIO, I2C_SCL_GPIO = 8, 9
 LSM6DS3TRC_ADDRESS, LIS3MDL_ADDRESS = 0x6A, 0x1C
@@ -47,7 +52,11 @@ class PalmPilotSim:
     """Context manager wrapping simantic.Sim with the PalmPilot fixtures."""
 
     def __init__(self, sim_elf=None, out=None, platform=None, adc=True,
-                 uart="uart0", show_logs=False, scenario=None):
+                 uart="uart0", show_logs=False, scenario=None, i2c=None):
+        # i2c maps a 7-bit address to a ScriptedI2cSlave script, e.g.
+        # {0x6A: "firmware/tests/fixtures/lsm6ds3trc.py"}. The scripts run in
+        # this interpreter, so a test mutates their shared state directly.
+        self.i2c = dict(i2c or {})
         self.sim_elf = Path(sim_elf or os.environ["PALMPILOT_SIM_ELF"])
         self.out = Path(out or os.environ.get("PALMPILOT_OUT", "."))
         self.platform = Path(platform or os.environ["PALMPILOT_PLATFORM"])
@@ -67,6 +76,22 @@ class PalmPilotSim:
         from simantic import Sim
 
         platform = self.platform
+        platform_text = platform.read_text()
+
+        if self.i2c:
+            # The fixture scripts import each other (imu_state), so their
+            # directory has to be importable from inside the simulator.
+            for script in self.i2c.values():
+                directory = str(Path(script).resolve().parent)
+                if directory not in sys.path:
+                    sys.path.insert(0, directory)
+            lines = [platform_text.rstrip("\n"), ""]
+            for address, script in sorted(self.i2c.items()):
+                lines.append(f"i2c_dev_{address:02x}: I2C.ScriptedI2cSlave "
+                             f"@ {I2C_BUS} {hex(address)}")
+                lines.append(f'    file: "{Path(script).resolve()}"')
+            platform_text = "\n".join(lines) + "\n"
+
         if self.adc:
             import clr
             from Antmicro.Renode.Utilities import TypeManager
@@ -74,13 +99,15 @@ class PalmPilotSim:
             clr.AddReference(overlay)
             if not TypeManager.Instance.ScanFile(overlay):
                 raise RuntimeError(f"overlay type scan failed: {overlay}")
-            text = platform.read_text()
-            if text.count("Miscellaneous.ESP32S3_Sens") != 1:
+            if platform_text.count("Miscellaneous.ESP32S3_Sens") != 1:
                 raise RuntimeError("platform does not declare exactly one ESP32S3_Sens")
+            platform_text = platform_text.replace(
+                "Miscellaneous.ESP32S3_Sens", "AdcUnderTest.ESP32S3_Sens")
+
+        if self.adc or self.i2c:
             self.out.mkdir(parents=True, exist_ok=True)
             platform = self.out / "platform.repl"
-            platform.write_text(
-                text.replace("Miscellaneous.ESP32S3_Sens", "AdcUnderTest.ESP32S3_Sens"))
+            platform.write_text(platform_text)
 
         self.sim = Sim(repl=platform, elf=self.sim_elf, uart=self.uart_name,
                        show_logs=self.show_logs, scenario=self.scenario).__enter__()

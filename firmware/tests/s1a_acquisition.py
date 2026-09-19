@@ -10,13 +10,22 @@ application state. The ADC model is ideal: these results validate the model
 contract and the firmware's logic, never analog accuracy.
 """
 import sys
+from pathlib import Path
 
-from harness import FLEX, PalmPilotSim, ideal_raw
+sys.path.insert(0, str(Path("firmware/tests/fixtures").resolve()))
+
+import imu_state                                             # noqa: E402
+from harness import FLEX, PalmPilotSim, ideal_raw     # noqa: E402
 
 ATTEN = 3
 FINGERS = list(FLEX)
 # Distinct per-finger levels so a channel-identity error cannot pass.
 PROBE_UV = dict(zip(FINGERS, (200000, 400000, 600000, 800000, 1000000)))
+
+FIXTURES = {
+    0x6A: "firmware/tests/fixtures/lsm6ds3trc.py",
+    0x1C: "firmware/tests/fixtures/lis3mdl.py",
+}
 
 checks, failures = [], []
 
@@ -34,7 +43,8 @@ def sample(sim):
     return sim.wait_for_type("sample", timeout=3.0, since=mark)
 
 
-with PalmPilotSim() as sim:
+imu_state.reset()
+with PalmPilotSim(i2c=FIXTURES) as sim:
     print("boot and identity:", flush=True)
     sim.set_enable(False)                      # released before anything else
     ready = sim.wait_ready(timeout=5.0)

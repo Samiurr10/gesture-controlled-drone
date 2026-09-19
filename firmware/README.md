@@ -117,6 +117,25 @@ sh firmware/tests/run_all.sh          # every suite
 | `tests/s1a_acquisition.py` | channel identity, calibrated mV, fault classification, ENABLE debounce |
 | `tests/s1b_calibration.py` | capture, travel/stability/inversion rejection, curl normalisation |
 | `tests/s1c_control.py` | state machine, throttle-low interlock, latched faults, stalled acquisition |
+| `tests/s1d_motion.py` | LSM6DS3TR-C + LIS3MDL identity, config, data-ready gating, burst decode |
+| `tests/s1e_attitude.py` | tilt mapping, deadband, saturation, slew, PRECISION, HOLD |
+| `tests/s1f_persistence.py` | NVS save and reload; reboot/erase/CRC are blocked |
+
+Motion stimulus comes from `tests/fixtures/`: two register fixtures plus a
+shared `imu_state` module a test mutates directly. They are register fixtures,
+not sensor models — no ODR timing, filtering, FIFO, interrupts or noise.
+
+### Probes
+
+`probes/` holds minimal deterministic reproducers for model defects. Each has a
+README stating what it does and does not establish. They are **not** part of
+`run_all.sh`, because two of them are expected to fail.
+
+| Probe | Finding |
+|---|---|
+| `probes/fpu` | first Xtensa FPU instruction aborts the engine |
+| `probes/reset` | `esp_restart()` aborts the engine |
+| `probes/nvs` | `nvs_erase_key` never returns in a multi-task app |
 
 `stall N` skips N acquisition sweeps. It is a deliberate fault-injection hook
 for the FW-04 stalled-acquisition case, not production behavior.
@@ -130,6 +149,8 @@ for the FW-04 stalled-acquisition case, not production behavior.
 - **Pace periodic work with `esp_timer`, not `vTaskDelay`.** Task delays run
   materially long on this model; a `vTaskDelay`-paced control task lagged the
   sampled data by a full query interval.
+- **Never write flash from the live control path.** A real flash write suspends
+  the scheduler; `cal save` and `cal erase` are refused while `permitted`.
 - **Do not use GPTimer.** `gptimer_*` setup returns `ESP_OK`, but no alarm
   callbacks fire and `gptimer_get_raw_count` hangs — a confirmed model gap in
   `Timers.ESP32C3_Timg`. Use `esp_timer` (SYSTIMER-backed), which is verified.

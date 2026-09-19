@@ -124,9 +124,17 @@ def cmd_pack(env: dict, app: Path) -> Path:
 
 
 def cmd_sim(env: dict, app: Path, script: str, extra: list[str]) -> None:
-    sim_elf = build_dir(env, app) / "sim.elf"
+    out = build_dir(env, app)
+    sim_elf = out / "sim.elf"
     if not sim_elf.exists():
         sys.exit(f"{sim_elf} not found — run `pack` first")
+    # Simulating a stale image silently tests the previous firmware, which is
+    # worse than failing: the results look real.
+    app_bin = out / f"{project_name(app)}.bin"
+    newer = [p for p in (app_bin, *app.rglob("*.c"), *app.rglob("*.h"))
+             if p.exists() and p.stat().st_mtime > sim_elf.stat().st_mtime]
+    if newer:
+        sys.exit(f"{sim_elf} is older than {newer[0]} — run `pack` (or `run`) first")
     child = dict(env, PALMPILOT_APP=str(app), PALMPILOT_SIM_ELF=str(sim_elf),
                  PALMPILOT_OUT=str(build_dir(env, app)),
                  PYTHONPATH=str(ROOT / "firmware/tools") + os.pathsep + env.get("PYTHONPATH", ""))

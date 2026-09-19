@@ -13,14 +13,23 @@ These are calculated stimuli, not measured sensor ranges. CTRL-022 must measure
 comfortable travel on a real hand before any of these limits are frozen.
 """
 import sys
+from pathlib import Path
 
-from harness import FLEX, PalmPilotSim, ideal_raw
+sys.path.insert(0, str(Path("firmware/tests/fixtures").resolve()))
+
+import imu_state                                             # noqa: E402
+from harness import FLEX, PalmPilotSim, ideal_raw     # noqa: E402
 
 FINGERS = list(FLEX)
 EXTENDED_UV = 2154000        # 25 kOhm flex
 CURLED_UV = 1055000          # 100 kOhm flex
 DEADBAND_MILLI = 30
 MILLI = 1000
+
+FIXTURES = {
+    0x6A: "firmware/tests/fixtures/lsm6ds3trc.py",
+    0x1C: "firmware/tests/fixtures/lis3mdl.py",
+}
 
 checks, failures = [], []
 
@@ -51,7 +60,8 @@ def capture(sim, end, timeout=6.0):
     return sim.wait_for_type("capture", timeout=timeout, since=mark)
 
 
-with PalmPilotSim() as sim:
+imu_state.reset()
+with PalmPilotSim(i2c=FIXTURES) as sim:
     sim.set_enable(False)
     all_flex(sim, EXTENDED_UV)
     sim.wait_ready(timeout=5.0)
@@ -75,6 +85,9 @@ with PalmPilotSim() as sim:
     check("curled capture accepted", result["result"] == 0, result["reason"])
     check("curled mean matches injection", result["mean"][0] == ideal_raw(CURLED_UV, 3),
           f"mean={result['mean'][0]} expected={ideal_raw(CURLED_UV, 3)}")
+
+    result = command(sim, "cal neutral", "neutral")
+    check("neutral orientation captured", result["result"] == 0, result["reason"])
 
     result = command(sim, "cal finish", "calibration")
     check("calibration validates", result["valid"] == 1, result["reason"])
@@ -140,6 +153,7 @@ with PalmPilotSim() as sim:
     all_flex(sim, EXTENDED_UV - 100000)      # only ~93 counts of travel
     sim.run_for(0.2)
     capture(sim, "curled")
+    command(sim, "cal neutral", "neutral")
     result = command(sim, "cal finish", "calibration")
     check("insufficient travel rejected", result["reason"] == "insufficient_travel",
           result["reason"])
@@ -153,6 +167,7 @@ with PalmPilotSim() as sim:
     all_flex(sim, EXTENDED_UV)
     sim.run_for(0.2)
     capture(sim, "curled")
+    command(sim, "cal neutral", "neutral")
     result = command(sim, "cal finish", "calibration")
     check("inverted ends rejected", result["reason"] == "inverted_ends", result["reason"])
 

@@ -11,8 +11,12 @@ stalled acquisition being detected as stale rather than frozen at the last
 command.
 """
 import sys
+from pathlib import Path
 
-from harness import FLEX, PalmPilotSim
+sys.path.insert(0, str(Path("firmware/tests/fixtures").resolve()))
+
+import imu_state                                             # noqa: E402
+from harness import FLEX, PalmPilotSim                # noqa: E402
 
 FINGERS = list(FLEX)
 EXTENDED_UV = 2154000
@@ -21,6 +25,11 @@ CURLED_UV = 1055000
 # enum hand_inhibit
 INHIBIT_NONE, INHIBIT_NO_PRESS, INHIBIT_THROTTLE_HIGH = 0, 1, 2
 INHIBIT_CALIBRATING, INHIBIT_FAULT = 3, 4
+
+FIXTURES = {
+    0x6A: "firmware/tests/fixtures/lsm6ds3trc.py",
+    0x1C: "firmware/tests/fixtures/lis3mdl.py",
+}
 
 checks, failures = [], []
 
@@ -63,10 +72,12 @@ def calibrate(sim):
     mark = len(sim.stream)
     sim.send_line("cal curled")
     sim.wait_for_type("capture", timeout=6.0, since=mark)
+    command(sim, "cal neutral", "neutral")
     return command(sim, "cal finish", "calibration")
 
 
-with PalmPilotSim() as sim:
+imu_state.reset()
+with PalmPilotSim(i2c=FIXTURES) as sim:
     # ENABLE is pressed before the firmware ever runs.
     sim.set_enable(True)
     set_all(sim, EXTENDED_UV, settle=0.0)
