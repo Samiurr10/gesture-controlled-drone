@@ -14,13 +14,15 @@ drone is planned. See the [migration](esp32-migration.md) and
 
 ## Current evidence and its scope
 
+**September 18 ADC follow-up:** [measured response, diagnosis and candidate fix](../implementation-records/2026-09-18_adc-transfer-diagnosis.md#candidate-fix-and-validation). An opt-in calibrated-state model passes 2480 public-driver voltage checks with a worst error of 3 mV and no fitted correction multiplier. It requires `CalibrationEfuse: efuse` in the platform. Full electrical behavior and release integration remain unqualified.
+
 **Updated September 17, 2026: enough is available to start one-hand firmware;
 the complete controller stack is not yet qualified.**
 
 | Capability | Evidence / remaining work |
 |---|---|
 | ESP-IDF boot, FreeRTOS, UART diagnostics | Full v5.5.2 application boots through ROM/flash and executes. |
-| ADC1 inputs | Local PR #168 overlay passes 960 fresh public-driver reads across ten channels and four attenuation settings. Five planned flex inputs also pass. The PR is not merged into engine 0.5.7. Voltage-curve accuracy remains unqualified. |
+| ADC1 inputs | Local PR #168 candidate passes 51 NUnit cases and 2480 public-driver voltage checks across the five planned flex channels, four attenuations and two factory profiles. Explicit `CalibrationEfuse: efuse` wiring enables the calibrated-state approximation; unchanged platforms retain the ideal mode. The PR is not merged into engine 0.5.7. Noise, settling, arbitrary hardware-trim effects and full-range silicon accuracy remain unqualified. |
 | Periodic sampling and timestamps | A new public-API test confirms `esp_timer` callbacks and FreeRTOS task delay work through SYSTIMER. Use this path for initial acquisition; latency/jitter still needs measurement. |
 | GPTimer / TIMG | Public driver setup returns success, but alarm callbacks do not occur and `gptimer_get_raw_count` stalls in the unmodified IDF snapshot wait. The selected model only stores main-timer/watchdog registers; this is a model gap. |
 | GPIO7 ENABLE | Register-level firmware follows injected levels. Test the public GPIO driver, debounce and held-at-boot behavior in the hand application. |

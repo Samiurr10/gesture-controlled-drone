@@ -1,6 +1,8 @@
 # Implementation evidence
 
-**Latest tests:** [September 17 hand-controller readiness](2026-09-17_hand-controller-readiness.md): corrected ADC probe, full ESP-IDF ADC and timer tests, physical ADC limits and remaining one-hand work.
+**Latest ADC investigation:** [September 18 diagnosis and candidate fix](2026-09-18_adc-transfer-diagnosis.md#candidate-fix-and-validation): read-only factory-data capture, failing voltage regressions, and an opt-in calibrated-state model passing 51 NUnit cases and 2480 public-driver reads. Full electrical fidelity and release integration remain open.
+
+**September 17 tests:** [September 17 hand-controller readiness](2026-09-17_hand-controller-readiness.md): corrected ADC probe, full ESP-IDF ADC and timer tests, physical ADC limits and remaining one-hand work.
 
 **Earlier decision and tests:** [ESP32 controller migration and complete-drone feasibility](2026-09-16_esp32-full-drone-feasibility.md). STM32 drone findings remain relevant to the current virtual candidate.
 
