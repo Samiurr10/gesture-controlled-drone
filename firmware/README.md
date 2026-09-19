@@ -104,8 +104,9 @@ calibration profile, normalises finger curl, and runs the control state machine
 with the safety interlocks from
 [`gesture-mapping.md`](../docs/controller/gesture-mapping.md).
 
-UART commands: `info`, `sample`, `stats`, `control`, `stream N`, `stall SWEEPS`,
-`cal extended`, `cal curled`, `cal finish`, `cal reset`, `profile`.
+UART commands: `info`, `sample`, `stats`, `control`, `motion`, `packet`,
+`stream N`, `stall SWEEPS`, `profile`, `reboot`, and `cal extended | curled |
+neutral | finish | reset | save | load | erase | corrupt`.
 
 ```sh
 sh firmware/tests/run_all.sh          # every suite
@@ -120,6 +121,7 @@ sh firmware/tests/run_all.sh          # every suite
 | `tests/s1d_motion.py` | LSM6DS3TR-C + LIS3MDL identity, config, data-ready gating, burst decode |
 | `tests/s1e_attitude.py` | tilt mapping, deadband, saturation, slew, PRECISION, HOLD |
 | `tests/s1f_persistence.py` | NVS save and reload; reboot/erase/CRC are blocked |
+| `tests/s1g_packet.py` | hand→hub packet framing, counters, bounds, frozen-sampling case |
 
 Motion stimulus comes from `tests/fixtures/`: two register fixtures plus a
 shared `imu_state` module a test mutates directly. They are register fixtures,

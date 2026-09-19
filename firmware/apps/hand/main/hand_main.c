@@ -14,6 +14,8 @@
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "motion.h"
+#include "esp_random.h"
+#include "packet.h"
 #include "persist.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
@@ -66,6 +68,13 @@ static bool s_precision_gesture;
 static int s_out_roll;
 static int s_out_pitch;
 static int s_out_throttle;
+
+// Packet identity. The session changes across resets so a hub can invalidate
+// continuity; the sequence counts packets sent, which is deliberately separate
+// from the acquisition counter so a frozen sampler behind a live link is
+// detectable (FW-04).
+static uint32_t s_session;
+static uint32_t s_packet_sequence;
 static volatile uint32_t s_stall_sweeps;  // deliberate acquisition stall, test hook
 static SemaphoreHandle_t s_control_tick;
 static volatile uint32_t s_control_updates;
@@ -94,6 +103,52 @@ static const char *calibration_reason(enum calibration_result result)
     case CALIBRATION_ERR_INCOMPLETE: return "incomplete";
     }
     return "unknown";
+}
+
+static void print_packet(void)
+{
+    struct hand_sample sample;
+    copy_latest(&sample);
+    struct motion_sample motion;
+    portENTER_CRITICAL(&s_motion_lock);
+    motion = s_motion;
+    portEXIT_CRITICAL(&s_motion_lock);
+
+    uint16_t flags = HAND_FLAG_USB_POWER;      // bench power is explicit
+    if (s_control.command_valid) flags |= HAND_FLAG_VALID;
+    if (sample.enable_raw) flags |= HAND_FLAG_ENABLE;
+    if (s_calibration.valid) flags |= HAND_FLAG_CALIBRATED;
+    if (s_hold_gesture) flags |= HAND_FLAG_HOLD;
+    if (s_precision_gesture) flags |= HAND_FLAG_PRECISION;
+    if (s_motion_available && motion.accel_gyro == MOTION_OK) flags |= HAND_FLAG_MOTION_OK;
+
+    struct hand_packet_source source = {
+        .side = s_calibration.side,
+        .session = s_session,
+        .sequence = ++s_packet_sequence,
+        .acquisition = sample.acquisition,
+        .timestamp_us = sample.timestamp_us,
+        .state = (uint8_t)s_control.state,
+        .fault = (uint8_t)s_control.fault,
+        .flags = flags,
+        .roll_milli = (int16_t)s_out_roll,
+        .pitch_milli = (int16_t)s_out_pitch,
+        .throttle_milli = (int16_t)s_out_throttle,
+    };
+    for (int i = 0; i < HAND_FLEX_COUNT; ++i) {
+        source.curl_milli[i] = (int16_t)s_curl_milli[i];
+    }
+    for (int i = 0; i < 3; ++i) {
+        source.accel[i] = motion.accel[i];
+        source.gyro[i] = motion.gyro[i];
+    }
+
+    uint8_t buffer[HAND_PACKET_SIZE];
+    const size_t written = hand_packet_encode(&source, buffer, sizeof(buffer));
+    printf("{\"type\":\"packet\",\"bytes\":%u,\"hex\":\"", (unsigned)written);
+    for (size_t i = 0; i < written; ++i) printf("%02x", buffer[i]);
+    printf("\"}\n");
+    fflush(stdout);
 }
 
 static void print_storage(const char *operation, enum persist_status status)
@@ -364,6 +419,8 @@ static void handle_command(const char *line)
         print_sample("sample", &sample);
     } else if (!strcmp(line, "stats")) {
         emit_stats();
+    } else if (!strcmp(line, "packet")) {
+        print_packet();
     } else if (!strcmp(line, "motion")) {
         print_motion();
     } else if (!strcmp(line, "control")) {
@@ -483,6 +540,10 @@ void app_main(void)
         }
     }
     hand_control_init(&s_control);
+    // A fresh session per boot, so a hub cannot carry continuity across a
+    // reset. Randomness quality is not qualified on this platform; uniqueness
+    // across real power cycles must be confirmed at C5.
+    s_session = esp_random();
     for (int i = 0; i < HAND_FLEX_COUNT; ++i) s_curl_milli[i] = -1;
     esp_err_t status = hand_acquire_init();
     if (status != ESP_OK) {

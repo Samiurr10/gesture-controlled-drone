@@ -23,6 +23,7 @@ run firmware/apps/hand firmware/tests/s1c_control.py "S1-C control and safety"
 run firmware/apps/hand firmware/tests/s1d_motion.py "S1-D motion module"
 run firmware/apps/hand firmware/tests/s1e_attitude.py "S1-E attitude and gestures"
 run firmware/apps/hand firmware/tests/s1f_persistence.py "S1-F persistence"
+run firmware/apps/hand firmware/tests/s1g_packet.py "S1-G packet contract"
 
 printf '\n===========================================\n'
 if [ "$failed" -eq 0 ]; then

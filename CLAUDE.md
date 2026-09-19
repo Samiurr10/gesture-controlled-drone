@@ -297,8 +297,12 @@ motion module, gravity-referenced attitude mapping, the control state machine
 and calibration persistence. `sh firmware/tests/run_all.sh` runs every suite;
 **143 checks across 7 suites pass** as of 2026-09-18.
 
-No S or C milestone is claimed. Still open: the watchdog, the BLE peripheral and
-its packet contract, and the right-hand/hub targets. Persistence is implemented
+The hand→hub packet payload is frozen in `firmware/apps/hand/main/packet.h`
+(59 bytes, little-endian, versioned, CRC-32) and decoded independently in
+`firmware/tests/s1g_packet.py`.
+
+No S or C milestone is claimed. Still open: the watchdog, the BLE stack and
+transport binding, and the right-hand/hub targets. Persistence is implemented
 but **not qualified** — reboot restore, erase and on-device CRC rejection are
 all blocked by model gaps and are physical-only at C2/CTRL-022.
 
