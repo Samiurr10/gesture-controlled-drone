@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Built into tmp/simantic/upstream-candidates/s3-mwdt (gitignored), the path env.sh loads. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>S3MwdtUnderTest</AssemblyName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <Nullable>disable</Nullable>
+    <RepoRoot>$(MSBuildThisFileDirectory)../../../../</RepoRoot>
+    <EngineDir>$(RepoRoot)tmp/simantic/runtime/engine/0.5.14/</EngineDir>
+    <BaseOutputPath>$(RepoRoot)tmp/simantic/upstream-candidates/s3-mwdt/bin/</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(RepoRoot)tmp/simantic/upstream-candidates/s3-mwdt/obj/</BaseIntermediateOutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="ESP32S3_Timg.cs" />
+    <Compile Include="ESP32_WatchdogStages.cs" />
+    <Reference Include="Infrastructure"><HintPath>$(EngineDir)Infrastructure.dll</HintPath></Reference>
+    <Reference Include="Migrant"><HintPath>$(EngineDir)Migrant.dll</HintPath></Reference>
+    <Reference Include="ELFSharp"><HintPath>$(EngineDir)ELFSharp.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

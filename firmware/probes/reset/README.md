@@ -1,5 +1,10 @@
 # Software reset model gap — ESP32-S3 in Simantic
 
+> **Superseded 2026-09-27.** On engine 0.5.14 `esp_restart` reboots the chip
+> (reset reason 3), and restore across a reboot is asserted in S1-F. The
+> original 0.5.7 record follows.
+
+
 **Finding, 2026-09-18:** calling `esp_restart()` aborts the simulation engine.
 The guest does not fault and the firmware reports no error; the host call
 raises:

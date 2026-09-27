@@ -77,7 +77,7 @@ Hands share nothing but BLE. Never join supplies across boards.
 |---|---|
 | Framework | **ESP-IDF v5.5.2** |
 | Compiler | xtensa-esp-elf-gcc **14.2.0** (crosstool-NG esp-14.2.0_20251107) |
-| Simantic CLI/engine | **0.5.7** |
+| Simantic CLI/engine | **0.5.14** (0.5.7 kept at `~/bin/sim-0.5.7.bak` and `tmp/simantic/runtime/engine/0.5.7`) |
 | Simantic Python SDK | **0.3.1** |
 | IDF python env | 3.12.14 |
 | Config | UART0 @115200, `FREERTOS_UNICORE=y`, no PSRAM, DIO 40 MHz, 4 MB layout |
@@ -97,9 +97,14 @@ IDF_TOOLS_PATH       tmp/simantic/esp-idf-tools
 IDF_PYTHON_ENV_PATH  tmp/simantic/esp-idf-python
 Xtensa toolchain     tmp/simantic/audit/esp32s3/toolchain/xtensa-esp-elf/bin
 SIMANTIC_HOME        tmp/simantic/runtime
-Platform .repl       tmp/simantic/audit/esp32s3/ESP32-S3-WROOM-1-N8R2.repl
+SIMANTIC_ENGINE_DIR  tmp/simantic/runtime/engine/0.5.14
+Platform .repl       tmp/simantic/platform/ESP32-S3-WROOM-1-N8R2-0.5.14.repl  (stock, sha256 508f13ad...)
 ESP32-S3 mask ROM    tmp/simantic/esp-idf-tools/esp32s3_rev0_rom.bin
-ADC overlay DLL      tmp/simantic/adc-s3-validation/repro/model/bin/Debug/net10.0/S3AdcUnderTest.dll
+Model candidates     tmp/simantic/upstream-candidates/{systimer-work-en,s3-mwdt}/  built from
+                     simulation/simantic/model-candidates/ (committed; see its README)
+RISC-V toolchain     tmp/simantic/esp-idf-tools/tools/riscv32-esp-elf  (C3/C6/P4 probe only)
+C3/C6 mask ROMs      tmp/simantic/roms  (SHA-256 pinned as in the CLI)
+mcu-lib packers      tmp/simantic/packers  (esp32c3/c6/p4_build_image.py)
 Image packer         tmp/simantic/audit/source-review/esp32s3_build_image.py
 Simantic venv        .venv-simantic/  (has simantic + pytest; use its python)
 ```
@@ -113,9 +118,12 @@ re-deriving these paths.
 2. `esptool merge_bin` @ `0x0 / 0x8000 / 0x10000` → flash image
 3. `esp32s3_build_image.py --rom <mask rom> --flash <flash.bin> --out sim.elf`
    (packs IROM @0x40000000, DROM @0x3FF00000, flash @0x30000000, entry 0x40000400)
-4. `Sim(repl=..., elf=sim.elf, uart='uart0')`, with the ADC overlay loaded and
-   `Miscellaneous.ESP32S3_Sens` rewritten to `AdcUnderTest.ESP32S3_Sens` in the
-   `.repl`.
+4. `Sim(repl=..., elf=sim.elf, uart='uart0')` on the stock platform, with two
+   upstream-candidate models loaded by default for every run (env.sh): the
+   SYSTIMER WORK_EN fix (renode-infrastructure #257) and `ESP32S3_Timg` with
+   the MWDT modeled (#258; platform wiring mcu-lib #229 on #222). Open PRs, not
+   in an engine release yet.
+   `sim --flash` still refuses ESP32-S3 on CLI 0.5.14, so the ROM wrapper stays.
 
 The physical board and simulator run the **same bootloader/partition/app
 binaries**; only the ROM wrapper differs. Keep it that way.
@@ -128,29 +136,32 @@ Do not re-litigate these; they are measured, with evidence in
 | Capability | Status | Detail |
 |---|---|---|
 | ESP-IDF v5.5.2 boot, FreeRTOS, UART0 | **WORKS** | full app boots via ROM/flash |
-| ADC1 one-shot, public `esp_adc` driver | **WORKS with overlay** | 960 reads / 10 ch / 4 atten pass |
+| ADC1 one-shot, public `esp_adc` driver | **WORKS, stock 0.5.14** | calibrated mV within ±5 mV of injection on all five flex channels |
 | `esp_timer` (SYSTIMER-backed) | **WORKS** | create/start/stop/delete; periodic callbacks fire |
-| FreeRTOS task delay | **WORKS, runs long** | returns, but a requested delay takes materially longer. Pace periodic work with `esp_timer`, not `vTaskDelay` |
+| **FreeRTOS tick (SYSTIMER)** | **BROKEN on stock engine — fixed by candidate (#257)** | stock `ESP32C3_Systimer` re-arms the periodic tick on every `CONF` write of `TARGET0_WORK_EN=1`; IDF rewrites it unchanged on every esp_timer re-arm, so the hand app's 100 Hz esp_timer froze `xTickCount` at 2 (tick-driven waits and NVS erase block forever). With the candidate: exactly 100 Hz, one tick per ISR. This was the cause of "task delay runs long". Same bug and fix on ESP32-C3 and ESP32-P4 firmware (`firmware/probes/systick`). Still pace periodic work with `esp_timer` |
 | GPIO1/2/4/5/6/7 digital input | **WORKS** | register-level injection followed |
 | I2C0 via `i2c_master` driver | **WORKS** | LSM6DS3TR-C + LIS3MDL fixtures pass identity, config, status gating and burst reads. GPIO-matrix routing is NOT modeled, so SDA/SCL pin choice is untested |
 | Scripted I2C/SPI slaves in Python | **WORKS** | `I2C.ScriptedI2cSlave` with a `file:` in the `.repl` |
-| **GPTimer / TIMG0** | **BROKEN — model gap** | setup returns `ESP_OK`, no alarm callbacks; `gptimer_get_raw_count` hangs at `timer_ll_trigger_soft_capture` (`timer_ll.h:194`). Model `Timers.ESP32C3_Timg` stores registers only. **Use `esp_timer`, not GPTimer.** |
+| GPTimer / TIMG0 | **WORKS with candidate `ESP32S3_Timg`; BROKEN on stock 0.5.14** | stock wires the C3 register stub: no alarm callbacks, `gptimer_get_raw_count` hangs. Upstream `ESP32S3_Timg` (merged #236, wired by open mcu-lib #222) fires alarms: probe completes with 10 alarms. Prefer `esp_timer` until #222 ships |
 | GPIO43 | **BROKEN** | high-bank GPIO unhandled; reserved for UART0 anyway |
 | NVS read + `set_blob` | **WORKS** | init, open, get, set and commit all return; 29 consecutive saves pass |
-| **NVS `erase_key`** | **BROKEN — hangs** | never returns in a multi-task app; no error, no panic, silent for 60+ simulated seconds. Probe: `firmware/probes/nvs` |
-| **`esp_restart`** | **BROKEN — engine aborts** | same "Collection was modified" error as the FPU gap. Blocks reboot persistence and all watchdog-recovery testing. Probe: `firmware/probes/reset` |
-| Task watchdog (TWDT) | **FIXED (local overlay)** | now fires with the timer-group model; `firmware/tests/s1h_watchdog.py` asserts the real timeout. Panic/reset after a trip remain blocked by the reset gap |
-| **Interrupt watchdog (IWDT)** | **DISABLED IN SIM** | a working timer group makes it expire at 300 ms on healthy firmware, panicking and resetting. `CONFIG_ESP_INT_WDT=n` is a **simulation-only divergence**; production must re-enable it |
+| NVS `erase_key` | **WORKS with candidates** | erase then load reports MISSING; a corrupted blob is rejected with the CRC status; asserted in S1-F. It had hung whenever the tick was dead: the erase yields with `vTaskDelay`. The multi-task phase of `firmware/probes/nvs`, once inconclusive, now completes |
+| `esp_restart` | **WORKS** | software reset (reason 3); calibration restores after reboot, asserted in S1-F. The superseded local TIMG overlay hung it. Aborted on 0.5.7 |
+| Task watchdog (TWDT) | **WORKS with candidate MWDT (#258)** | `firmware/probes/mwdt` 14/14 (stage-0 interrupt at 200.015 ms for 200 ms on both groups, feed, write-protect, system reset with reasons 7/8); S1-H trips. Stock 0.5.14 never fires: `ESP32S3_Timg` leaves MWDT store-only and the platform still wires the C3 stub. Not a firmware gap |
+| Interrupt watchdog (IWDT) | **WORKS with both candidates; ENABLED in the hand build** | production settings (`CONFIG_ESP_INT_WDT=y`, 300 ms). The old "expires on healthy firmware" finding was the dead tick: the IWDT is fed from the tick hook. `run_all.sh` fails any suite whose UART shows a panic; with the stock SYSTIMER 7 of 8 hand suites panic, with the candidate none do. `firmware/probes/iwdt`: panics 286 ms after interrupts are disabled |
+| Reset-reason hint after a panic | **BROKEN — model gap** | IDF stores it in S3 `RTC_CNTL_STORE6` (+0xC8); the platform's C3 RTC_CNTL model has STORE4-7 at 0xB8-0xC4, so a panic reboot reports `ESP_RST_SW`, not `INT_WDT`. Addressed by draft renode-infrastructure #245 (S3 RTC_CNTL) |
 | ESP32 BLE, two concurrent links | **UNQUALIFIED** | Nordic BLE passes do **not** transfer |
 | ADC2, DMA/continuous, ADC interrupts | **OUT OF SCOPE** | not modeled |
 
-The ADC model is **ideal and synchronous**: `raw = min(4095, uV × 4095 × (4−atten) ÷ 4400000)`.
-It validates the model contract, not silicon accuracy, noise, latency or
-factory calibration. Physical endpoint differs: nominal 3V3 gives 4095 on
-silicon but 3071 in the ideal model.
-
-The ADC fix is **PR #168** (`simantic-dev/renode-infrastructure`), **open and
-unmerged**, loaded as a namespace-only overlay. Stock engine 0.5.7 fails ADC.
+The ADC fix is **PR #168**, merged into `simantic-main` on 2026-09-26 and
+shipped in engine 0.5.14. The stock platform wires `CalibrationEfuse: efuse`,
+so the model returns the raw count a die with the modeled eFuse would report,
+and ESP-IDF's curve-fitting calibration turns it back into millivolts. Raw
+counts are therefore **die-specific, as on silicon** — never assert them
+against the ideal TRM line. Tests assert calibrated mV (`ADC_MV_TOLERANCE`,
+±5 mV, model contract) and compare captures with live acquisition. The model
+is synchronous and noise-free; it validates neither silicon accuracy nor the
+bench board's own eFuse.
 
 ### SDK API surface (`simantic.Sim`, 0.3.1)
 
@@ -271,9 +282,14 @@ firmware/                    ACTIVE firmware workspace
   probes/reset/              esp_restart gap
   probes/nvs/                NVS erase gap
   probes/gptimer/            timer-group fix and its before/after
+  probes/mwdt/               MWDT (task/interrupt watchdog hardware) probe
+  probes/iwdt/               interrupt watchdog with production settings
+  probes/systick/            FreeRTOS tick under esp_timer load; multichip.py
+                             runs it on S3/C3/P4, stock vs candidate SYSTIMER
 simulation/simantic/
   README.md                  simulation scope
   hardware-validation/esp32s3-adc/   ADC reference app, runs on silicon and sim
+  model-candidates/          simulator models awaiting a Simantic release
 outputs/palmpilot-fall-2026/ schedule
 tmp/                         gitignored toolchain + build output - DO NOT DELETE
 ```
@@ -296,8 +312,9 @@ this session owns the repository. If concurrent edits reappear, stop and check
 `firmware/apps/hand` implements S1 acquisition, calibration, the external
 motion module, gravity-referenced attitude mapping, the control state machine
 and calibration persistence. `sh firmware/tests/run_all.sh` runs every suite;
-**183 checks across 9 suites pass** as of 2026-09-19, against the fixed
-timer-group model.
+**196 checks across 9 suites pass** as of 2026-09-27 on engine 0.5.14 and the
+stock S3 platform with the two model candidates, production task and interrupt
+watchdogs enabled, and no firmware panic in any run.
 
 The hand→hub packet payload is frozen in `firmware/apps/hand/main/packet.h`
 (59 bytes, little-endian, versioned, CRC-32) and decoded independently in
@@ -307,14 +324,14 @@ No S or C milestone is claimed. Still open: the BLE stack and transport
 binding, and the right-hand and hub targets. The watchdog is implemented with FW-06's service
 discipline and its timeout is now exercised; only the panic and reset after a
 trip remain physical-only. Persistence is implemented
-but **not qualified** — reboot restore, erase and on-device CRC rejection are
-all blocked by model gaps and are physical-only at C2/CTRL-022.
+but **not qualified**. Reboot restore, erase and on-device CRC rejection now
+pass in simulation (S1-F); physical proof remains owed at C2/CTRL-022.
 
 ## 11. Next firmware milestone
 
 **S0 for ESP32-S3**, then S1 one-hand acquisition. Per the 2026-09-17 readiness
 record, enough is qualified to start one-hand firmware on: ESP-IDF v5.5.2, the
-PR #168 ADC overlay, `esp_timer`/FreeRTOS, GPIO7, and UART diagnostics.
+upstream ADC1 model, `esp_timer`/FreeRTOS, GPIO7, and UART diagnostics.
 
 Still owed by the project before S1 closes: five-channel acquisition with
 timestamps/filtering/validity, public GPIO driver + debounce + held-at-boot,

@@ -61,7 +61,7 @@ Scripts run under `.venv-simantic/bin/python` with `firmware/tools` on
 `PYTHONPATH` and `PALMPILOT_SIM_ELF` / `PALMPILOT_OUT` set.
 
 ```python
-from harness import FLEX, PalmPilotSim, ideal_raw
+from harness import FLEX, PalmPilotSim
 
 with PalmPilotSim() as sim:
     sim.wait_ready()
@@ -78,23 +78,26 @@ failure.
 
 ## Harness behavior worth knowing
 
-The wrapper exists to encode three bench findings so they are not rediscovered:
+The wrapper encodes these findings so they are not rediscovered:
 
-- **ADC needs the PR #168 overlay.** Stock engine 0.5.7 stores ADC registers
-  without converting. The overlay is namespace-only, so the platform's
-  `Miscellaneous.ESP32S3_Sens` is rewritten to `AdcUnderTest.ESP32S3_Sens` into
-  a per-run copy of the `.repl`. Pass `adc=False` to skip it.
+- **Two simulator model candidates load by default** (`env.sh`): the SYSTIMER
+  fix (renode-infrastructure #257) and the S3 main watchdog (#258), from
+  `simulation/simantic/model-candidates/`. Without the first, the FreeRTOS tick
+  dies whenever esp_timer re-arms faster than the tick period. Set
+  `PALMPILOT_SYSTIMER_OVERLAY=` / `PALMPILOT_S3_MWDT_OVERLAY=` (empty) to run
+  the engine's own models; `PALMPILOT_OVERLAYS=0` drops all local overlays.
+- **ADC1 is upstream since engine 0.5.14** (PR #168), in its calibrated-state
+  mode: raw counts are die-specific, so tests assert calibrated millivolts.
 - **`Sim.read_uart` is unreliable** on engine 0.5.7 / SDK 0.3.1 — it duplicates
   and interleaves fragments. The harness captures the Renode `CharReceived`
   event instead. Assert against `sim.records()`, never `read_uart`.
 - **ADC injection is not in the SDK.** `set_flex_uv` / `set_channel_uv` go
   through Renode interop (`IADCExtensions.SetVoltage`).
 
-`ideal_raw(microvolts, attenuation)` is the model's **declared ideal** transfer
-function, `min(4095, uV × 4095 × (4−atten) ÷ 4400000)`. Matching it validates
-the model contract and nothing about silicon: no noise, no conversion latency,
-no factory calibration. Silicon and model already disagree at the nominal 3V3
-endpoint (4095 measured vs 3071 ideal).
+`ADC_MV_TOLERANCE` (±5 mV) bounds the calibrated millivolts against the
+injected voltage. Matching it validates the model's calibrated contract and
+nothing about silicon: no noise, no conversion latency, not the bench board's
+own eFuse.
 
 ## Firmware and tests
 
@@ -150,16 +153,17 @@ for the FW-04 stalled-acquisition case, not production behavior.
   ([record](probes/fpu/README.md)).
   All control arithmetic is fixed-point milli-units. `firmware/probes/fpu` is
   the regression probe.
-- **Pace periodic work with `esp_timer`, not `vTaskDelay`.** Task delays run
-  materially long on this model; a `vTaskDelay`-paced control task lagged the
-  sampled data by a full query interval.
+- **Pace periodic work with `esp_timer`, not `vTaskDelay`.** Task delays used
+  to run long or stop: the shipped SYSTIMER model starved the tick (fixed by
+  the candidate). `esp_timer` remains the right pacing on silicon as well.
 - **Never write flash from the live control path.** A real flash write suspends
   the scheduler; `cal save` and `cal erase` are refused while `permitted`.
-- **The interrupt watchdog is off in simulation** (`CONFIG_ESP_INT_WDT=n`). A
-  working timer group makes it expire at 300 ms on healthy firmware. This is a
-  divergence from the production configuration and production must re-enable it.
-- The timer group is fixed by a **local overlay, not the shipped engine**. Hand
-  tests pass `timg=True`; without it GPTimer hangs and the watchdog cannot fire. `gptimer_*` setup returns `ESP_OK`, but no alarm
+- **The interrupt watchdog is on** (`CONFIG_ESP_INT_WDT=y`, 300 ms), as in
+  production. It used to expire on healthy firmware because the dead tick left
+  it unfed. `run_all.sh` fails any suite whose UART shows a firmware panic.
+- The timer group comes from the **S3 MWDT candidate** (#258), not the shipped
+  engine, which wires a register-only stub: GPTimer hangs and neither IDF
+  watchdog can fire without it. `gptimer_*` setup returns `ESP_OK`, but no alarm
   callbacks fire and `gptimer_get_raw_count` hangs — a confirmed model gap in
   `Timers.ESP32C3_Timg`. Use `esp_timer` (SYSTIMER-backed), which is verified.
 - The platform models **two CPU cores** while our `sdkconfig` sets

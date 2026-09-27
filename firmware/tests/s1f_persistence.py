@@ -8,21 +8,15 @@ Exercises real NVS writes to the modeled SPI flash: save, reload and the
 missing-profile path. The stored profile is never trusted on its own - validity
 is re-derived after load.
 
-BLOCKED here, and deliberately not attempted:
-
-  * **Restore across a reboot.** esp_restart() aborts this engine
-    (firmware/probes/reset/README.md). The behavior a user actually depends on
-    - switching the hand on and finding it already calibrated - cannot be
-    verified in simulation.
-  * **Erase, and CRC rejection of a corrupt profile.** nvs_erase_key never
-    returns in this application, and corrupting a stored blob needs the same
-    write path (firmware/probes/nvs/README.md).
-
-Both must be tested physically at C2/CTRL-022. Persistence is therefore
-implemented but NOT QUALIFIED.
+Also exercised, formerly BLOCKED: erase, on-device CRC rejection of a
+corrupted profile, and restore across a real esp_restart(). The erase hang was
+the simulator's dead FreeRTOS tick (the erase yields with vTaskDelay), and the
+reboot hang came from a superseded local timer overlay. Both are fixed by the
+upstream candidates env.sh loads (CLAUDE.md section 4).
 
 Scope: NVS against simulated flash only. No wear, no power loss during a write,
-no silicon flash timing, no erase and no reboot.
+no silicon flash timing. A simulation pass does not qualify persistence; the
+physical check remains C2/CTRL-022.
 """
 import sys
 from pathlib import Path
@@ -129,15 +123,40 @@ with PalmPilotSim(i2c=FIXTURES, timg=True) as sim:
     state = command(sim, "control", "control")
     check("reset hand commands nothing", state["valid"] == 0, state["state"])
 
+    print("\nerase:", flush=True)
+    result = command(sim, "cal erase", "storage")
+    check("erase returns", result["status"] == PERSIST_OK, str(result["status"]))
+    result = command(sim, "cal load", "storage")
+    check("erased profile is missing", result["status"] == PERSIST_ERR_MISSING,
+          str(result["status"]))
+
+    print("\nCRC rejection on device:", flush=True)
+    check("recalibrated", calibrate(sim)["valid"] == 1)
+    check("save accepted again", command(sim, "cal save", "storage")["status"] == PERSIST_OK)
+    result = command(sim, "cal corrupt", "storage")
+    check("stored CRC corrupted", result["status"] == PERSIST_OK, str(result["status"]))
+    command(sim, "cal reset", "calibration")
+    result = command(sim, "cal load", "storage")
+    check("corrupted profile rejected by CRC", result["status"] == PERSIST_ERR_CRC,
+          str(result["status"]))
+    check("corrupted profile not adopted", result["calibrated"] == 0)
+
+    print("\nrestore across a reboot:", flush=True)
+    check("recalibrated before reboot", calibrate(sim)["valid"] == 1)
+    check("save before reboot", command(sim, "cal save", "storage")["status"] == PERSIST_OK)
+    mark = len(sim.stream)
+    sim.send_line("reboot")
+    boot = sim.wait_for_type("boot", timeout=10.0, step=0.05, since=mark)
+    check("esp_restart reboots the chip", boot.get("reset_reason") == 3, str(boot.get("reset_reason")))
+    restore = sim.wait_for_type("storage", timeout=10.0, step=0.05, since=mark)
+    check("profile restored at boot", restore["op"] == "restore" and restore["status"] == PERSIST_OK,
+          str(restore))
+    check("calibrated after reboot without recapture", restore["calibrated"] == 1)
+
     sim.save("s1f-persistence.json", {
         "test": "S1-F calibration persistence and integrity",
-        "scope": "NVS on simulated SPI flash; save and reload only",
-        "blocked": [
-            "restore across reboot - esp_restart aborts the engine",
-            "erase - nvs_erase_key never returns in this application",
-            "CRC rejection on device - needs the same blocked write path",
-            "all three are physical-only at C2/CTRL-022",
-        ],
+        "scope": "NVS on simulated SPI flash; save, reload, erase, CRC reject, reboot restore",
+        "physical_only": ["wear, power loss during a write, silicon flash timing - C2/CTRL-022"],
         "checks": [{"name": n, "passed": o, "detail": d} for n, o, d in checks],
         "passed": not failures,
     })

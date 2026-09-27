@@ -18,7 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path("firmware/tests/fixtures").resolve()))
 
 import imu_state                                             # noqa: E402
-from harness import FLEX, PalmPilotSim, ideal_raw     # noqa: E402
+from harness import FLEX, PalmPilotSim                # noqa: E402
 
 FINGERS = list(FLEX)
 EXTENDED_UV = 2154000        # 25 kOhm flex
@@ -72,19 +72,27 @@ with PalmPilotSim(i2c=FIXTURES, timg=True) as sim:
     check("curl is -1 while uncalibrated", all(c == -1 for c in row["curl_milli"]),
           str(row["curl_milli"]))
 
+    # A capture must average exactly what the acquisition path reads at that
+    # voltage. Raw counts are die-specific, so the reference is the live sample,
+    # not a formula; the calibrated millivolts are asserted in S1-A.
     print("\ncapture both ends:", flush=True)
+    live = command(sim, "sample", "sample")["raw"]
     result = capture(sim, "extended")
     check("extended capture accepted", result["result"] == 0, result["reason"])
-    check("extended mean matches injection", result["mean"][0] == ideal_raw(EXTENDED_UV, 3),
-          f"mean={result['mean'][0]} expected={ideal_raw(EXTENDED_UV, 3)}")
+    check("extended mean matches live acquisition", result["mean"] == live,
+          f"mean={result['mean']} live={live}")
+    extended_live = live
     check("extended capture is stable", max(result["spread"]) == 0, str(result["spread"]))
 
     all_flex(sim, CURLED_UV)
     sim.run_for(0.2)
+    live = command(sim, "sample", "sample")["raw"]
     result = capture(sim, "curled")
     check("curled capture accepted", result["result"] == 0, result["reason"])
-    check("curled mean matches injection", result["mean"][0] == ideal_raw(CURLED_UV, 3),
-          f"mean={result['mean'][0]} expected={ideal_raw(CURLED_UV, 3)}")
+    check("curled mean matches live acquisition", result["mean"] == live,
+          f"mean={result['mean']} live={live}")
+    check("curled reads below extended", max(live) < min(extended_live),
+          f"{live} vs {extended_live}")
 
     result = command(sim, "cal neutral", "neutral")
     check("neutral orientation captured", result["result"] == 0, result["reason"])

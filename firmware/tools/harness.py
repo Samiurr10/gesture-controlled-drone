@@ -3,19 +3,21 @@
 Encodes the workarounds that the September 2026 bench work established, so they
 are not re-derived per script (CLAUDE.md section 4):
 
-  * ADC needs the PR #168 overlay; stock engine 0.5.7 does not convert. The
-    overlay is namespace-only, so the .repl's `Miscellaneous.ESP32S3_Sens` has
-    to be rewritten to `AdcUnderTest.ESP32S3_Sens`.
+  * ADC1 conversion is upstream since engine 0.5.14 (PR #168). The stock
+    platform wires `CalibrationEfuse`, so raw counts follow the modeled die's
+    factory calibration, not the ideal TRM line.
   * `Sim.read_uart` duplicates and interleaves fragments on engine 0.5.7 /
-    SDK 0.3.1. Assertions must use the Renode `CharReceived` event instead.
+    SDK 0.3.1; not re-examined on 0.5.14. Assertions must use the Renode `CharReceived` event instead.
   * ADC voltage injection is not in the SDK; it goes through Renode interop
     (`IADCExtensions.SetVoltage`).
 
 Run scripts through `palmpilot.py sim`, which sets PALMPILOT_* and PYTHONPATH.
 
-The ADC model is ideal and synchronous. Values returned here validate the model
-contract only — never analog accuracy, noise, conversion latency or factory
-calibration.
+The ADC model is synchronous and noise-free. Raw counts are specific to the
+modeled die's eFuse, exactly as they are specific to each physical chip, so
+tests assert the calibrated millivolts ESP-IDF derives from them. That validates
+the model's calibrated contract only — never silicon accuracy, noise,
+conversion latency or the bench board's own eFuse.
 """
 from __future__ import annotations
 
@@ -46,25 +48,37 @@ TIMG_IRQ = {
     "timg0": {0: 50, 1: 52},        # T0 alarm, watchdog
     "timg1": {0: 53, 1: 55},
 }
-BATTERY_GPIO = 10        # reserved, must stay disconnected
+# Candidate upstream wiring: T0/T1/WDT level IRQs as in mcu-lib #222, and the
+# MWDT CPU/system reset outputs to RTC_CNTL reset-reason inputs
+# (esp32s3 soc/reset_reasons.h: CORE_MWDT0/1 = 7/8, CPU0_MWDT0/1 = 11/17).
+S3_TIMG_WIRING = {
+    "timg0": ["0 -> intmatrix@50 | intmatrix1@50", "1 -> intmatrix@51 | intmatrix1@51",
+              "2 -> intmatrix@52 | intmatrix1@52", "3 -> rtccntl@11", "4 -> rtccntl@7"],
+    "timg1": ["0 -> intmatrix@53 | intmatrix1@53", "1 -> intmatrix@54 | intmatrix1@54",
+              "2 -> intmatrix@55 | intmatrix1@55", "3 -> rtccntl@17", "4 -> rtccntl@8"],
+}
+BATTERY_GPIO = 10       # reserved, must stay disconnected
 I2C_SDA_GPIO, I2C_SCL_GPIO = 8, 9
 LSM6DS3TRC_ADDRESS, LIS3MDL_ADDRESS = 0x6A, 0x1C
 
 
-def ideal_raw(microvolts: int, attenuation: int) -> int:
-    """The ADC model's declared transfer function (PR #168). Not silicon."""
-    return min(4095, microvolts * 4095 * (4 - attenuation) // 4400000)
+# Acceptance band for calibrated ADC1 millivolts against the injected voltage,
+# fixed before the 0.5.14 runs. PR #168's calibrated-state model measured a
+# worst error of 3 mV over 2480 public-driver checks. Model contract only.
+ADC_MV_TOLERANCE = 5
 
 
 class PalmPilotSim:
     """Context manager wrapping simantic.Sim with the PalmPilot fixtures."""
 
-    def __init__(self, sim_elf=None, out=None, platform=None, adc=True,
+    def __init__(self, sim_elf=None, out=None, platform=None,
                  uart="uart0", show_logs=False, scenario=None, i2c=None,
                  timg=False):
         # timg=True swaps in the timer-group model under development and wires
         # its IRQ lines, which the stock platform leaves unconnected.
-        self.timg = timg
+        # PALMPILOT_OVERLAYS=0 drops it so a run exercises the engine's own
+        # timer-group model unmodified.
+        self.timg = timg and os.environ.get("PALMPILOT_OVERLAYS") != "0"
         # i2c maps a 7-bit address to a ScriptedI2cSlave script, e.g.
         # {0x6A: "firmware/tests/fixtures/lsm6ds3trc.py"}. The scripts run in
         # this interpreter, so a test mutates their shared state directly.
@@ -72,7 +86,7 @@ class PalmPilotSim:
         self.sim_elf = Path(sim_elf or os.environ["PALMPILOT_SIM_ELF"])
         self.out = Path(out or os.environ.get("PALMPILOT_OUT", "."))
         self.platform = Path(platform or os.environ["PALMPILOT_PLATFORM"])
-        self.adc, self.uart_name = adc, uart
+        self.uart_name = uart
         self.show_logs, self.scenario = show_logs, scenario
         self.stream = bytearray()
         self.sim = self.machine = None
@@ -89,8 +103,32 @@ class PalmPilotSim:
 
         platform = self.platform
         platform_text = platform.read_text()
+        original_text = platform_text
 
-        if self.timg:
+        mwdt = os.environ.get("PALMPILOT_S3_MWDT_OVERLAY")
+        if mwdt and os.environ.get("PALMPILOT_OVERLAYS") != "0":
+            # Candidate upstream ESP32S3_Timg with the MWDT modeled
+            # (renode-infrastructure #258), loaded under its real type name
+            # (absent from engine 0.5.14) for every run, so all tests model the
+            # same chip. A platform still declaring the C3 stub is rewired as
+            # mcu-lib #222 plus the MWDT reset outputs (mcu-lib companion PR).
+            import clr
+            from Antmicro.Renode.Utilities import TypeManager
+            overlay = mwdt
+            clr.AddReference(overlay)
+            if not TypeManager.Instance.ScanFile(overlay):
+                raise RuntimeError(f"S3 MWDT overlay type scan failed: {overlay}")
+            lines = []
+            for line in platform_text.split("\n"):
+                stripped = line.strip()
+                name = stripped.split(":", 1)[0] if ":" in stripped else ""
+                if name in S3_TIMG_WIRING and "Timers.ESP32C3_Timg" in line:
+                    lines.append(line.replace("Timers.ESP32C3_Timg", "Timers.ESP32S3_Timg"))
+                    lines.extend(f"    {wire}" for wire in S3_TIMG_WIRING[name])
+                else:
+                    lines.append(line)
+            platform_text = "\n".join(lines)
+        elif self.timg:
             import clr
             from Antmicro.Renode.Utilities import TypeManager
             overlay = os.environ["PALMPILOT_TIMG_OVERLAY"]
@@ -111,6 +149,20 @@ class PalmPilotSim:
                     lines.append(line)
             platform_text = "\n".join(lines)
 
+        if os.environ.get("PALMPILOT_SYSTIMER_OVERLAY"):
+            # Candidate SYSTIMER with WORK_EN re-armed only on a 0 -> 1 edge,
+            # loaded under a separate namespace (the engine's own class exists).
+            import clr
+            from Antmicro.Renode.Utilities import TypeManager
+            overlay = os.environ["PALMPILOT_SYSTIMER_OVERLAY"]
+            clr.AddReference(overlay)
+            if not TypeManager.Instance.ScanFile(overlay):
+                raise RuntimeError(f"SYSTIMER overlay type scan failed: {overlay}")
+            if platform_text.count("Miscellaneous.ESP32C3_Systimer") != 1:
+                raise RuntimeError("platform does not declare exactly one ESP32C3_Systimer")
+            platform_text = platform_text.replace(
+                "Miscellaneous.ESP32C3_Systimer", "SystFixed.ESP32C3_Systimer")
+
         if self.i2c:
             # The fixture scripts import each other (imu_state), so their
             # directory has to be importable from inside the simulator.
@@ -125,19 +177,7 @@ class PalmPilotSim:
                 lines.append(f'    file: "{Path(script).resolve()}"')
             platform_text = "\n".join(lines) + "\n"
 
-        if self.adc:
-            import clr
-            from Antmicro.Renode.Utilities import TypeManager
-            overlay = os.environ["PALMPILOT_ADC_OVERLAY"]
-            clr.AddReference(overlay)
-            if not TypeManager.Instance.ScanFile(overlay):
-                raise RuntimeError(f"overlay type scan failed: {overlay}")
-            if platform_text.count("Miscellaneous.ESP32S3_Sens") != 1:
-                raise RuntimeError("platform does not declare exactly one ESP32S3_Sens")
-            platform_text = platform_text.replace(
-                "Miscellaneous.ESP32S3_Sens", "AdcUnderTest.ESP32S3_Sens")
-
-        if self.adc or self.i2c or self.timg:
+        if platform_text != original_text:
             self.out.mkdir(parents=True, exist_ok=True)
             platform = self.out / "platform.repl"
             platform.write_text(platform_text)

@@ -4,7 +4,7 @@ import sys
 from harness import PalmPilotSim
 
 use_overlay = "stock" not in sys.argv
-with PalmPilotSim(adc=False, timg=use_overlay) as sim:
+with PalmPilotSim(timg=use_overlay) as sim:
     print(f"TIMG model: {'overlay under test' if use_overlay else 'stock'}\n")
     try:
         for _ in range(20):

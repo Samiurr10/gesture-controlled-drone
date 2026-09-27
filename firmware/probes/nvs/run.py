@@ -2,7 +2,7 @@
 """Report which NVS stage the firmware stops at."""
 from harness import PalmPilotSim
 
-with PalmPilotSim(adc=False) as sim:
+with PalmPilotSim() as sim:
     for _ in range(24):                 # up to 60 simulated seconds
         sim.run_for(2.5)
         if any(r.get("type") == "done" for r in sim.records()):

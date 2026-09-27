@@ -14,6 +14,13 @@ run() {
     printf '!!! %s FAILED\n' "$label"
     failed=$((failed + 1))
   fi
+  # A panic (e.g. an interrupt-watchdog trip) reboots the chip and can hide
+  # behind passing checks, so any panic in the run's UART fails the suite.
+  uart="tmp/palmpilot/$(basename "$app")/uart.txt"
+  if [ -f "$uart" ] && grep -q "Guru Meditation" "$uart"; then
+    printf '!!! %s PANICKED: %s\n' "$label" "$(grep -m1 'Guru Meditation' "$uart")"
+    failed=$((failed + 1))
+  fi
 }
 
 run simulation/simantic/hardware-validation/esp32s3-adc firmware/tools/selftest.py "toolchain self-test"

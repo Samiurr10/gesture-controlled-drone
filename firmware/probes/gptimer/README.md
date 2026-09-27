@@ -50,6 +50,13 @@ rather than a static snapshot.
 
 ## Consequence: the interrupt watchdog
 
+> **Superseded 2026-09-27.** The expiry below was not a timing divergence: the
+> shipped SYSTIMER model starved the FreeRTOS tick, and the tick hook is what
+> feeds the interrupt watchdog. With the SYSTIMER candidate (renode-infrastructure
+> #257) the production IWDT stays quiet on healthy firmware and is enabled in the
+> hand build again. See `firmware/probes/iwdt` and CLAUDE.md section 4. The
+> original record follows.
+
 A working timer group also makes ESP-IDF's **interrupt** watchdog real, and it
 then expires at its designed 300 ms even though the firmware is healthy. It
 panics, and the resulting reset aborts the engine

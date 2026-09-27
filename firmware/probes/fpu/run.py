@@ -2,7 +2,7 @@
 """Report how far the FPU probe gets before the engine aborts."""
 from harness import PalmPilotSim
 
-with PalmPilotSim(adc=False) as sim:
+with PalmPilotSim() as sim:
     try:
         for _ in range(12):
             sim.run_for(0.25)

@@ -1,5 +1,12 @@
 # NVS write/erase model gap — ESP32-S3 in Simantic
 
+> **Superseded 2026-09-27.** On engine 0.5.14 with the SYSTIMER candidate
+> (renode-infrastructure #257), `nvs_erase_key` returns in the hand application and
+> the multi-task phase of this probe completes. The hang was the dead FreeRTOS
+> tick: the erase path yields with `vTaskDelay`. Erase, CRC rejection and reboot
+> restore are now asserted in S1-F. The original record follows.
+
+
 **Finding, 2026-09-18:** NVS reads and blob writes complete, but some write and
 erase operations **never return** when the application has other tasks running.
 The task stops silently: no error, no panic, no further output, for at least

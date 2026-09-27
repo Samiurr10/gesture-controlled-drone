@@ -2,7 +2,7 @@
 """Report whether a software reset completes or aborts the engine."""
 from harness import PalmPilotSim
 
-with PalmPilotSim(adc=False) as sim:
+with PalmPilotSim() as sim:
     try:
         for _ in range(16):
             sim.run_for(0.25)

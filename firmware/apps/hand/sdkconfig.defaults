@@ -10,13 +10,12 @@ CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y
 CONFIG_FREERTOS_UNICORE=y
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=6144
 
-# Interrupt watchdog OFF. It measures how long interrupts stay disabled, and a
-# virtual-time emulator cannot represent that faithfully: with a working timer
-# group model it expires at its designed 300 ms even though the firmware is
-# healthy, panics, and the resulting reset aborts the engine.
-#
-# SIMULATION-ONLY DIVERGENCE. Production must re-enable this; it is a real
-# safety net on silicon. Recorded so the deployed configuration is never
-# assumed to match what was tested here.
-CONFIG_ESP_INT_WDT=n
+# Interrupt watchdog ON, production settings (TIMG1 MWDT, 300 ms, fed from the
+# FreeRTOS tick hook). It was disabled while the simulator's SYSTIMER model
+# starved the tick (every esp_timer re-arm restarted it), which left the IWDT
+# unfed and panicked healthy idle firmware. With the SYSTIMER and MWDT
+# candidates (env.sh) it stays quiet on healthy firmware and panics ~286 ms
+# after interrupts are disabled (firmware/probes/iwdt).
+CONFIG_ESP_INT_WDT=y
+CONFIG_ESP_INT_WDT_TIMEOUT_MS=300
 
