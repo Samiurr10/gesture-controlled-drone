@@ -67,9 +67,12 @@ namespace Antmicro.Renode.Peripherals.Timers
     //   - System-reset stages raise output 4, CPU-reset stages output 3; wire
     //     them to RTC_CNTL reset-reason inputs (RESET_REASON_CORE_MWDT0/1 = 7/8,
     //     CPU0_MWDT0/1 = 11/17 in esp32s3 soc/reset_reasons.h).
-    //   - A CPU-reset stage only acts when WDT_PROCPU_RESET_EN or
-    //     WDT_APPCPU_RESET_EN is set; wdt_hal_init() leaves both clear. Ported
-    //     from the C3 silicon finding in ESP32C3_Timg, not measured on an S3.
+    //   - MODELED SIMPLIFICATION (not measured on an S3): a CPU-reset stage only
+    //     acts when WDT_PROCPU_RESET_EN or WDT_APPCPU_RESET_EN is set. This gate
+    //     is copied from the C3 silicon finding in ESP32C3_Timg. ESP-IDF never
+    //     uses the CPU-reset action on the S3 (the task and interrupt watchdogs
+    //     use interrupt + system reset, and wdt_hal_init() leaves both enables
+    //     clear), so no IDF path depends on it.
     //   - flashBootProtection (TIMG0 only on silicon) makes WDT_FLASHBOOT_MOD_EN,
     //     set at reset, run the MWDT with stage 0 = system reset until firmware
     //     clears it. Off by default.
@@ -454,6 +457,7 @@ namespace Antmicro.Renode.Peripherals.Timers
                     UpdateWdtIrq();
                     break;
                 case ActionCpuReset:
+                    // MODELED SIMPLIFICATION: gate copied from the C3, not measured on an S3.
                     if((Get(WdtConfig0) & (WdtProcpuResetEn | WdtAppcpuResetEn)) == 0)
                     {
                         this.Log(LogLevel.Warning, "MWDT stage {0} expired: CPU reset requested but WDT_PROCPU/APPCPU_RESET_EN=0, no effect", stage);

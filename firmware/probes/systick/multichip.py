@@ -3,7 +3,7 @@
 on the stock platform twice: with the engine's own SYSTIMER model and with the
 candidate fix (tmp/simantic/upstream-candidates/systimer-work-en).
 
-    python3 firmware/probes/systick/multichip.py [esp32s3 esp32c3 esp32p4]
+    python3 firmware/probes/systick/multichip.py [esp32s3 esp32c3 esp32c6 esp32p4]
 
 Stock platforms come from the CLI's cache (~/.sim_cache/<model>.json, fetched by
 `sim --mcu <model> --use-cached ...`). Mask ROMs: tmp/simantic/roms (C3/C6, SHA-256
@@ -22,10 +22,7 @@ APP = Path(__file__).resolve().parent
 TARGETS = {
     "esp32s3": {"model": "esp32-s3-wroom-1-n8r2", "cls": "ESP32C3_Systimer"},
     "esp32c3": {"model": "esp32-c3", "cls": "ESP32C3_Systimer"},
-    # ESP32-C6 is not listed: its platform does not run an ESP-IDF application
-    # on engine 0.5.14 (the 2nd-stage bootloader reads the app header as zeros;
-    # a RAM-loaded app stops advancing virtual time). ESP32C6_Systimer is still
-    # exercised on firmware here through the P4, whose platform uses it.
+    "esp32c6": {"model": "esp32-c6", "cls": "ESP32C6_Systimer"},
     "esp32p4": {"model": "esp32-p4", "cls": "ESP32C6_Systimer"},
 }
 SECONDS = 6
@@ -47,8 +44,9 @@ def build(target, env):
     args = json.loads((out / "flasher_args.json").read_text())
     flash = out / "flash.bin"
     pairs = [x for off, f in sorted(args["flash_files"].items(), key=lambda kv: int(kv[0], 16)) for x in (off, out / f)]
-    run([py, "-m", "esptool", "--chip", target, "merge_bin", "-o", flash, "--flash_mode", "dio",
-         "--flash_size", "4MB", *pairs], env)
+    # Keep the image headers the build wrote: forcing flash mode/size here once
+    # produced a C6 image the bootloader rejected ("mismatch chip ID").
+    run([py, "-m", "esptool", "--chip", target, "merge_bin", "-o", flash, *pairs], env)
     boot = out / "boot.elf"
     rom_dir = ROOT / "tmp/simantic/roms"
     if target == "esp32s3":

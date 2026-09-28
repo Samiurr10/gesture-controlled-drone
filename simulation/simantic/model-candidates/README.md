@@ -23,8 +23,8 @@ To run the engine's own models instead, set `PALMPILOT_SYSTIMER_OVERLAY=` and/or
 Each item is a before/after on the same firmware.
 
 - **SYSTIMER, measured by `firmware/probes/systick` (`multichip.py`)**, as ticks and `vTaskDelay(10 ms)` loops per second:
-  - ESP32-S3, ESP32-C3 and ESP32-P4: 0 / 0 on the shipped model, 100 / 100 with the candidate.
-  - ESP32-C6 was not run: its platform does not run an ESP-IDF application on engine 0.5.14.
+  - ESP32-S3, ESP32-C3, ESP32-C6 and ESP32-P4: 0 / 0 on the shipped model, 100 / 100 with the candidate.
+  - Also committed upstream as sim-fixtures#314. With the same 0.5.14 engine rebuilt with and without the fixes, all 130 ESP fixtures give identical outcomes.
 - **MWDT, measured by `firmware/probes/mwdt`:** 4/11 on the shipped model (nothing fires), 14/14 with the candidate.
 - **Interrupt watchdog in the hand application** (production settings), measured by `firmware/tests/run_all.sh`: 7 of 8 hand suites panicked on the shipped SYSTIMER. With the candidate, 0 panics and all suites pass.
 
