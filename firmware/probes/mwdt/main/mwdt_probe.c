@@ -16,6 +16,7 @@
 
 #include "driver/uart.h"
 #include "esp_intr_alloc.h"
+#include "esp_private/periph_ctrl.h"
 #include "esp_rom_sys.h"
 #include "esp_system.h"
 #include "esp_timer.h"
@@ -132,6 +133,13 @@ void app_main(void)
     setvbuf(stdout, NULL, _IONBF, 0);
     printf("{\"type\":\"boot\",\"fixture\":\"palmpilot-mwdt-probe\",\"reset_reason\":%d,"
            "\"rom_reason\":%d}\n", esp_reset_reason(), (int)esp_rom_get_reset_reason(0));
+
+    // IDF's startup leaves TIMG1 clock-gated and held in reset unless the
+    // interrupt watchdog is enabled (it is off here), and wdt_hal does not
+    // enable it: on silicon every TG1 write would be lost. Found on an
+    // ESP32-S3 in review of sim-fixtures#314 (simantic-core#548).
+    periph_module_enable(PERIPH_TIMG0_MODULE);
+    periph_module_enable(PERIPH_TIMG1_MODULE);
 
     for (int group = 0; group < 2; group++) {
         const int source = group ? ETS_TG1_WDT_LEVEL_INTR_SOURCE : ETS_TG0_WDT_LEVEL_INTR_SOURCE;
