@@ -66,7 +66,7 @@ until it is separately calibrated and qualified.
 |---|---|---|
 | **ENABLE** | left GPIO7 held, active low, debounced | deadman. Commands are valid only while held |
 | **HOLD** | right hand all five fingers curled past 80% | zeroes roll/pitch/yaw, freezes throttle at its current value |
-| **PRECISION** | left thumb curled past 60% | multiplies all four axes by 0.5 |
+| **PRECISION** | left thumb curled past 60% | halves roll, pitch and yaw; throttle unchanged |
 | **CALIBRATE** | hub GPIO7, output inhibited | captures neutral for both hands |
 
 HOLD is a positive action that only ever *reduces* authority, so a false

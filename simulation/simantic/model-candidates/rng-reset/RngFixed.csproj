@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Built into tmp/simantic/upstream-candidates/rng-reset (gitignored), the path env.sh loads. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>RngFixed</AssemblyName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <Nullable>disable</Nullable>
+    <RepoRoot>$(MSBuildThisFileDirectory)../../../../</RepoRoot>
+    <EngineDir>$(RepoRoot)tmp/simantic/runtime/engine/0.5.14/</EngineDir>
+    <BaseOutputPath>$(RepoRoot)tmp/simantic/upstream-candidates/rng-reset/bin/</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(RepoRoot)tmp/simantic/upstream-candidates/rng-reset/obj/</BaseIntermediateOutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="ESP32C3_Rng.cs" />
+    <Reference Include="Infrastructure"><HintPath>$(EngineDir)Infrastructure.dll</HintPath></Reference>
+    <Reference Include="Migrant"><HintPath>$(EngineDir)Migrant.dll</HintPath></Reference>
+    <Reference Include="ELFSharp"><HintPath>$(EngineDir)ELFSharp.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

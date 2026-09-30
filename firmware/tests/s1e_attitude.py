@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""S1-E: gravity-referenced tilt mapping, slew, PRECISION and HOLD (FW-05).
+"""S1-E: gravity-referenced tilt mapping and gesture flags on one hand (FW-05).
 
     python3 firmware/tools/palmpilot.py run firmware/apps/hand \
         firmware/tests/s1e_attitude.py
@@ -53,7 +53,7 @@ def set_all(sim, microvolts, settle=0.15):
 
 
 def tilt(sim, roll=0, pitch=0, settle=0.6):
-    """Place gravity for a tilt and let the slew limiter settle."""
+    """Place gravity for a tilt and let a few control updates run."""
     imu_state.set_tilt(roll_component=roll, pitch_component=pitch)
     sim.run_for(settle)
     return command(sim, "control", "control")
@@ -124,48 +124,44 @@ with PalmPilotSim(i2c=FIXTURES, timg=True) as sim:
     check("beyond saturation stays clamped at 1000", state["roll_milli"] == 1000,
           str(state["roll_milli"]))
 
-    print("\nslew limiting:", flush=True)
+    # The hand reports what it measures. Slew limits, PRECISION and HOLD act on
+    # the combined command, so the hub applies them (hub_core.h) and S2-B tests
+    # them there; the hand only has to flag the gestures it sees.
+    print("\nthe hand reports, the hub shapes:", flush=True)
     tilt(sim, roll=0)
     imu_state.set_tilt(roll_component=SATURATION)    # instantaneous full tilt
-    sim.run_for(0.06)                                # only a few control updates
+    sim.run_for(0.06)                                # a few control updates
     state = command(sim, "control", "control")
-    partial = state["roll_milli"]
-    check("command cannot jump to full in one step", 0 < partial < 700, str(partial))
-    sim.run_for(0.6)
-    state = command(sim, "control", "control")
-    check("command reaches full once slew allows", state["roll_milli"] == 1000,
-          str(state["roll_milli"]))
+    check("a step in tilt is reported at once (slew is the hub's)",
+          state["roll_milli"] == 1000, str(state["roll_milli"]))
 
-    print("\nPRECISION halves every axis:", flush=True)
+    print("\nPRECISION is flagged, not applied:", flush=True)
     for finger in FINGERS:
         sim.set_flex_uv(finger, CURLED_UV if finger == "thumb" else EXTENDED_UV)
     state = tilt(sim, roll=SATURATION)
-    check("PRECISION active", state["precision"] == 1)
-    check("saturated roll halved to 500", state["roll_milli"] == 500,
+    check("thumb curl flags PRECISION", state["precision"] == 1)
+    check("hand still reports full roll under PRECISION", state["roll_milli"] == 1000,
           str(state["roll_milli"]))
     set_all(sim, EXTENDED_UV)
     state = tilt(sim, roll=SATURATION)
-    check("returns to full authority when released", state["roll_milli"] == 1000,
-          str(state["roll_milli"]))
+    check("PRECISION clears on release", state["precision"] == 0)
 
-    print("\nHOLD reduces authority only:", flush=True)
+    print("\nHOLD is flagged, not applied:", flush=True)
     midpoint_uv = (EXTENDED_UV + CURLED_UV) // 2
     set_all(sim, midpoint_uv)
-    sim.run_for(0.6)
+    sim.run_for(0.2)
     state = tilt(sim, roll=SATURATION)
-    frozen = state["out_throttle_milli"]
-    check("mid curl gives partial throttle", 300 < frozen < 700, str(frozen))
+    check("mid curl gives partial throttle", 300 < state["out_throttle_milli"] < 700,
+          str(state["out_throttle_milli"]))
     check("HOLD not active at mid curl", state["hold"] == 0)
-
     set_all(sim, CURLED_UV)                          # clench into a fist
-    sim.run_for(0.6)
+    sim.run_for(0.2)
     state = command(sim, "control", "control")
-    check("full fist engages HOLD", state["hold"] == 1)
-    check("HOLD zeroes attitude", state["roll_milli"] == 0 and state["pitch_milli"] == 0,
-          f"roll={state['roll_milli']} pitch={state['pitch_milli']}")
-    check("HOLD freezes throttle instead of driving it to full",
-          abs(state["out_throttle_milli"] - frozen) <= 40,
-          f"{state['out_throttle_milli']} vs frozen {frozen}")
+    check("full fist flags HOLD", state["hold"] == 1)
+    check("hand still reports its tilt under HOLD", state["roll_milli"] == 1000,
+          str(state["roll_milli"]))
+    check("hand reports the full curl as throttle", state["out_throttle_milli"] >= 950,
+          str(state["out_throttle_milli"]))
 
     print("\nmotion loss invalidates the command:", flush=True)
     set_all(sim, EXTENDED_UV)
@@ -198,7 +194,7 @@ with PalmPilotSim(i2c=FIXTURES, timg=True) as sim:
           str(state["roll_milli"]))
 
     sim.save("s1e-attitude.json", {
-        "test": "S1-E tilt mapping, slew, PRECISION, HOLD",
+        "test": "S1-E tilt mapping and gesture flags",
         "scope": "sin(angle) control law through modeled drivers; provisional "
                  "thresholds; not an attitude estimate and not linear in degrees",
         "checks": [{"name": n, "passed": o, "detail": d} for n, o, d in checks],

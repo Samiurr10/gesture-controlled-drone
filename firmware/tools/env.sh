@@ -34,14 +34,16 @@ export PALMPILOT_SIM_PYTHON="$PALMPILOT_ROOT/.venv-simantic/bin/python"
 # follow the modeled die's factory calibration, as on silicon.
 export PALMPILOT_PLATFORM="${PALMPILOT_PLATFORM:-$PALMPILOT_ROOT/tmp/simantic/platform/ESP32-S3-WROOM-1-N8R2-0.5.14.repl}"
 export PALMPILOT_ROM="$PALMPILOT_ROOT/tmp/simantic/esp-idf-tools/esp32s3_rev0_rom.bin"
-# Upstream candidates, built from the local renode-infrastructure branches and
-# kept until they ship in an engine release (CLAUDE.md section 4):
-#  - SYSTIMER: arm on WORK_EN/PERIOD_MODE edges. Without it the FreeRTOS tick
-#    dies whenever esp_timer re-arms faster than the tick period.
-#  - ESP32S3_Timg with the MWDT modeled, wired as mcu-lib #222 plus resets.
-# Set either to an empty string to run the engine's own model.
+# Model candidates (simulation/simantic/model-candidates), kept until an engine
+# release ships them. Set one to an empty string to run the engine's own model.
+#  - SYSTIMER: the FreeRTOS tick survives esp_timer re-arms.
+#  - S3 timer groups: the MWDT (task and interrupt watchdogs) runs.
+#  - BLE radio: a central can hold two links (the hub).
+#  - RNG: a new boot draws new random values.
 export PALMPILOT_SYSTIMER_OVERLAY="${PALMPILOT_SYSTIMER_OVERLAY-$PALMPILOT_ROOT/tmp/simantic/upstream-candidates/systimer-work-en/bin/Debug/net10.0/SystFixed.dll}"
 export PALMPILOT_S3_MWDT_OVERLAY="${PALMPILOT_S3_MWDT_OVERLAY-$PALMPILOT_ROOT/tmp/simantic/upstream-candidates/s3-mwdt/bin/Debug/net10.0/S3MwdtUnderTest.dll}"
+export PALMPILOT_BLE_RADIO_OVERLAY="${PALMPILOT_BLE_RADIO_OVERLAY-$PALMPILOT_ROOT/tmp/simantic/upstream-candidates/ble-radio/bin/Debug/net10.0/BleFixed.dll}"
+export PALMPILOT_RNG_OVERLAY="${PALMPILOT_RNG_OVERLAY-$PALMPILOT_ROOT/tmp/simantic/upstream-candidates/rng-reset/bin/Debug/net10.0/RngFixed.dll}"
 # Superseded local timer-group overlay (hangs esp_restart); used only when
 # PALMPILOT_S3_MWDT_OVERLAY is empty.
 export PALMPILOT_TIMG_OVERLAY="$PALMPILOT_ROOT/tmp/simantic/timg-overlay/bin/Debug/net10.0/TimgUnderTest.dll"

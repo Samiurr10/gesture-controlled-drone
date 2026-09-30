@@ -6,7 +6,9 @@
 #include "esp_err.h"
 #include "hand_core.h"
 
-esp_err_t hand_acquire_init(void);
+// `has_enable` is true on the LEFT hand only. The right hand has no ENABLE
+// button fitted, so GPIO7 is left unconfigured and ENABLE always reads released.
+esp_err_t hand_acquire_init(bool has_enable);
 
 // Performs one complete five-channel sweep plus a debounced ENABLE read.
 // Increments the acquisition counter on completion, so a caller can detect

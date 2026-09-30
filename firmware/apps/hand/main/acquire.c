@@ -14,9 +14,11 @@ static adc_cali_handle_t s_cali[HAND_FLEX_COUNT];
 static struct debounce s_enable;
 static uint32_t s_acquisition;
 static bool s_calibrated;
+static bool s_has_enable;
 
-esp_err_t hand_acquire_init(void)
+esp_err_t hand_acquire_init(bool has_enable)
 {
+    s_has_enable = has_enable;
     const adc_oneshot_unit_init_cfg_t unit = {
         .unit_id = ADC_UNIT_1,
         .ulp_mode = ADC_ULP_MODE_DISABLE,
@@ -44,6 +46,11 @@ esp_err_t hand_acquire_init(void)
         }
     }
 
+    // Boot assumption is released. A button held through boot therefore has to
+    // produce a release and a new press before it can mean anything (FW-03).
+    debounce_init(&s_enable, HAND_ENABLE_DEBOUNCE_SAMPLES, false);
+    if (!has_enable) return ESP_OK;
+
     const gpio_config_t enable_pin = {
         .pin_bit_mask = 1ULL << HAND_ENABLE_GPIO,
         .mode = GPIO_MODE_INPUT,
@@ -51,13 +58,7 @@ esp_err_t hand_acquire_init(void)
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE,
     };
-    status = gpio_config(&enable_pin);
-    if (status != ESP_OK) return status;
-
-    // Boot assumption is released. A button held through boot therefore has to
-    // produce a release and a new press before it can mean anything (FW-03).
-    debounce_init(&s_enable, HAND_ENABLE_DEBOUNCE_SAMPLES, false);
-    return ESP_OK;
+    return gpio_config(&enable_pin);
 }
 
 bool hand_acquire_calibrated(void) { return s_calibrated; }
@@ -82,6 +83,7 @@ void hand_acquire_sweep(struct hand_sample *out)
     out->fault_mask = hand_fault_mask(out->flex, HAND_FLEX_COUNT);
 
     // Active low: a pressed button pulls the node to ground.
-    out->enable_raw = debounce_update(&s_enable, gpio_get_level(HAND_ENABLE_GPIO) == 0);
+    out->enable_raw = s_has_enable
+        && debounce_update(&s_enable, gpio_get_level(HAND_ENABLE_GPIO) == 0);
     out->acquisition = ++s_acquisition;
 }

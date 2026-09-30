@@ -48,3 +48,36 @@ def reset():
     whoami_accel_gyro = 0x6A
     whoami_mag = 0x3D
     data_ready = True
+
+
+class HandMotion:
+    """The same state for one hand of a two-hand run."""
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.accel = [0, 0, ACCEL_LSB_PER_G]
+        self.gyro = [0, 0, 0]
+        self.mag = [0, 0, 0]
+        self.accel_gyro_present = True
+        self.mag_present = True
+        self.whoami_accel_gyro = 0x6A
+        self.whoami_mag = 0x3D
+        self.data_ready = True
+
+    def set_tilt(self, roll_component=0, pitch_component=0, magnitude=ACCEL_LSB_PER_G):
+        remainder = magnitude * magnitude - roll_component ** 2 - pitch_component ** 2
+        self.accel[:] = [pitch_component, roll_component,
+                         int(remainder ** 0.5) if remainder > 0 else 0]
+
+
+_hands = {}
+
+
+def for_hand(name=None):
+    """State for one named hand, or this module's own state when unnamed."""
+    import sys
+    if name is None:
+        return sys.modules[__name__]
+    return _hands.setdefault(name, HandMotion())

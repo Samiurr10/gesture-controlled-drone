@@ -101,18 +101,25 @@ own eFuse.
 
 ## Firmware and tests
 
-`apps/hand` is the hand-node firmware. It samples five flex channels at 100 Hz
-through `esp_timer`, classifies open/short faults, captures and validates a
-calibration profile, normalises finger curl, and runs the control state machine
-with the safety interlocks from
-[`gesture-mapping.md`](../docs/controller/gesture-mapping.md).
+`apps/hand` is the hand firmware, built per side (`hand:left`, `hand:right`).
+It samples five flex channels at 100 Hz through `esp_timer`, classifies
+open/short faults, calibrates, normalises curl and tilt, runs the per-hand state
+machine, and notifies one packet per 20 ms to the hub over BLE.
 
-UART commands: `info`, `sample`, `stats`, `control`, `motion`, `packet`,
+UART commands: `info`, `sample`, `stats`, `control`, `motion`, `packet`, `link`,
 `stream N`, `stall SWEEPS`, `profile`, `reboot`, and `cal extended | curled |
 neutral | finish | reset | save | load | erase | corrupt`.
 
+`apps/hub` connects both hands and applies the mapping and interlocks from
+[`gesture-mapping.md`](../docs/controller/gesture-mapping.md) in
+`components/palmpilot_core/hub_core.c`. It prints one `command` line per 20 ms
+on UART0 (`valid`, `reason`, `roll`, `pitch`, `yaw`, `throttle`, `hold`,
+`precision`), and answers `status`. GPIO7 is CALIBRATE: it captures neutral on
+both hands and inhibits output while held.
+
 ```sh
-sh firmware/tests/run_all.sh          # every suite
+sh firmware/tests/run_all.sh                                    # every suite
+python3 firmware/tools/palmpilot.py system firmware/tests/s2b_controller.py
 ```
 
 | Suite | Covers |
@@ -122,10 +129,12 @@ sh firmware/tests/run_all.sh          # every suite
 | `tests/s1b_calibration.py` | capture, travel/stability/inversion rejection, curl normalisation |
 | `tests/s1c_control.py` | state machine, throttle-low interlock, latched faults, stalled acquisition |
 | `tests/s1d_motion.py` | LSM6DS3TR-C + LIS3MDL identity, config, data-ready gating, burst decode |
-| `tests/s1e_attitude.py` | tilt mapping, deadband, saturation, slew, PRECISION, HOLD |
+| `tests/s1e_attitude.py` | tilt mapping, deadband, saturation; HOLD/PRECISION flagged, not applied |
 | `tests/s1f_persistence.py` | NVS save and reload; reboot/erase/CRC are blocked |
 | `tests/s1g_packet.py` | hand→hub packet framing, counters, bounds, frozen-sampling case |
-| `tests/s1h_watchdog.py` | watchdog serviced only after real work; timeout is blocked |
+| `tests/s1h_watchdog.py` | watchdog serviced only after real work |
+| `tests/s2a_link.py` | both hands linked to the hub, MTU, 50 Hz, no rejected packets |
+| `tests/s2b_controller.py` | whole controller: mapping, slew, HOLD, PRECISION, deadman, faults, latch, hand reboot, hub CALIBRATE |
 
 Motion stimulus comes from `tests/fixtures/`: two register fixtures plus a
 shared `imu_state` module a test mutates directly. They are register fixtures,
@@ -143,6 +152,8 @@ README stating what it does and does not establish. They are **not** part of
 | `probes/reset` | `esp_restart()` aborts the engine |
 | `probes/nvs` | `nvs_erase_key` never returns in a multi-task app |
 | `probes/gptimer` | timer group, **fixed** — pass `stock` to see the old hang |
+| `probes/ble2link` | one central, two peripherals: second link and cross-link packets, **fixed** by renode-infrastructure#270 (`run.py`; `PALMPILOT_BLE_RADIO_OVERLAY=` for stock) |
+| `probes/rngreset` | RNG replays after `esp_restart()`, **fixed** by #271 (`run.py`; `PALMPILOT_RNG_OVERLAY=` for stock) |
 
 `stall N` skips N acquisition sweeps. It is a deliberate fault-injection hook
 for the FW-04 stalled-acquisition case, not production behavior.

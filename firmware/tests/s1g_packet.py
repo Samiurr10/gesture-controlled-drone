@@ -112,12 +112,17 @@ with PalmPilotSim(i2c=FIXTURES, timg=True) as sim:
         check("truncated packet rejected", True, str(exc))
 
     print("\nidentity and counters:", flush=True)
+    # One packet per 20 ms control update, whether or not a hub is linked, so
+    # over 0.2 s of virtual time the sequence advances by about ten. The window
+    # also contains the `packet` round trip (up to ~0.1 s), hence the band.
     first = decode(raw)
+    sim.run_for(0.2)
     second = packet(sim)
     check("session stable within a boot", first["session"] == second["session"],
           hex(first["session"]))
-    check("sequence increments per packet", second["sequence"] == first["sequence"] + 1,
-          f"{first['sequence']} -> {second['sequence']}")
+    advanced = second["sequence"] - first["sequence"]
+    check("sequence advances once per control update", 9 <= advanced <= 16,
+          f"{first['sequence']} -> {second['sequence']} (+{advanced} in ~0.2 s)")
     check("hand side carried", second["side"] == 0)
     check("USB bench power declared explicitly", bool(second["flags"] & FLAG_USB_POWER))
     check("uncalibrated hand says so", not second["flags"] & FLAG_CALIBRATED)

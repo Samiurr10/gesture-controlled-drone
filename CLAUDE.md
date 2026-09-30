@@ -118,11 +118,13 @@ re-deriving these paths.
 2. `esptool merge_bin` @ `0x0 / 0x8000 / 0x10000` → flash image
 3. `esp32s3_build_image.py --rom <mask rom> --flash <flash.bin> --out sim.elf`
    (packs IROM @0x40000000, DROM @0x3FF00000, flash @0x30000000, entry 0x40000400)
-4. `Sim(repl=..., elf=sim.elf, uart='uart0')` on the stock platform, with two
-   upstream-candidate models loaded by default for every run (env.sh): the
-   SYSTIMER WORK_EN fix (renode-infrastructure #257) and `ESP32S3_Timg` with
-   the MWDT modeled (#258; platform wiring mcu-lib #229 on #222). Open PRs, not
-   in an engine release yet.
+4. `Sim(repl=..., elf=sim.elf, uart='uart0')` on the stock platform, with the
+   model candidates in `simulation/simantic/model-candidates/` loaded for every
+   run (env.sh): SYSTIMER (#257), S3 MWDT (#258, wiring mcu-lib #229), BLE
+   radio (#270) and RNG (#271). None is in an engine release yet.
+   The whole controller runs as three machines (`palmpilot.py system`), each
+   with its own factory MAC in eFuse. Without one, all three chips share one
+   Bluetooth address.
    `sim --flash` still refuses ESP32-S3 on CLI 0.5.14, so the ROM wrapper stays.
 
 The physical board and simulator run the **same bootloader/partition/app
@@ -150,7 +152,9 @@ Do not re-litigate these; they are measured, with evidence in
 | Task watchdog (TWDT) | **WORKS with candidate MWDT (#258)** | `firmware/probes/mwdt` 14/14 (stage-0 interrupt at 200.015 ms for 200 ms on both groups, feed, write-protect, system reset with reasons 7/8); S1-H trips. Stock 0.5.14 never fires: `ESP32S3_Timg` leaves MWDT store-only and the platform still wires the C3 stub. Not a firmware gap |
 | Interrupt watchdog (IWDT) | **WORKS with both candidates; ENABLED in the hand build** | production settings (`CONFIG_ESP_INT_WDT=y`, 300 ms). The old "expires on healthy firmware" finding was the dead tick: the IWDT is fed from the tick hook. `run_all.sh` fails any suite whose UART shows a panic; with the stock SYSTIMER 7 of 8 hand suites panic, with the candidate none do. `firmware/probes/iwdt`: panics 286 ms after interrupts are disabled |
 | Reset-reason hint after a panic | **BROKEN — model gap** | IDF stores it in S3 `RTC_CNTL_STORE6` (+0xC8); the platform's C3 RTC_CNTL model has STORE4-7 at 0xB8-0xC4, so a panic reboot reports `ESP_RST_SW`, not `INT_WDT`. Addressed by draft renode-infrastructure #245 (S3 RTC_CNTL) |
-| ESP32 BLE, two concurrent links | **UNQUALIFIED** | Nordic BLE passes do **not** transfer |
+| ESP32-S3 BLE, hub holding both hands | **WORKS with candidate BLE radio** | NimBLE peripheral per hand, central on the hub; 50 Hz packets from both hands, zero rejected (S2-A, S2-B). The stock radio model holds one link per radio: a second link never establishes and packets cross between links (model-candidates README). Lossless medium: no RF, range or coexistence claim |
+| Hardware RNG across a reset | **WORKS with candidate RNG** | stock model replays the same values after every chip reset, so a rebooted hand reused its session |
+| Pin inputs across an MCU reset | **bench re-applies them** | Renode resets injected ADC voltages and GPIO levels with the chip (simantic-core#561); `harness.ExternalInputs` re-drives them, as real sensors would |
 | ADC2, DMA/continuous, ADC interrupts | **OUT OF SCOPE** | not modeled |
 
 The ADC fix is **PR #168**, merged into `simantic-main` on 2026-09-26 and
@@ -275,9 +279,15 @@ docs/controller/             ACTIVE controller spec
   validation.md              CTRL-001..055 acceptance
 docs/drone-simulation.md     D1-D4, Goal 2
 firmware/                    ACTIVE firmware workspace
-  tools/                     env.sh, palmpilot.py, harness.py, selftest.py
-  apps/hand/                 hand-node firmware
+  tools/                     env.sh, palmpilot.py, harness.py (one board),
+                             controller.py (both hands + hub), selftest.py
+  components/palmpilot_core/ pure logic shared by hand and hub: hand_core,
+                             packet, hub_core (mixing + interlocks), link.h
+  components/console/        whole-line UART output from any task
+  apps/hand/                 hand firmware; `hand:left` / `hand:right` builds
+  apps/hub/                  hub firmware: BLE central, one command on UART0
   tests/                     simulation suites; run_all.sh runs every one
+                             (s1* one hand, s2* whole controller)
   probes/fpu/                FPU-gap probe and its finding
   probes/reset/              esp_restart gap
   probes/nvs/                NVS erase gap
@@ -309,19 +319,23 @@ this session owns the repository. If concurrent edits reappear, stop and check
 
 ## 10. Firmware status
 
-`firmware/apps/hand` implements S1 acquisition, calibration, the external
-motion module, gravity-referenced attitude mapping, the control state machine
-and calibration persistence. `sh firmware/tests/run_all.sh` runs every suite;
-**196 checks across 9 suites pass** as of 2026-09-27 on engine 0.5.14 and the
-stock S3 platform with the two model candidates, production task and interrupt
-watchdogs enabled, and no firmware panic in any run.
+`firmware/apps/hand` (built LEFT or RIGHT) implements acquisition,
+calibration, the motion module, tilt mapping, the control state machine,
+persistence and the BLE link to the hub. `firmware/apps/hub` links both hands,
+validates them and applies the gesture mapping, HOLD, PRECISION, slew and the
+latching interlocks (`hub_core`), then sends one command per 20 ms on UART0.
+`sh firmware/tests/run_all.sh` runs every suite: **266 checks across 11 suites
+pass** as of 2026-09-29 (engine 0.5.14, stock S3 platform, all model
+candidates, production watchdogs), including the whole controller as three
+machines (S2-A link, S2-B mixing, faults, latch, reboot recovery, hub
+CALIBRATE). There was no firmware panic on any board.
 
-The hand→hub packet payload is frozen in `firmware/apps/hand/main/packet.h`
+The hand→hub packet payload is frozen in `firmware/components/palmpilot_core/packet.h`
 (59 bytes, little-endian, versioned, CRC-32) and decoded independently in
 `firmware/tests/s1g_packet.py`.
 
-No S or C milestone is claimed. Still open: the BLE stack and transport
-binding, and the right-hand and hub targets. The watchdog is implemented with FW-06's service
+No S or C milestone is claimed. Still open: BLE pairing/bonding, the host
+bridge that consumes the hub's commands, and anything physical. The watchdog is implemented with FW-06's service
 discipline and its timeout is now exercised; only the panic and reset after a
 trip remain physical-only. Persistence is implemented
 but **not qualified**. Reboot restore, erase and on-device CRC rejection now

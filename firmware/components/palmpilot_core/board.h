@@ -36,8 +36,6 @@ static const char *const HAND_FINGER_NAME[HAND_FLEX_COUNT] = {
 #define HAND_ADC_BITWIDTH 12
 #define HAND_ADC_MAX_RAW 4095
 
-// Build-time hand identity. C4/CTRL-040 requires a distinct, immutable per-board
-// identity; this default is a bench placeholder, not that identity.
-#ifndef HAND_SIDE_DEFAULT
-#define HAND_SIDE_DEFAULT 0          // 0 = LEFT, 1 = RIGHT
-#endif
+// Hand identity is chosen at build time (apps/hand Kconfig: LEFT or RIGHT).
+// C4/CTRL-040 still requires a distinct, immutable per-board identity; a build
+// option is a bench stand-in for that, not the identity itself.
