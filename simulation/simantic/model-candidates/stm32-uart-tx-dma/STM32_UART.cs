@@ -1,0 +1,537 @@
+//
+// Copyright (c) 2010-2026 Antmicro
+//
+// This file is licensed under the MIT License.
+// Full license text is available in 'licenses/MIT.txt'.
+//
+using System;
+using System.Collections.Generic;
+using System.Threading;
+
+using Antmicro.Migrant;
+using Antmicro.Renode.Core;
+using Antmicro.Renode.Core.Structure.Registers;
+using Antmicro.Renode.Logging;
+using Antmicro.Renode.Peripherals.Bus;
+using Antmicro.Renode.Peripherals.UART;
+using Antmicro.Renode.Time;
+
+namespace Antmicro.Renode.Peripherals.UartFixed
+{
+    [AllowedTranslations(AllowedTranslation.WordToDoubleWord | AllowedTranslation.ByteToDoubleWord)]
+    public class STM32_UART : BasicDoubleWordPeripheral, IUART, IDelayableUART, IHasFrequency
+    {
+        public STM32_UART(IMachine machine, uint frequency = 8000000) : base(machine)
+        {
+            this.frequency = frequency;
+            DefineRegisters();
+            UpdateBaudrate();
+        }
+
+        // The APB clock feeding the baud generator (RM0368 19.3.4: Tx/Rx baud = fCK / (8 x (2 - OVER8) x USARTDIV)).
+        // An RCC model sets this when the firmware reprograms PPREx; the programmed BRR then yields a new baud rate.
+        public ulong Frequency
+        {
+            get => frequency;
+            set
+            {
+                frequency = (uint)value;
+                UpdateBaudrate();
+            }
+        }
+
+        public void WriteChar(byte value)
+        {
+            if(!usartEnabled.Value || !receiverEnabled.Value)
+            {
+                this.Log(LogLevel.Warning, "Received a character, but the receiver is not enabled, dropping.");
+                return;
+            }
+
+            if(receiverThread == null)
+            {
+                idleLineDetectedCancellationTokenSrc?.Cancel();
+                ReceiveChar(value);
+                return;
+            }
+
+            lock(intermediateReceiveQueue)
+            {
+                idleLineDetectedCancellationTokenSrc?.Cancel();
+                intermediateReceiveQueue.Enqueue(value);
+                // Restart the receiver only when the queue changes from empty to nonempty.
+                if(intermediateReceiveQueue.Count == 1)
+                {
+                    receiverThread.Restart();
+                }
+            }
+        }
+
+        public override void Reset()
+        {
+            base.Reset();
+            UpdateBaudrate();
+            lock(intermediateReceiveQueue)
+            {
+                idleLineDetectedCancellationTokenSrc?.Cancel();
+                receiverThread?.Stop();
+                intermediateReceiveQueue.Clear();
+            }
+            txeCancellationTokenSrc?.Cancel();
+            receiveFifo.Clear();
+            IRQ.Set(false);
+            DMATransmitRequest.Unset();
+        }
+
+        public TimeInterval CharacterTransmissionDelay { get; set; } = TimeInterval.Empty;
+
+        public TimeInterval CharacterReceptionDelay { get; set; } = TimeInterval.Empty;
+
+        public uint BaudRate => baudrate;
+
+        public Bits StopBits
+        {
+            get
+            {
+                switch(stopBits.Value)
+                {
+                case StopBitsValues.Half:
+                    return Bits.Half;
+                case StopBitsValues.One:
+                    return Bits.One;
+                case StopBitsValues.OneAndAHalf:
+                    return Bits.OneAndAHalf;
+                case StopBitsValues.Two:
+                    return Bits.Two;
+                default:
+                    throw new ArgumentException("Invalid stop bits value");
+                }
+            }
+        }
+
+        public Parity ParityBit => parityControlEnabled.Value ?
+                                    (paritySelection.Value == ParitySelection.Even ?
+                                        Parity.Even :
+                                        Parity.Odd) :
+                                    Parity.None;
+
+        public bool AutoUpdateDelay
+        {
+            get => autoUpdateDelay;
+            set
+            {
+                autoUpdateDelay = value;
+                if(AutoUpdateDelay)
+                {
+                    UpdateDelay();
+                }
+            }
+        }
+
+        public double DelayMultiplier
+        {
+            get => delayMultiplier;
+            set
+            {
+                delayMultiplier = value;
+                if(AutoUpdateDelay)
+                {
+                    UpdateDelay();
+                }
+            }
+        }
+
+        // The STM32 UART includes the parity bit in its word length, unlike others such as the SAM USART.
+        // Therefore, to get the number of bits utilized to represent just the character, we subtract the parity bit.
+        public uint CharacterLength => (wordLength0.Value ? 9U : 8U) - (ParityBit == Parity.None ? 0U : 1U);
+
+        [DefaultInterrupt]
+        public GPIO IRQ { get; } = new GPIO();
+
+        public GPIO DMARequest { get; } = new GPIO();
+
+        public GPIO DMATransmitRequest { get; } = new GPIO();
+
+        [field: Transient]
+        public event Action<byte> CharReceived;
+
+        private void ReceiveChar(byte value)
+        {
+            if(receiveFifo.Count > 0)
+            {
+                // The RDR still holds a byte the CPU hasn't read yet (RXNE not yet cleared).
+                // Real hardware does not overwrite it: it sets ORE and the incoming byte is lost.
+                overrunError.Value = true;
+                Update();
+                return;
+            }
+            receiveFifo.Enqueue(value);
+            readFifoNotEmpty.Value = true;
+
+            if(BaudRate == 0)
+            {
+                this.Log(LogLevel.Warning, "Unknown baud rate, couldn't trigger the idle line interrupt");
+            }
+            else
+            {
+                lock(intermediateReceiveQueue)
+                {
+                    if(intermediateReceiveQueue.Count == 0)
+                    {
+                        // Setup a timeout of 1 UART frame for Idle line detection
+                        idleLineDetectedCancellationTokenSrc = new CancellationTokenSource();
+                        var idleLineDetectedCancellationToken = idleLineDetectedCancellationTokenSrc.Token;
+                        var idleFrameDuration = this.GetActualTransmissionDuration(CharacterLength);
+                        machine.ScheduleAction(idleFrameDuration, _ => ReportIdleLineDetected(idleLineDetectedCancellationToken), name: $"{nameof(STM32_UART)} Idle line detected");
+                    }
+                }
+            }
+
+            if(dmaReceptionRequest.Value)
+            {
+                DMARequest.Blink();
+            }
+
+            Update();
+        }
+
+        private void DefineRegisters()
+        {
+            Register.Status.Define(this, 0xC0, name: "USART_SR")
+                .WithTaggedFlag("PE", 0)
+                .WithTaggedFlag("FE", 1)
+                .WithTaggedFlag("NF", 2)
+                .WithFlag(3, out overrunError, FieldMode.Read | FieldMode.WriteZeroToClear, name: "ORE")
+                .WithFlag(4, out idleLineDetected, FieldMode.Read, name: "IDLE")
+                .WithFlag(5, out readFifoNotEmpty, FieldMode.Read | FieldMode.WriteZeroToClear, name: "RXNE") // as these two flags are WZTC, we cannot just calculate their results
+                .WithFlag(6, out transmissionComplete, FieldMode.Read | FieldMode.WriteZeroToClear, name: "TC")
+                .WithFlag(7, out transmitDataRegisterEmpty, FieldMode.Read, name: "TXE")
+                .WithTaggedFlag("LBD", 8)
+                .WithTaggedFlag("CTS", 9)
+                .WithReservedBits(10, 22)
+                .WithWriteCallback((_, __) => Update())
+            ;
+            Register.Data.Define(this, name: "USART_DR")
+                .WithValueField(0, 9, valueProviderCallback: _ =>
+                    {
+                        uint value = 0;
+
+                        // "Cleared by a USART_SR register followed by a read to the USART_DR register."
+                        // We can assume that USART_SR has already been read on the ISR.
+                        idleLineDetected.Value = false;
+
+                        if(receiveFifo.Count > 0)
+                        {
+                            value = receiveFifo.Dequeue();
+                        }
+                        readFifoNotEmpty.Value = receiveFifo.Count > 0;
+                        Update();
+                        return value;
+                    }, writeCallback: (_, value) =>
+                    {
+                        if(!usartEnabled.Value && !transmitterEnabled.Value)
+                        {
+                            this.Log(LogLevel.Warning, "Trying to transmit a character, but the transmitter is not enabled. dropping.");
+                            return;
+                        }
+                        CharReceived?.Invoke((byte)value);
+                        // RM0090 30.6.1 USART_SR: TC is cleared by a read of SR followed by a
+                        // write to DR, and set when a frame has gone out with TXE set. It is
+                        // never set while the frame is still on the wire.
+                        transmissionComplete.Value = false;
+                        transmitDataRegisterEmpty.Value = false;
+                        UpdateTransmitDmaRequest();
+                        ScheduleTransmitRegisterEmpty();
+                        Update();
+                    }, name: "DR"
+                )
+            ;
+            Register.BaudRate.Define(this, name: "USART_BRR")
+                .WithValueField(0, 4, out dividerFraction, name: "DIV_Fraction")
+                .WithValueField(4, 12, out dividerMantissa, name: "DIV_Mantissa")
+                .WithChangeCallback((_, __) => UpdateBaudrate())
+            ;
+            Register.Control1.Define(this, name: "USART_CR1")
+                .WithTaggedFlag("SBK", 0)
+                .WithTaggedFlag("RWU", 1)
+                .WithFlag(2, out receiverEnabled, name: "RE")
+                .WithFlag(3, out transmitterEnabled, name: "TE")
+                .WithFlag(4, out idleLineDetectedInterruptEnabled, name: "IDLEIE")
+                .WithFlag(5, out receiverNotEmptyInterruptEnabled, name: "RXNEIE")
+                .WithFlag(6, out transmissionCompleteInterruptEnabled, name: "TCIE")
+                .WithFlag(7, out transmitDataRegisterEmptyInterruptEnabled, name: "TXEIE")
+                .WithTaggedFlag("PEIE", 8)
+                .WithEnumField(9, 1, out paritySelection, name: "PS")
+                .WithFlag(10, out parityControlEnabled, name: "PCE")
+                .WithTaggedFlag("WAKE", 11)
+                .WithFlag(12, out wordLength0, name: "M",
+                    changeCallback: (_, __) =>
+                    {
+                        this.WarningLog("9-bit word mode is not implemented");
+                        wordLength0.Value = false;
+                    }
+                )
+                .WithFlag(13, out usartEnabled, name: "UE")
+                .WithReservedBits(14, 1)
+                .WithEnumField(15, 1, out oversamplingMode, name: "OVER8")
+                .WithReservedBits(16, 16)
+                .WithWriteCallback((_, __) =>
+                {
+                    if(!receiverEnabled.Value || !usartEnabled.Value)
+                    {
+                        idleLineDetectedCancellationTokenSrc?.Cancel();
+                    }
+                    UpdateBaudrate();
+                    Update();
+                })
+            ;
+            Register.Control2.Define(this, name: "USART_CR2")
+                .WithTag("ADD", 0, 4)
+                .WithReservedBits(5, 1)
+                .WithTaggedFlag("LBDIE", 6)
+                .WithReservedBits(7, 1)
+                .WithTaggedFlag("LBCL", 8)
+                .WithTaggedFlag("CPHA", 9)
+                .WithTaggedFlag("CPOL", 10)
+                .WithTaggedFlag("CLKEN", 11)
+                .WithEnumField(12, 2, out stopBits, name: "STOP")
+                .WithTaggedFlag("LINEN", 14)
+                .WithReservedBits(15, 17)
+            ;
+
+            Register.Control3.Define(this, name: "USART_CR3")
+                .WithFlag(0, out errorInterruptEnabled, name: "EIE")
+                .WithTaggedFlag("IREN", 1)
+                .WithTaggedFlag("IRLP", 2)
+                .WithTaggedFlag("HDSEL", 3)
+                .WithTaggedFlag("NACK", 4)
+                .WithTaggedFlag("SCEN", 5)
+                .WithFlag(6, out dmaReceptionRequest, name: "DMAR")
+                .WithFlag(7, out dmaTransmissionRequest, name: "DMAT",
+                    writeCallback: (_, __) => UpdateTransmitDmaRequest())
+                .WithTaggedFlag("RTSE", 8)
+                .WithTaggedFlag("CTSE", 9)
+                .WithTaggedFlag("CTSIE", 10)
+                .WithReservedBits(11, 21)
+            ;
+        }
+
+        private void ReportIdleLineDetected(CancellationToken ct)
+        {
+            if(!ct.IsCancellationRequested)
+            {
+                idleLineDetected.Value = true;
+                Update();
+            }
+        }
+
+        private void UpdateDelay()
+        {
+            if(baudrate == 0)
+            {
+                CharacterTransmissionDelay = TimeInterval.Empty;
+                return;
+            }
+
+            CharacterTransmissionDelay = this.GetActualTransmissionDuration(CharacterLength) * DelayMultiplier;
+        }
+
+        private void UpdateBaudrate()
+        {
+            // OversamplingMode.By8 means we ignore the oldest bit of dividerFraction.Value
+            var fraction = oversamplingMode.Value == OversamplingMode.By16 ? dividerFraction.Value : dividerFraction.Value & 0b111;
+
+            var divisor = 8 * (2 - (int)oversamplingMode.Value) * (dividerMantissa.Value + fraction / 16.0);
+            var newBaudrate = divisor == 0 ? 0 : (uint)(frequency / divisor);
+
+            if(baudrate == newBaudrate)
+            {
+                return;
+            }
+            baudrate = newBaudrate;
+
+            ConfigureReceiverThread();
+            if(AutoUpdateDelay)
+            {
+                UpdateDelay();
+            }
+        }
+
+        private void ScheduleTransmitRegisterEmpty()
+        {
+            txeCancellationTokenSrc?.Cancel();
+            if(BaudRate == 0)
+            {
+                this.Log(LogLevel.Warning, "Unknown baud rate, couldn't schedule the transmit register empty event");
+                transmitDataRegisterEmpty.Value = true;
+                transmissionComplete.Value = true;
+                UpdateTransmitDmaRequest();
+                return;
+            }
+
+            // Same duration convention as CharacterTransmissionDelay/UpdateDelay above,
+            // computed directly rather than via the settable property: CharacterTransmissionDelay
+            // is opt-in (AutoUpdateDelay), owned by whatever peer wiring the board script does,
+            // and TXE must be paced unconditionally regardless of that setting.
+            txeCancellationTokenSrc = new CancellationTokenSource();
+            machine.ScheduleAction(this.GetActualTransmissionDuration(CharacterLength), _ => ReportTransmitRegisterEmpty(txeCancellationTokenSrc.Token), name: $"{nameof(STM32_UART)} TXE");
+        }
+
+        private void ReportTransmitRegisterEmpty(CancellationToken ct)
+        {
+            if(!ct.IsCancellationRequested)
+            {
+                transmitDataRegisterEmpty.Value = true;
+                // MODELED SIMPLIFICATION: there is no separate shift register, so TXE rises at
+                // the end of the frame rather than at its start, and TC rises with it.
+                transmissionComplete.Value = true;
+                UpdateTransmitDmaRequest();
+                Update();
+            }
+        }
+
+        // With DMAT set the USART requests a transfer whenever TXE is set (RM0090,
+        // "Transmission using DMA"), so the request is a level, as in STM32F7_USART.
+        // A pulse at the TXE edge left a stream armed after the transmitter went idle
+        // waiting forever: ArduPilot sets DMAT once, then enables a stream per burst.
+        private void UpdateTransmitDmaRequest()
+        {
+            DMATransmitRequest.Set(dmaTransmissionRequest.Value && transmitDataRegisterEmpty.Value);
+        }
+
+        private void Update()
+        {
+            IRQ.Set(
+                (idleLineDetectedInterruptEnabled.Value && idleLineDetected.Value) ||
+                (receiverNotEmptyInterruptEnabled.Value && readFifoNotEmpty.Value) ||
+                (transmitDataRegisterEmptyInterruptEnabled.Value && transmitDataRegisterEmpty.Value) ||
+                (transmissionCompleteInterruptEnabled.Value && transmissionComplete.Value) ||
+                (errorInterruptEnabled.Value && overrunError.Value)
+            );
+        }
+
+        private void ConfigureReceiverThread()
+        {
+            lock(intermediateReceiveQueue)
+            {
+                if(baudrate == 0)
+                {
+                    // Drain the intermediate queue before disabling pacing to preserve character order.
+                    while(intermediateReceiveQueue.TryDequeue(out var value))
+                    {
+                        ReceiveChar(value);
+                    }
+                    receiverThread?.Dispose();
+                    receiverThread = null;
+                    return;
+                }
+
+                receiverThread?.Dispose();
+                receiverThread = machine.ObtainManagedThread(
+                    action: () =>
+                    {
+                        byte value;
+                        lock(intermediateReceiveQueue)
+                        {
+                            if(!intermediateReceiveQueue.TryDequeue(out value))
+                            {
+                                return;
+                            }
+                        }
+
+                        if(!usartEnabled.Value || !receiverEnabled.Value)
+                        {
+                            this.Log(LogLevel.Warning, "Received a character, but the receiver is not enabled, dropping.");
+                            return;
+                        }
+
+                        ReceiveChar(value);
+                    },
+                    period: this.GetActualTransmissionDuration(CharacterLength),
+                    name: $"{nameof(STM32_UART)} receiver",
+                    owner: this,
+                    stopCondition: () =>
+                    {
+                        lock(intermediateReceiveQueue)
+                        {
+                            return intermediateReceiveQueue.Count == 0;
+                        }
+                    }
+                );
+
+                if(intermediateReceiveQueue.Count > 0)
+                {
+                    receiverThread.Restart();
+                }
+            }
+        }
+
+        private CancellationTokenSource idleLineDetectedCancellationTokenSrc;
+        private CancellationTokenSource txeCancellationTokenSrc;
+        private IFlagRegisterField transmitDataRegisterEmpty;
+        private IFlagRegisterField dmaTransmissionRequest;
+        private IFlagRegisterField transmissionComplete;
+        private IFlagRegisterField readFifoNotEmpty;
+        private IFlagRegisterField overrunError;
+        private IFlagRegisterField errorInterruptEnabled;
+        private IFlagRegisterField idleLineDetected;
+        private IFlagRegisterField transmitterEnabled;
+        private IFlagRegisterField receiverEnabled;
+        private IFlagRegisterField receiverNotEmptyInterruptEnabled;
+        private IValueRegisterField dividerMantissa;
+        private IFlagRegisterField idleLineDetectedInterruptEnabled;
+        private IFlagRegisterField transmissionCompleteInterruptEnabled;
+        private IEnumRegisterField<ParitySelection> paritySelection;
+        private IFlagRegisterField parityControlEnabled;
+        private IFlagRegisterField wordLength0;
+        private IFlagRegisterField usartEnabled;
+        private IEnumRegisterField<StopBitsValues> stopBits;
+        private IFlagRegisterField dmaReceptionRequest;
+
+        private IEnumRegisterField<OversamplingMode> oversamplingMode;
+        private IFlagRegisterField transmitDataRegisterEmptyInterruptEnabled;
+        private IValueRegisterField dividerFraction;
+
+        private uint baudrate;
+        private bool autoUpdateDelay;
+        private double delayMultiplier = 1;
+
+        private IManagedThread receiverThread;
+
+        private uint frequency;
+
+        private readonly Queue<byte> receiveFifo = new Queue<byte>();
+        private readonly Queue<byte> intermediateReceiveQueue = new Queue<byte>();
+
+        private enum OversamplingMode
+        {
+            By16 = 0,
+            By8 = 1
+        }
+
+        private enum StopBitsValues
+        {
+            One = 0,
+            Half = 1,
+            Two = 2,
+            OneAndAHalf = 3
+        }
+
+        private enum ParitySelection
+        {
+            Even = 0,
+            Odd = 1
+        }
+
+        private enum Register : long
+        {
+            Status = 0x00,
+            Data = 0x04,
+            BaudRate = 0x08,
+            Control1 = 0x0C,
+            Control2 = 0x10,
+            Control3 = 0x14,
+            GuardTimeAndPrescaler = 0x18
+        }
+    }
+}

@@ -13,7 +13,7 @@ parts and flex sensors may be reused after inspection.
 
 | Part | One flex | Complete left bench | Two hands + hub bench | Notes |
 |---|---:|---:|---:|---|
-| Genuine ESP32-S3-DevKitC-1-N8R2 | 1 | 1 | 3 | Two hands and one BLE hub; confirm module and PCB revision |
+| Genuine ESP32-S3-DevKitC-1-N8R8 | 1 | 1 | 3 | Two hands and one BLE hub. The N8R2 is obsolete (2026-09-30); firmware runs with PSRAM off, so the N8R8's 8 MB octal PSRAM changes nothing, and its GPIO35-37 are not in the pin map |
 | Adafruit #1070 flex sensor | 1 | 5 | 10 | One per finger; measure actual comfortable resistance range |
 | 47 kΩ, 1% resistor | 1 | 5 | 10 | Each flex signal to local GND |
 | 100 nF ceramic capacitor | 1 | 6 | 12 | Ten flex shunts plus left ENABLE and hub CALIBRATE shunts |

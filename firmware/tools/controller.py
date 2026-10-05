@@ -7,6 +7,11 @@ goes through the modeled drivers only: flex voltages through the ADC model,
 ENABLE and CALIBRATE through GPIO, motion through each hand's own I2C fixtures.
 The hands reach the hub only over the simulated radio.
 
+With `drone=True` a fourth machine runs stock ArduCopter on an STM32F405
+(Matek F405-Wing board model). The computer bridge between them lives in the
+simulation: each hub command line becomes RC channels (simulation/drone/
+rc_link.py), sent to ArduCopter's telemetry port as MAVLink by gcs_peer.py.
+
 Run scripts through `palmpilot.py system <script>`, which builds all three
 images and sets PALMPILOT_{LEFT,RIGHT,HUB}_ELF.
 """
@@ -14,10 +19,11 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
-from harness import ENABLE_GPIO, FLEX, ExternalInputs, build_platform
+from harness import ENABLE_GPIO, FLEX, ExternalInputs, build_platform, load_overlay
 
 FIXTURES_DIR = Path(__file__).resolve().parents[1] / "tests" / "fixtures"
 MOTION_FIXTURES = {
@@ -27,6 +33,11 @@ MOTION_FIXTURES = {
 if str(FIXTURES_DIR) not in sys.path:
     sys.path.insert(0, str(FIXTURES_DIR))
 import imu_state                                             # noqa: E402
+
+DRONE_DIR = Path(__file__).resolve().parents[2] / "simulation" / "drone"
+if str(DRONE_DIR) not in sys.path:
+    sys.path.insert(0, str(DRONE_DIR))
+import rc_link                                               # noqa: E402
 
 MACHINES = ("left", "right", "hub")
 # Distinct factory MACs, one per board, as three physical chips would have.
@@ -42,9 +53,18 @@ class Console:
     """One machine's UART0, captured byte-exact from the model's CharReceived
     event (the SDK's read_uart is not used for assertions, see harness.py)."""
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, on_line=None):
         self.name = name
         self.stream = bytearray()
+        self.on_line = on_line
+        self._line_start = 0
+
+    def feed(self, value: int) -> None:
+        self.stream.append(value)
+        if value == 0x0A and self.on_line:
+            line = self.stream[self._line_start:].decode("utf-8", errors="replace").strip()
+            self._line_start = len(self.stream)
+            self.on_line(line)
 
     @property
     def text(self) -> str:
@@ -66,8 +86,35 @@ class Console:
         return out
 
 
+def build_drone_platform(out: Path) -> Path:
+    """STM32F405RG + the Matek F405-Wing board, with the S.Bus receiver replaced by
+    the computer's MAVLink link (gcs_peer) and the STM32 UART candidate if set."""
+    text = Path(os.environ["PALMPILOT_DRONE_PLATFORM"]).read_text()
+    overlay = os.environ.get("PALMPILOT_STM32_UART_OVERLAY")
+    if overlay:
+        load_overlay(overlay, "STM32 UART")
+        text = text.replace("UART.STM32_UART", "UartFixed.STM32_UART")
+    board_dir = Path(os.environ["PALMPILOT_DRONE_BOARD"])
+    board = (board_dir / "f405-wing-v2.board").read_text().replace("{TEST_DIR}", str(board_dir))
+    board = re.sub(r"rx: UART\.ScriptedUartPeer[^\n]*\n[^\n]*\n", "", board)
+    board += f'\ngcs: UART.ScriptedUartPeer @ sysbus 0x60200000\n    file: "{DRONE_DIR / "gcs_peer.py"}"\n'
+    out.mkdir(parents=True, exist_ok=True)
+    path = out / "platform-drone.repl"
+    path.write_text(text + "\n" + board)
+    return path
+
+
+def bridge_hub_line(line: str) -> None:
+    """The computer bridge: every hub command line updates the drone's RC channels."""
+    if line.startswith('{"type":"command"'):
+        try:
+            rc_link.apply_command(json.loads(line))
+        except json.JSONDecodeError:
+            rc_link.apply_command(None)
+
+
 class ControllerSim:
-    def __init__(self, out=None, show_logs=False, quantum=None):
+    def __init__(self, out=None, show_logs=False, quantum=None, drone=False):
         self.elf = {
             "left": Path(os.environ["PALMPILOT_LEFT_ELF"]),
             "right": Path(os.environ["PALMPILOT_RIGHT_ELF"]),
@@ -75,8 +122,9 @@ class ControllerSim:
         }
         self.out = Path(out or os.environ.get("PALMPILOT_OUT", "."))
         self.platform = Path(os.environ["PALMPILOT_PLATFORM"])
-        self.show_logs, self.quantum = show_logs, quantum
-        self.console = {name: Console(name) for name in MACHINES}
+        self.show_logs, self.quantum, self.drone = show_logs, quantum, drone
+        self.console = {name: Console(name, bridge_hub_line if drone and name == "hub" else None)
+                        for name in MACHINES}
         self.sim = None
         self._hooks = []
 
@@ -91,6 +139,7 @@ class ControllerSim:
 
         for hand in ("left", "right"):
             imu_state.for_hand(hand).reset()
+        rc_link.reset()
         machines = {}
         for name in MACHINES:
             i2c = MOTION_FIXTURES if name != "hub" else None
@@ -103,6 +152,10 @@ class ControllerSim:
             "machines": machines,
             "media": [{"type": "ble", "connect": [f"{n}.radio" for n in MACHINES]}],
         }
+        if self.drone:
+            machines["drone"] = {"repl": str(build_drone_platform(self.out)),
+                                 "elf": os.environ["PALMPILOT_DRONE_ELF"]}
+            scenario["media"].append({"type": "uart", "connect": ["drone.usart1", "drone.gcs"]})
         if self.quantum is not None:
             scenario["quantum"] = self.quantum
         self.sim = Sim(scenario=scenario, machine="hub", uart="uart0",
@@ -114,13 +167,15 @@ class ControllerSim:
             found, name = emulation.TryGetMachineName(machine, None)
             if found and name in self.console:
                 self.machine[name] = machine
+            elif found and name == "drone":
+                self.drone_machine = machine
         self.inputs = {name: ExternalInputs(m) for name, m in self.machine.items()}
         missing = set(MACHINES) - set(self.machine)
         if missing:
             raise RuntimeError(f"scenario machines not found: {sorted(missing)}")
         for name, machine in self.machine.items():
             uart = machine["sysbus.uart0"]
-            handler = Action[Byte](lambda value, s=self.console[name].stream: s.append(int(value)))
+            handler = Action[Byte](lambda value, c=self.console[name]: c.feed(int(value)))
             event = uart.GetType().GetEvent("CharReceived")
             event.AddEventHandler(uart, handler)
             self._hooks.append((event, uart, handler))

@@ -2994,7 +2994,7 @@ namespace Antmicro.Renode.Peripherals.BleFixed
 
         private ulong NowHalfMicroseconds()
         {
-            return ToLocalHalfMicroseconds(machine.LocalTimeSource.ElapsedVirtualTime);
+            return ToLocalHalfMicroseconds(machine.CurrentVirtualTime());
         }
 
         // A virtual-time instant on this controller's clock.
@@ -3006,8 +3006,7 @@ namespace Antmicro.Renode.Peripherals.BleFixed
         // The virtual-time instant `localDelayHalfUs` of this controller's clock from now.
         private TimeStamp LocalDelay(ulong localDelayHalfUs)
         {
-            var ts = machine.LocalTimeSource;
-            return new TimeStamp(ts.ElapsedVirtualTime + FromHalfMicroseconds(localDelayHalfUs), ts.Domain);
+            return new TimeStamp(machine.CurrentVirtualTime() + FromHalfMicroseconds(localDelayHalfUs), machine.LocalTimeSource.Domain);
         }
 
         private TimeStamp LocalDelayMicroseconds(ulong localDelayUs)

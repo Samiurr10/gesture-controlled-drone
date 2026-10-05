@@ -8,6 +8,7 @@ Simulator models this project needs that are not yet in a Simantic engine releas
 | `s3-mwdt/` | [renode-infrastructure #258](https://github.com/simantic-dev/renode-infrastructure/pull/258), wiring in [mcu-lib #229](https://github.com/simantic-dev/mcu-lib/pull/229) on [#222](https://github.com/simantic-dev/mcu-lib/pull/222) | `ESP32S3_Timg` stored the main-watchdog registers but never ran it, so the IDF task and interrupt watchdogs could not fire. |
 | `ble-radio/` | [renode-infrastructure #270](https://github.com/simantic-dev/renode-infrastructure/pull/270) | `ESP32C3_Radio` (the ESP32-C3/S3 BLE radio) assumed one connection per radio. A central could not hold two links, so the hub could not connect both hands. See the fixes listed below. |
 | `rng-reset/` | [renode-infrastructure #271](https://github.com/simantic-dev/renode-infrastructure/pull/271) | `ESP32C3_Rng` restarted its sequence on every chip reset, so a rebooted board drew the same "random" values, and a hand reported the same session after a reset. |
+| `stm32-uart-tx-dma/` | renode-infrastructure #325 (issue simantic-core #635; fixture sim-fixtures #387) | `STM32_UART` (STM32F4 USART) pulsed its TX DMA request only when TXE rose after a write. Silicon holds it as a level (DMAT and TXE), so a stream enabled while the transmitter was idle never started, and ArduCopter's MAVLink telemetry never left the drone. |
 
 Build them into `tmp/simantic/upstream-candidates/` (gitignored):
 
@@ -64,3 +65,26 @@ The 130-fixture ESP regression shows the same outcomes on the engine with and wi
 `Reset()` no longer rewinds the xorshift state. The sequence stays reproducible from run to run, but differs from boot to boot.
 
 **Evidence:** the hand session across a reboot was `3b47c78c` → `3b47c78c` on the stock model and `3b47c78c` → `e3175b1b` with the candidate. With the stock model, S2-B's "rebooted hand reports a new session" check fails.
+
+## STM32 UART TX DMA, recorded 2026-10-05
+
+Drone: stock ArduCopter 4.7.1 (MatekF405-Wing) on engine 0.5.20's STM32F405RG, telemetry on USART1 through DMA2 streams 2 (RX) and 7 (TX).
+
+| UART model | Result |
+|---|---|
+| 0.5.20 stock | RX works (our MAVLink frames are in ArduCopter's RX buffer). The TX stream is enabled with NDTR = 64 and never moves: no heartbeat ever leaves. |
+| candidate | heartbeats at 1 Hz; RC_CHANNELS reports exactly the overrides sent (1111/1222/1333/1444 µs); ArduCopter goes to failsafe (status 5) when they stop |
+
+The candidate sets `DMATransmitRequest` to `DMAT && TXE` on every change, which is what `STM32F7_USART` already does.
+
+**Evidence:** `firmware/probes/stm32-uart-txdma` is bare-metal USART2 TX by DMA on the STM32F446RE, run with the DMA armed in both orders.
+
+- Stock: both cases stop at NDTR = 27.
+- Candidate: both drain to 0.
+- Engine rebuilt from source with and without #325: the 163 STM fixtures give identical outcomes.
+
+The silicon run on a NUCLEO board is pending (sim-fixtures #387).
+
+## Shipped
+
+SYSTIMER (#257) and the S3 MWDT (#258, wiring mcu-lib #229) are in engine 0.5.15 and later. On 0.5.20 every single-hand suite passes with neither candidate loaded, and env.sh no longer loads them.
