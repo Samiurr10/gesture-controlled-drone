@@ -9,7 +9,8 @@ from firmware/tools/env.sh (CLAUDE.md section 3).
   palmpilot.py sim   <app> <script> run a harness script against sim.elf
   palmpilot.py run   <app> <script> build + pack + sim
   palmpilot.py system <script>      build + pack LEFT, RIGHT and HUB, then run a
-                                    whole-controller script (tools/controller.py)
+                                    whole-controller script (tools/controller.py);
+                                    --replay puts apps/replay in place of the hands
   palmpilot.py env                  print the resolved environment
 
 <app> is a directory containing an ESP-IDF project (CMakeLists.txt), either an
@@ -177,12 +178,14 @@ def cmd_sim(env: dict, app: Path, script: str, extra: list[str]) -> None:
 
 
 SYSTEM_APPS = {"LEFT": "hand:left", "RIGHT": "hand:right", "HUB": "hub"}
+# --replay: stand-in hands that send the packets a script gives them (apps/replay).
+REPLAY_APPS = {"LEFT": "replay:left", "RIGHT": "replay:right", "HUB": "hub"}
 
 
-def cmd_system(env: dict, script: str, extra: list[str], build: bool) -> None:
+def cmd_system(env: dict, script: str, extra: list[str], build: bool, replay: bool) -> None:
     child = dict(env, PALMPILOT_OUT=str(Path(env["PALMPILOT_BUILD_ROOT"]) / "system"),
                  PYTHONPATH=str(ROOT / "firmware/tools") + os.pathsep + env.get("PYTHONPATH", ""))
-    for role, name in SYSTEM_APPS.items():
+    for role, name in (REPLAY_APPS if replay else SYSTEM_APPS).items():
         app = resolve_app(name)
         if build:
             cmd_build(env, app)
@@ -206,6 +209,7 @@ def main() -> None:
     node.add_argument("script")
     node.add_argument("extra", nargs="*")
     node.add_argument("--no-build", action="store_true")
+    node.add_argument("--replay", action="store_true")
     sub.add_parser("env")
     args = parser.parse_args()
 
@@ -215,7 +219,7 @@ def main() -> None:
             print(f"{key}={env[key]}")
         return
     if args.action == "system":
-        cmd_system(env, args.script, args.extra, build=not args.no_build)
+        cmd_system(env, args.script, args.extra, build=not args.no_build, replay=args.replay)
         return
     app = resolve_app(args.app)
     if args.action in ("build", "run"):

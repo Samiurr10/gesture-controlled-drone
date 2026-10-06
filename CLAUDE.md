@@ -290,8 +290,10 @@ firmware/                    ACTIVE firmware workspace
   components/console/        whole-line UART output from any task
   apps/hand/                 hand firmware; `hand:left` / `hand:right` builds
   apps/hub/                  hub firmware: BLE central, one command on UART0
+  apps/replay/               stand-in hand: the hand's BLE peripheral sending
+                             packets a test script supplies (S3-B)
   tests/                     simulation suites; run_all.sh runs every one
-                             (s1* one hand, s2* whole controller)
+                             (s1* one hand, s2* whole controller, s3* with the drone)
   probes/fpu/                FPU-gap probe and its finding
   probes/reset/              esp_restart gap
   probes/nvs/                NVS erase gap

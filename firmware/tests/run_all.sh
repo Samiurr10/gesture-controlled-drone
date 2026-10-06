@@ -54,6 +54,7 @@ run firmware/apps/hand firmware/tests/s1h_watchdog.py "S1-H watchdog discipline"
 system firmware/tests/s2a_link.py "S2-A hand-hub BLE link" ""
 system firmware/tests/s2b_controller.py "S2-B whole controller" --no-build
 system firmware/tests/s3a_drone.py "S3-A hands + hub drive ArduCopter" --no-build
+system firmware/tests/s3b_replay.py "S3-B scripted BLE input -> hub -> ArduCopter" --replay
 
 printf '\n===========================================\n'
 if [ "$failed" -eq 0 ]; then
