@@ -33,11 +33,18 @@ EXPIRY_TICKS = 5
 rc_reported = None                   # last RC_CHANNELS chan1..8, microseconds
 heartbeat = None                     # last HEARTBEAT: dict of type, base_mode, custom_mode, system_status
 heartbeats = 0
+latest = {}                          # last message of each type ArduCopter sent
+statustext = []                      # (time_s, severity, text), in order
+acks = []                            # (time_s, command, result)
+params = []                          # PARAM_VALUE replies
+outbox = []                          # messages a test queues for the peer to send
 
 
 def reset() -> None:
     global failsafe, overrides_sent, commands_seen, ticks_since_command
     global rc_reported, heartbeat, heartbeats
+    for log in (latest, statustext, acks, params, outbox):
+        log.clear()
     channels[:] = [CENTRE_US] * CHANNELS
     channels[2] = MIN_US
     failsafe, overrides_sent, commands_seen, ticks_since_command = True, 0, 0, 0

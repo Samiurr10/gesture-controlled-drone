@@ -28,6 +28,8 @@ class Peer:
                 self.send(self.mav.command_long_encode(
                     1, 1, mavlink.MAV_CMD_SET_MESSAGE_INTERVAL, 0,
                     mavlink.MAVLINK_MSG_ID_RC_CHANNELS, 100_000, 0, 0, 0, 0, 0))
+        while rc_link.outbox:
+            self.send(rc_link.outbox.pop(0)(self.mav))
         rc_link.ticks_since_command += 1
         if not rc_link.failsafe and not rc_link.expired():
             self.send(self.mav.rc_channels_override_encode(1, 1, *rc_link.channels, *([0] * 10)))
@@ -38,6 +40,15 @@ class Peer:
         if message is None:
             return
         kind = message.get_type()
+        now = self.ticks * TICK_US / 1e6
+        if message.get_srcSystem() == 1:
+            rc_link.latest[kind] = message
+        if kind == "STATUSTEXT":
+            rc_link.statustext.append((now, message.severity, message.text))
+        elif kind == "PARAM_VALUE":
+            rc_link.params.append(message)
+        elif kind == "COMMAND_ACK":
+            rc_link.acks.append((now, message.command, message.result))
         if kind == "RC_CHANNELS":
             rc_link.rc_reported = [getattr(message, f"chan{i}_raw") for i in range(1, 9)]
         elif kind == "HEARTBEAT" and message.get_srcSystem() == 1:

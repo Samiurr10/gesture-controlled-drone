@@ -52,7 +52,7 @@ export PALMPILOT_STM32_UART_OVERLAY="${PALMPILOT_STM32_UART_OVERLAY-$PALMPILOT_R
 # scripts come from a local sim-fixtures checkout (private, not copied here).
 export PALMPILOT_DRONE_ELF="$PALMPILOT_ROOT/tmp/drone/matekf405-wing-arducopter.elf"
 export PALMPILOT_DRONE_PLATFORM="$PALMPILOT_ROOT/tmp/simantic/platform/STM32F405RG-0.6.3.repl"
-export PALMPILOT_DRONE_BOARD="$PALMPILOT_ROOT/tmp/simantic/sim-fixtures/tests/stm/matek-f405-wing"
+export PALMPILOT_DRONE_BOARD="${PALMPILOT_DRONE_BOARD:-$PALMPILOT_ROOT/tmp/simantic/sim-fixtures/tests/stm/matek-f405-wing}"
 # Superseded local timer-group overlay (hangs esp_restart); used only when
 # PALMPILOT_S3_MWDT_OVERLAY is empty.
 export PALMPILOT_TIMG_OVERLAY="$PALMPILOT_ROOT/tmp/simantic/timg-overlay/bin/Debug/net10.0/TimgUnderTest.dll"
