@@ -77,7 +77,7 @@ Hands share nothing but BLE. Never join supplies across boards.
 |---|---|
 | Framework | **ESP-IDF v5.5.2** |
 | Compiler | xtensa-esp-elf-gcc **14.2.0** (crosstool-NG esp-14.2.0_20251107) |
-| Simantic CLI/engine | **0.5.20** (0.5.14 and 0.5.7 kept in `tmp/simantic/runtime/engine/` for comparison runs) |
+| Simantic CLI/engine | **0.6.3** (0.5.20, 0.5.14 and 0.5.7 kept in `tmp/simantic/runtime/engine/` for comparison runs) |
 | Simantic Python SDK | **0.3.1** |
 | IDF python env | 3.12.14 |
 | Config | UART0 @115200, `FREERTOS_UNICORE=y`, no PSRAM, DIO 40 MHz, 4 MB layout |

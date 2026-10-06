@@ -6,7 +6,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <Nullable>disable</Nullable>
     <RepoRoot>$(MSBuildThisFileDirectory)../../../../</RepoRoot>
-    <EngineDir>$(RepoRoot)tmp/simantic/runtime/engine/0.5.20/</EngineDir>
+    <EngineDir>$(RepoRoot)tmp/simantic/runtime/engine/0.6.3/</EngineDir>
     <BaseOutputPath>$(RepoRoot)tmp/simantic/upstream-candidates/ble-radio/bin/</BaseOutputPath>
     <BaseIntermediateOutputPath>$(RepoRoot)tmp/simantic/upstream-candidates/ble-radio/obj/</BaseIntermediateOutputPath>
   </PropertyGroup>

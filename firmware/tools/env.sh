@@ -24,7 +24,7 @@ export PATH="$IDF_PYTHON_ENV_PATH/bin:$PALMPILOT_XTENSA_BIN${PALMPILOT_RISCV_BIN
 # --- Simantic engine 0.5.14 / SDK 0.3.1 --------------------------------------
 # Pinned explicitly: runtime/engine also still holds 0.5.7 for comparison runs.
 export SIMANTIC_HOME="$PALMPILOT_ROOT/tmp/simantic/runtime"
-export SIMANTIC_ENGINE_DIR="${SIMANTIC_ENGINE_DIR:-$SIMANTIC_HOME/engine/0.5.20}"
+export SIMANTIC_ENGINE_DIR="${SIMANTIC_ENGINE_DIR:-$SIMANTIC_HOME/engine/0.6.3}"
 export SIMANTIC_TELEMETRY=0
 export PALMPILOT_SIM_PYTHON="$PALMPILOT_ROOT/.venv-simantic/bin/python"
 
@@ -32,7 +32,7 @@ export PALMPILOT_SIM_PYTHON="$PALMPILOT_ROOT/.venv-simantic/bin/python"
 # Stock mcu-lib ESP32-S3 platform as served to CLI 0.5.14, unmodified
 # (sha256 508f13ad...). Its SENS wires CalibrationEfuse, so ADC1 raw counts
 # follow the modeled die's factory calibration, as on silicon.
-export PALMPILOT_PLATFORM="${PALMPILOT_PLATFORM:-$PALMPILOT_ROOT/tmp/simantic/platform/ESP32-S3-WROOM-1-N8R2-0.5.20.repl}"
+export PALMPILOT_PLATFORM="${PALMPILOT_PLATFORM:-$PALMPILOT_ROOT/tmp/simantic/platform/ESP32-S3-WROOM-1-N8R2-0.6.3.repl}"
 export PALMPILOT_ROM="$PALMPILOT_ROOT/tmp/simantic/esp-idf-tools/esp32s3_rev0_rom.bin"
 # Model candidates (simulation/simantic/model-candidates), kept until an engine
 # release ships them. Set one to an empty string to run the engine's own model.
@@ -51,7 +51,7 @@ export PALMPILOT_STM32_UART_OVERLAY="${PALMPILOT_STM32_UART_OVERLAY-$PALMPILOT_R
 # ELF: simulation/drone/fetch_arducopter.sh. The board overlay and its sensor
 # scripts come from a local sim-fixtures checkout (private, not copied here).
 export PALMPILOT_DRONE_ELF="$PALMPILOT_ROOT/tmp/drone/matekf405-wing-arducopter.elf"
-export PALMPILOT_DRONE_PLATFORM="$PALMPILOT_ROOT/tmp/simantic/platform/STM32F405RG-0.5.20.repl"
+export PALMPILOT_DRONE_PLATFORM="$PALMPILOT_ROOT/tmp/simantic/platform/STM32F405RG-0.6.3.repl"
 export PALMPILOT_DRONE_BOARD="$PALMPILOT_ROOT/tmp/simantic/sim-fixtures/tests/stm/matek-f405-wing"
 # Superseded local timer-group overlay (hangs esp_restart); used only when
 # PALMPILOT_S3_MWDT_OVERLAY is empty.
