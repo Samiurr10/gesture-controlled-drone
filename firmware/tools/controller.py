@@ -102,6 +102,7 @@ def build_drone_platform(out: Path, plant: bool = False) -> Path:
     if plant:
         board = board.replace(f"{board_dir}/peers/icm42688.py", str(DRONE_DIR / "imu_plant.py"))
         board = board.replace(f"{board_dir}/peers/dps310.py", str(DRONE_DIR / "baro_plant.py"))
+        board = board.replace(f"{board_dir}/peers/sd_spi.py", str(DRONE_DIR / "sd_card.py"))
     board += f'\ngcs: UART.ScriptedUartPeer @ sysbus 0x60200000\n    file: "{DRONE_DIR / "gcs_peer.py"}"\n'
     out.mkdir(parents=True, exist_ok=True)
     path = out / "platform-drone.repl"

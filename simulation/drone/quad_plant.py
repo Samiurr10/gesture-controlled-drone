@@ -38,6 +38,7 @@ PSC, CCR1 = 0x28, 0x34
 MOTOR_CHANNELS = ((TIM4, 2), (TIM4, 1), (TIM3, 3), (TIM3, 4))
 TIMER_CLOCK_HZ = 84_000_000           # APB1 timers: 168 MHz SYSCLK, APB1 /4, x2
 BUS_READ = None                       # set by the harness when a peer ctx has no bus_read
+SD_CARD = None                        # sd_card.py's card, when the board has one
 
 
 def _mul(q, r):
