@@ -12,6 +12,10 @@ Bench setup a real first flight would also need, done here over MAVLink by the
 host: frame = quad X, arming checks skipped (the board model has no compass and
 no accelerometer calibration), AltHold, arm. ENABLE is permission, not arming.
 """
+import math
+import os
+from pathlib import Path
+
 from controller import ControllerSim, quad_plant, rc_link
 from pymavlink.dialects.v20 import ardupilotmega as mavlink
 
@@ -21,6 +25,23 @@ SKIP_ALL = 0xFFFFE
 ALT_HOLD = 2
 TILT = 16384 // 2
 PLANT = quad_plant.PLANT
+
+
+# PALMPILOT_FLIGHT_PARAMS: a .parm file (e.g. ArduPilot's SITL copter.parm) applied before
+# the reboot; sensor and simulator settings that do not apply to this board are skipped.
+SKIP_PREFIXES = ("SIM_", "COMPASS_", "GPS", "SERIAL", "ARSPD_", "FENCE_", "BATT_", "FLTMODE", "FRAME_", "RC7_OPTION")
+
+
+def flight_params():
+    path = os.environ.get("PALMPILOT_FLIGHT_PARAMS")
+    if not path:
+        return []
+    out = []
+    for line in Path(path).read_text().splitlines():
+        parts = line.split()
+        if len(parts) >= 2 and not line.startswith("#") and not parts[0].startswith(SKIP_PREFIXES):
+            out.append((parts[0].encode(), float(parts[1])))
+    return out
 
 
 def throttle(sim, milli):
@@ -82,12 +103,29 @@ with ControllerSim(drone=True, plant=True) as sim:
                               # The bridge holds ch5 at 1500 us; as a mode switch it would force mode slot 3.
                               (b"FLTMODE_CH", 0, mavlink.MAV_PARAM_TYPE_INT8)):
         mav(lambda m, n=name, v=value, k=kind: m.param_set_encode(1, 1, n, v, k))
+    extra = flight_params()
+    for name, value in extra:
+        mav(lambda m, n=name, v=value: m.param_set_encode(1, 1, n, v, mavlink.MAV_PARAM_TYPE_REAL32))
+    print(f"airframe: {type(PLANT.airframe).__name__ if PLANT.airframe else 'quad_plant 1 kg'}; "
+          f"extra parameters: {len(extra)}")
     sim.run_for(1.0)
     command(mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN, 1)
     sim.run_for(1.0)
     standby(sim)
     sim.run_for(6.0)                  # EKF alignment
     seen = texts(0)
+    command(mavlink.MAV_CMD_SET_MESSAGE_INTERVAL, mavlink.MAVLINK_MSG_ID_ATTITUDE, 50_000)
+    estimates = []                    # (t, ArduCopter's roll/pitch/yaw, the plant's)
+    hook = sim.run_for
+
+    def run_for(seconds, _run=hook):
+        for _ in range(max(1, round(seconds / 0.1))):
+            _run(min(0.1, seconds))
+            a = rc_link.latest.get("ATTITUDE")
+            if a:
+                estimates.append((round(sim.time(), 2), [round(math.degrees(v), 2) for v in (a.roll, a.pitch, a.yaw)],
+                                  [round(v, 2) for v in PLANT.euler_deg()]))
+    sim.run_for = run_for
 
     print("\nprepare: ENABLE, left hand open (throttle 0), AltHold, arm")
     throttle(sim, 0)
@@ -129,9 +167,13 @@ with ControllerSim(drone=True, plant=True) as sim:
     texts(seen)
     panics = [n for n in ("left", "right", "hub") if "Guru Meditation" in sim.console[n].text]
     print(f"\nfirmware panics: {panics or 'none'}; trajectory samples: {len(PLANT.log)}")
+    arm_at = next((a[0] for a in rc_link.acks if a[1] == mavlink.MAV_CMD_COMPONENT_ARM_DISARM and a[2] == 0), None)
     sim.save("flight_log.json", {
+        "arm_at_s": arm_at,
+        "airframe": type(PLANT.airframe).__name__ if PLANT.airframe else "quad_plant",
         "scope": "quad_plant PROVISIONAL airframe; ArduCopter 4.7.1 MatekF405-Wing, AltHold; hands simulated",
         "columns": ["t_s", "pos_ned_m", "vel_ned_mps", "roll_deg", "pitch_deg", "yaw_deg", "motor_us"],
         "log": PLANT.log,
         "hub_commands": sim.commands(),
+        "estimates": estimates,
     })

@@ -14,6 +14,8 @@ Limits fixed before the first run:
   ground                   below-weight thrust stays on the ground and reads -1 g; above it lifts
   terminal climb           settles within 1% of (T - mg) / c
   barometer                ISA: 100 m -> 100129 Pa within 2 Pa; pressure falls with height
+  ArduPilot airframe       hoverThrOut holds altitude (|vz| < 0.02 m/s after 1 s, no battery sag);
+                           the same motor signs; forward flight puts drag on the accelerometer
 """
 import math
 import sys
@@ -135,6 +137,38 @@ p.pos = [0.0, 0.0, -100.0]
 check("ISA pressure at 100 m", abs(p.pressure_pa() - 100129.4) < 2, f"{p.pressure_pa():.1f} Pa")
 p.pos = [0.0, 0.0, -101.0]
 check("pressure falls with height", p.pressure_pa() < 100129.4)
+
+print("ArduPilot SITL airframe (ardupilot_frame.py)")
+import ardupilot_frame as af                                  # noqa: E402
+e = af.PROP_EXPO
+hover_cmd = ((e - 1) + math.sqrt((1 - e) ** 2 + 4 * e * af.HOVER_THR_OUT)) / (2 * e)
+hover_pwm = 1000 + 1000 * (af.SPIN_MIN + (af.SPIN_MAX - af.SPIN_MIN) * hover_cmd)
+bat_res, af.REF_BAT_RES = af.REF_BAT_RES, 0.0          # no sag: thrust exactly as at reference
+frame = af.ArduPilotQuadX(home_alt=af.REF_ALT)
+p = qp.Plant(frame)
+p.on_ground, p.pos = False, [0.0, 0.0, 0.0]
+frame.home_alt = af.REF_ALT
+p.pos = [0.0, 0.0, -1e-6]
+frame.last_command = [hover_cmd] * 4
+p.pulses = [hover_pwm] * 4
+run(p, 1.0)
+check("hoverThrOut holds altitude at the reference density", abs(p.vel[2]) < 0.02, f"vz {p.vel[2]:+.4f} m/s")
+check("and the accelerometer reads -1 g", abs(p.accel_g()[2] + 1) < 2e-3, f"{p.accel_g()[2]:+.4f} g")
+for name, pulses, axis, sign in cases:
+    scale = [hover_pwm + (x - hover) for x in pulses]
+    p = qp.Plant(af.ArduPilotQuadX(home_alt=af.REF_ALT))
+    p.on_ground, p.pos, p.pulses = False, [0.0, 0.0, -50.0], scale
+    p.airframe.last_command = [hover_cmd] * 4
+    run(p, 0.2)
+    check(f"ArduPilot frame: {name}", sign * p.rates[axis] > 0.01, f"rates {[round(r, 3) for r in p.rates]} rad/s")
+p = qp.Plant(af.ArduPilotQuadX(home_alt=af.REF_ALT))
+p.on_ground, p.pos, p.vel = False, [0.0, 0.0, -50.0], [5.0, 0.0, 0.0]
+p.pulses = [hover_pwm] * 4
+p.airframe.last_command = [hover_cmd] * 4
+run(p, 0.01)
+check("ArduPilot frame: flying forward, the accelerometer feels drag backwards", p.accel_g()[0] < -0.01,
+      f"ax {p.accel_g()[0]:+.4f} g at 5 m/s")
+af.REF_BAT_RES = bat_res
 
 print(f"\n{len(checks) - len(failures)}/{len(checks)} checks passed")
 sys.exit(1 if failures else 0)

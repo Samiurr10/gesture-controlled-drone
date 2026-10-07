@@ -13,6 +13,7 @@ matches this airframe. The airframe numbers are a typical 1 kg 5-inch-class quad
 not a measured vehicle.
 """
 import math
+import os
 
 GRAVITY = 9.80665
 MASS_KG = 1.0
@@ -65,7 +66,8 @@ def thrust_n(pulse_us):
 
 
 class Plant:
-    def __init__(self):
+    def __init__(self, airframe=None):
+        self.airframe = airframe      # None: the 1 kg quad above; else e.g. ArduPilotQuadX
         self.reset()
 
     def reset(self):
@@ -79,6 +81,7 @@ class Plant:
         self.on_ground = True
         self.last_us = None
         self.samples = 0
+        self.imu_drops = 0            # samples the IMU FIFO had no room for
         self.log = []                 # (t_s, pos, vel, roll, pitch, yaw, pulses)
 
     def read_motors(self, bus_read):
@@ -105,6 +108,8 @@ class Plant:
                              tuple(round(p) for p in self.pulses)))
 
     def _step(self, dt):
+        if self.airframe:
+            return self._step_airframe(dt)
         alpha = dt / (MOTOR_TIME_CONSTANT_S + dt)
         for i in range(4):
             self.thrust[i] += alpha * (thrust_n(self.pulses[i]) - self.thrust[i])
@@ -144,6 +149,43 @@ class Plant:
                 self.on_ground = True
         self.specific_force = _unrotate(self.q, (accel[0], accel[1], accel[2] - GRAVITY))
 
+    def _step_airframe(self, dt):
+        frame = self.airframe
+        vel_body = _unrotate(self.q, self.vel)
+        force_body, torque = frame.forces(self.pulses, vel_body, tuple(self.rates), -self.pos[2], dt)
+        force_world = _rotate(self.q, force_body)
+        accel = [f / frame.mass for f in force_world]
+        accel[2] += GRAVITY
+        if self.on_ground and accel[2] >= 0:
+            self._rest()
+            accel = [0.0, 0.0, 0.0]
+        else:
+            self.on_ground = False
+            damping = frame.angular_damping(self.rates)
+            for i in range(3):
+                self.rates[i] += dt * (torque[i] / frame.inertia[i] - damping[i])
+            self._integrate(accel, dt)
+        self.specific_force = _unrotate(self.q, (accel[0], accel[1], accel[2] - GRAVITY))
+
+    def _rest(self):
+        self.vel = [0.0, 0.0, 0.0]
+        self.rates = [0.0, 0.0, 0.0]
+        yaw = self.euler_deg()[2]
+        self.q = (math.cos(math.radians(yaw) / 2), 0.0, 0.0, math.sin(math.radians(yaw) / 2))
+
+    def _integrate(self, accel, dt):
+        p, q_, r = self.rates
+        dq = _mul(self.q, (0.0, p, q_, r))
+        q = tuple(a + 0.5 * dt * b for a, b in zip(self.q, dq))
+        n = math.sqrt(sum(c * c for c in q))
+        self.q = tuple(c / n for c in q)
+        for i in range(3):
+            self.vel[i] += accel[i] * dt
+            self.pos[i] += self.vel[i] * dt
+        if self.pos[2] >= 0.0:                   # touched down
+            self.pos[2] = 0.0
+            self.on_ground = True
+
     # ---- sensor views ---------------------------------------------------------
     def accel_g(self):
         return [a / GRAVITY for a in self.specific_force]
@@ -163,4 +205,11 @@ class Plant:
         return math.degrees(roll), math.degrees(pitch), math.degrees(yaw)
 
 
-PLANT = Plant()
+def _airframe():
+    if os.environ.get("PALMPILOT_AIRFRAME") == "ardupilot":
+        import ardupilot_frame
+        return ardupilot_frame.ArduPilotQuadX()
+    return None
+
+
+PLANT = Plant(_airframe())

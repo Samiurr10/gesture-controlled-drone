@@ -12,4 +12,7 @@ class Slave(_base.Slave):
         quad_plant.PLANT.advance(self.ctx.now_us, bus_read)
         self.accel_g = quad_plant.PLANT.accel_g()
         self.gyro_dps = quad_plant.PLANT.gyro_dps()
+        before = self.samples, self.records
         super().tick()
+        if self.samples > before[0] and self.records == before[1]:
+            quad_plant.PLANT.imu_drops += 1           # FIFO full: this sample, or the oldest, is lost
