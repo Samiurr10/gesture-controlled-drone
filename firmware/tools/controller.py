@@ -37,6 +37,7 @@ import imu_state                                             # noqa: E402
 DRONE_DIR = Path(__file__).resolve().parents[2] / "simulation" / "drone"
 if str(DRONE_DIR) not in sys.path:
     sys.path.insert(0, str(DRONE_DIR))
+import quad_plant                                           # noqa: E402
 import rc_link                                               # noqa: E402
 
 MACHINES = ("left", "right", "hub")
@@ -86,9 +87,10 @@ class Console:
         return out
 
 
-def build_drone_platform(out: Path) -> Path:
+def build_drone_platform(out: Path, plant: bool = False) -> Path:
     """STM32F405RG + the Matek F405-Wing board, with the S.Bus receiver replaced by
-    the computer's MAVLink link (gcs_peer) and the STM32 UART candidate if set."""
+    the computer's MAVLink link (gcs_peer) and the STM32 UART candidate if set.
+    With `plant`, the IMU and barometer report quad_plant's motion."""
     text = Path(os.environ["PALMPILOT_DRONE_PLATFORM"]).read_text()
     overlay = os.environ.get("PALMPILOT_STM32_UART_OVERLAY")
     if overlay:
@@ -97,6 +99,9 @@ def build_drone_platform(out: Path) -> Path:
     board_dir = Path(os.environ["PALMPILOT_DRONE_BOARD"])
     board = (board_dir / "f405-wing-v2.board").read_text().replace("{TEST_DIR}", str(board_dir))
     board = re.sub(r"rx: UART\.ScriptedUartPeer[^\n]*\n[^\n]*\n", "", board)
+    if plant:
+        board = board.replace(f"{board_dir}/peers/icm42688.py", str(DRONE_DIR / "imu_plant.py"))
+        board = board.replace(f"{board_dir}/peers/dps310.py", str(DRONE_DIR / "baro_plant.py"))
     board += f'\ngcs: UART.ScriptedUartPeer @ sysbus 0x60200000\n    file: "{DRONE_DIR / "gcs_peer.py"}"\n'
     out.mkdir(parents=True, exist_ok=True)
     path = out / "platform-drone.repl"
@@ -114,7 +119,7 @@ def bridge_hub_line(line: str) -> None:
 
 
 class ControllerSim:
-    def __init__(self, out=None, show_logs=False, quantum=None, drone=False):
+    def __init__(self, out=None, show_logs=False, quantum=None, drone=False, plant=False):
         self.elf = {
             "left": Path(os.environ["PALMPILOT_LEFT_ELF"]),
             "right": Path(os.environ["PALMPILOT_RIGHT_ELF"]),
@@ -122,7 +127,7 @@ class ControllerSim:
         }
         self.out = Path(out or os.environ.get("PALMPILOT_OUT", "."))
         self.platform = Path(os.environ["PALMPILOT_PLATFORM"])
-        self.show_logs, self.quantum, self.drone = show_logs, quantum, drone
+        self.show_logs, self.quantum, self.drone, self.plant = show_logs, quantum, drone, plant
         self.console = {name: Console(name, bridge_hub_line if drone and name == "hub" else None)
                         for name in MACHINES}
         self.sim = None
@@ -153,7 +158,8 @@ class ControllerSim:
             "media": [{"type": "ble", "connect": [f"{n}.radio" for n in MACHINES]}],
         }
         if self.drone:
-            machines["drone"] = {"repl": str(build_drone_platform(self.out)),
+            quad_plant.PLANT.reset()
+            machines["drone"] = {"repl": str(build_drone_platform(self.out, self.plant)),
                                  "elf": os.environ["PALMPILOT_DRONE_ELF"]}
             scenario["media"].append({"type": "uart", "connect": ["drone.usart1", "drone.gcs"]})
         if self.quantum is not None:
@@ -169,6 +175,7 @@ class ControllerSim:
                 self.machine[name] = machine
             elif found and name == "drone":
                 self.drone_machine = machine
+                quad_plant.BUS_READ = lambda address, _size, bus=machine.SystemBus: int(bus.ReadDoubleWord(address))
         self.inputs = {name: ExternalInputs(m) for name, m in self.machine.items()}
         missing = set(MACHINES) - set(self.machine)
         if missing:
