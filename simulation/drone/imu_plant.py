@@ -19,9 +19,6 @@ _base = _matek_peers.load("icm42688")
 class Slave(_base.Slave):
     def tick(self):
         bus_read = getattr(self.ctx, "bus_read", None) or quad_plant.BUS_READ
-        if not getattr(self, "_reported_bus", False):
-            self._reported_bus = True
-            print(f"IMU_PLANT bus_read from {'peer ctx' if getattr(self.ctx, 'bus_read', None) else 'harness SystemBus'}", flush=True)
         quad_plant.PLANT.advance(self.ctx.now_us, bus_read)
         self.accel_g = quad_plant.PLANT.accel_g()
         self.gyro_dps = quad_plant.PLANT.gyro_dps()
