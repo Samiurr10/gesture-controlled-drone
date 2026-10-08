@@ -5,6 +5,7 @@ printing simulated time each second, so a stall shows as output that stops.
     python3 firmware/tools/palmpilot.py system --replay --no-build firmware/probes/drone-flight/soak.py [seconds [tag]]
 """
 import faulthandler
+import os
 import signal
 import sys
 import time
@@ -15,7 +16,10 @@ faulthandler.register(signal.SIGUSR1, all_threads=True)   # kill -USR1 <pid>: ev
 SECONDS = float(sys.argv[1]) if len(sys.argv) > 1 else 40.0
 
 t0 = time.monotonic()
-with ControllerSim(drone=True, plant=True) as sim:
+# SOAK_QUANTUM: the machines' synchronisation quantum in seconds; smaller means more
+# synchronisation points, so more chances to hit a cross-thread race.
+quantum = float(os.environ["SOAK_QUANTUM"]) if os.environ.get("SOAK_QUANTUM") else None
+with ControllerSim(drone=True, plant=True, quantum=quantum) as sim:
     print(f"SOAK started in {time.monotonic() - t0:.1f}s", flush=True)
     sim.set_calibrate(False)
     start = time.monotonic()
