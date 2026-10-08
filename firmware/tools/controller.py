@@ -17,6 +17,7 @@ images and sets PALMPILOT_{LEFT,RIGHT,HUB}_ELF.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
@@ -110,6 +111,35 @@ def build_drone_platform(out: Path, plant: bool = False) -> Path:
     return path
 
 
+@contextlib.contextmanager
+def _serial_execution(enabled: bool):
+    """Sets SessionSpec.SerialExecution for the session started inside, which the SDK
+    (0.3.1) does not pass on from a scenario's `serialExecution`."""
+    if not enabled:
+        yield
+        return
+    import simantic.session as session
+    load = session.load
+
+    class Serial:
+        def __init__(self, ns):
+            self._ns = ns
+
+        def __getattr__(self, name):
+            return getattr(self._ns, name)
+
+        def SessionSpec(self):
+            spec = self._ns.SessionSpec()
+            spec.SerialExecution = True
+            return spec
+
+    session.load = lambda *args, **kwargs: Serial(load(*args, **kwargs))
+    try:
+        yield
+    finally:
+        session.load = load
+
+
 def bridge_hub_line(line: str) -> None:
     """The computer bridge: every hub command line updates the drone's RC channels."""
     if line.startswith('{"type":"command"'):
@@ -120,7 +150,7 @@ def bridge_hub_line(line: str) -> None:
 
 
 class ControllerSim:
-    def __init__(self, out=None, show_logs=False, quantum=None, drone=False, plant=False):
+    def __init__(self, out=None, show_logs=False, quantum=None, drone=False, plant=False, serial=None):
         self.elf = {
             "left": Path(os.environ["PALMPILOT_LEFT_ELF"]),
             "right": Path(os.environ["PALMPILOT_RIGHT_ELF"]),
@@ -129,6 +159,9 @@ class ControllerSim:
         self.out = Path(out or os.environ.get("PALMPILOT_OUT", "."))
         self.platform = Path(os.environ["PALMPILOT_PLATFORM"])
         self.show_logs, self.quantum, self.drone, self.plant = show_logs, quantum, drone, plant
+        # Every core of every machine on one host thread, in turn: no cross-thread
+        # races or lock-order deadlocks between cores, at the cost of speed.
+        self.serial = os.environ.get("PALMPILOT_SERIAL") == "1" if serial is None else serial
         self.console = {name: Console(name, bridge_hub_line if drone and name == "hub" else None)
                         for name in MACHINES}
         self.sim = None
@@ -165,8 +198,9 @@ class ControllerSim:
             scenario["media"].append({"type": "uart", "connect": ["drone.usart1", "drone.gcs"]})
         if self.quantum is not None:
             scenario["quantum"] = self.quantum
-        self.sim = Sim(scenario=scenario, machine="hub", uart="uart0",
-                       show_logs=self.show_logs).__enter__()
+        with _serial_execution(self.serial):
+            self.sim = Sim(scenario=scenario, machine="hub", uart="uart0",
+                           show_logs=self.show_logs).__enter__()
 
         emulation = EmulationManager.Instance.CurrentEmulation
         self.machine = {}
