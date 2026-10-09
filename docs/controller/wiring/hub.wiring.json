@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "title": "PalmPilot HUB: CALIBRATE button, USB-UART to laptop",
+  "notes": "PalmPilot HUB, bench plan. Pins match PalmPilot CLAUDE.md section 2; not checked on hardware. Laptop link: USB data cable from the DevKit port labelled UART (on-board USB-to-UART bridge on UART0, 115200 baud) to the laptop; it also powers the hub. GPIO43 (U0TXD) and GPIO44 (U0RXD) are highlighted because the bridge uses them: do not wire them. No flex sensors and no motion sensor on the hub. Hands reach the hub over BLE only. GPIO10 reserved: leave disconnected.",
+  "parts": [
+    {
+      "id": "esp",
+      "board": "esp32-s3-devkitc-1",
+      "x": 0,
+      "y": 0,
+      "label": "HUB ESP32-S3-DevKitC-1 (USB-UART port -> laptop, 115200)"
+    },
+    {
+      "id": "button",
+      "board": "button-active-low-rc",
+      "x": -60,
+      "y": 30,
+      "label": "HUB CALIBRATE button (active low)"
+    }
+  ],
+  "connections": [
+    {
+      "from": "button:OUT",
+      "to": "esp:GPIO7",
+      "color": "lime",
+      "label": "CALIBRATE -> GPIO7, active low (10k pull-up)",
+      "bend": 6.0
+    },
+    {
+      "from": "esp:J1-1",
+      "to": "button:3V3",
+      "color": "red",
+      "label": "HUB 3V3 -> 10k pull-up",
+      "bend": -6.9
+    },
+    {
+      "from": "esp:J1-22",
+      "to": "button:GND",
+      "color": "black",
+      "label": "100nF + switch -> HUB GND",
+      "bend": 6.6
+    }
+  ],
+  "highlight": [
+    "esp:GPIO43",
+    "esp:GPIO44"
+  ]
+}

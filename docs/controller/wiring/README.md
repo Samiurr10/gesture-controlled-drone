@@ -16,8 +16,7 @@ ESP32-S3-DevKitC-1:
 - the Adafruit #5543 motion breakout, whose resting orientation S1-B captures;
 - the ENABLE button.
 
-The RIGHT hand is the same without the button. The two-hand and hub wiring comes
-after S1.
+The RIGHT hand is the same without the button. Both hands and the hub are below.
 
 pinplanner has no resistors or capacitors, so each brown block stands for one
 small circuit from the build guide, with three connections: 3V3, the signal and GND.
@@ -64,15 +63,61 @@ Wires 3 and 6 share esp:J3-1.
 Wires 8 and 11 and 14 and 21 share esp:J1-1.
 Wires 9 and 12 and 15 and 17 and 22 share esp:J1-22.
 
+## Both hands and the hub
+
+Three ESP32-S3-DevKitC-1 boards. The hands reach the hub over BLE only. Each
+board's parts use that board's own 3V3 and GND, and no wire joins two boards.
+
+| file | board | what is wired |
+|---|---|---|
+| [`left-hand.wiring.json`](left-hand.wiring.json) | LEFT | 5 flex, Adafruit #5543, ENABLE button |
+| [`right-hand.wiring.json`](right-hand.wiring.json) | RIGHT | 5 flex, Adafruit #5543 |
+| [`hub.wiring.json`](hub.wiring.json) | HUB | CALIBRATE button; USB-UART port to the laptop |
+
+### LEFT hand
+
+![LEFT hand](left-hand.png)
+
+The same wiring as the one-hand bench above, as the LEFT hand of the full system
+([SVG](left-hand.svg)).
+
+### RIGHT hand
+
+![RIGHT hand](right-hand.png)
+
+The LEFT hand without the ENABLE button: GPIO7 stays unconnected
+([SVG](right-hand.svg)).
+
+### HUB
+
+![HUB](hub.png)
+
+The CALIBRATE button on GPIO7, active low, using the same button block as ENABLE
+([SVG](hub.svg)). The laptop link is the DevKit's UART USB port: the on-board
+USB-to-UART bridge on UART0, 115200 baud, which also powers the hub. GPIO43 and
+GPIO44 are ringed because the bridge uses them, so don't wire them. The hub has
+no flex sensors and no motion sensor.
+
+| function | pin | DevKit header |
+|---|---|---|
+| thumb / index flex | GPIO1 / GPIO2 (ADC1_CH0 / CH1) | J3-4 / J3-5 |
+| middle / ring / little flex | GPIO4 / GPIO5 / GPIO6 (ADC1_CH3 / CH4 / CH5) | J1-4 / J1-5 / J1-6 |
+| ENABLE (LEFT only) / CALIBRATE (HUB only) | GPIO7, active low | J1-7 |
+| IMU SDA / SCL | GPIO8 / GPIO9 | J1-12 / J1-15 |
+| 3V3 / GND | own board | J1-1, J1-2 / J1-22, J3-1 |
+
+**Board variant:** the header positions are for a genuine DevKitC-1 (the BOM's
+N8R8 has the same headers as the N8R2). On the N8R8, GPIO35-37 go to octal
+PSRAM; this pin map doesn't use them. A clone such as the Freenove ESP32-S3
+WROOM board has a different header and needs its own mapping.
+
 ## Re-rendering
 
-The three blocks and the breakout are defined on pinplanner branch
-`agent/palmpilot-controller` (`tools/gen_misc.py`): `flex-divider-47k`,
-`button-active-low-rc` and `adafruit-5543`. The breakout's pin order comes from
-Adafruit's board file. With that branch checked out:
+The parts (`flex-divider-47k`, `button-active-low-rc`, `adafruit-5543`) are in
+pinplanner main since simantic-dev/pinplanner#11. From a pinplanner checkout:
 
-    node cli/pinplanner.ts check <this folder>/one-hand-s1.wiring.json
-    node cli/pinplanner.ts svg   <this folder>/one-hand-s1.wiring.json -o <this folder>/one-hand-s1.svg
+    node cli/pinplanner.ts check <this folder>/<name>.wiring.json
+    node cli/pinplanner.ts svg   <this folder>/<name>.wiring.json -o <this folder>/<name>.svg
 
-The PNG is the SVG rendered by macOS Quick Look:
-`qlmanage -t -s 1800 -o . one-hand-s1.svg`.
+The PNGs are the SVGs rendered in Chrome at 1800 px wide. `test/shot.mjs` in
+pinplanner does this when it is given a page that shows the SVG at 900 px.
