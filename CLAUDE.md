@@ -12,17 +12,16 @@ test is in scope.** Scope pivot dated 2026-09-16; it supersedes the earlier
 physical-aircraft plan, the aircraft portions of the original BOM, and the
 aircraft sheets of the Rev A schematics.
 
-Execution order, strictly:
+Execution order, strictly (details in `docs/test-plan.md`):
 
-| Phase | Gate | Meaning |
+| Part | Steps | Meaning |
 |---|---|---|
-| Goal 1A | **S0–S3** | Controller simulated in Simantic |
-| Goal 1B | **C0–C7** | Physical hand-controller prototype |
-| Goal 2 | **D1–D4** | Virtual drone MCU → dynamics → screen |
+| A | A0–A7 | Everything simulated: one hand (S1), both hands + hub (S2), into ArduCopter (S3), physics and gesture flight (D2) |
+| B | B0–B7 | Physical controller, built one board at a time (`docs/wiring/`) |
+| C | C1–C4 | Physical hub on the laptop driving the simulated drone (`docs/demo.md`) |
 
-Current position: **S0 in progress.** No S, C or D checkbox is complete.
-Drone feasibility probes are authorized in parallel but never mark a controller
-milestone complete.
+Current position: S1–S3 suites and the D2 gesture flight run in simulation;
+nothing physical is built. No step is claimed complete.
 
 The display must never move the drone directly from a gesture. Displayed motion
 has to pass through the simulated drone MCU's motor outputs and the mechanical
@@ -97,13 +96,13 @@ IDF_TOOLS_PATH       tmp/simantic/esp-idf-tools
 IDF_PYTHON_ENV_PATH  tmp/simantic/esp-idf-python
 Xtensa toolchain     tmp/simantic/audit/esp32s3/toolchain/xtensa-esp-elf/bin
 SIMANTIC_HOME        tmp/simantic/runtime
-SIMANTIC_ENGINE_DIR  tmp/simantic/runtime/engine/0.5.20
-Platform .repl       tmp/simantic/platform/ESP32-S3-WROOM-1-N8R2-0.5.20.repl  (stock, as served 2026-10-05)
-Drone platform       tmp/simantic/platform/STM32F405RG-0.5.20.repl + Matek board from
+SIMANTIC_ENGINE_DIR  tmp/simantic/runtime/engine/0.6.3
+Platform .repl       tmp/simantic/platform/ESP32-S3-WROOM-1-N8R2-0.6.3.repl  (stock)
+Drone platform       tmp/simantic/platform/STM32F405RG-0.6.3.repl + Matek board from
                      tmp/simantic/sim-fixtures (private checkout, not copied into this repo)
 ArduCopter ELF       tmp/drone/matekf405-wing-arducopter.elf (simulation/drone/fetch_arducopter.sh)
 ESP32-S3 mask ROM    tmp/simantic/esp-idf-tools/esp32s3_rev0_rom.bin
-Model candidates     tmp/simantic/upstream-candidates/{systimer-work-en,s3-mwdt}/  built from
+Model candidates     tmp/simantic/upstream-candidates/{ble-radio,rng-reset,stm32-uart-tx-dma}/  built from
                      simulation/simantic/model-candidates/ (committed; see its README)
 RISC-V toolchain     tmp/simantic/esp-idf-tools/tools/riscv32-esp-elf  (C3/C6/P4 probe only)
 C3/C6 mask ROMs      tmp/simantic/roms  (SHA-256 pinned as in the CLI)
@@ -143,17 +142,18 @@ Do not re-litigate these; they are measured, with evidence in
 | ESP-IDF v5.5.2 boot, FreeRTOS, UART0 | **WORKS** | full app boots via ROM/flash |
 | ADC1 one-shot, public `esp_adc` driver | **WORKS, stock 0.5.14** | calibrated mV within ±5 mV of injection on all five flex channels |
 | `esp_timer` (SYSTIMER-backed) | **WORKS** | create/start/stop/delete; periodic callbacks fire |
-| **FreeRTOS tick (SYSTIMER)** | **WORKS on stock 0.5.20 (#257 shipped); broken on 0.5.14** | stock `ESP32C3_Systimer` re-arms the periodic tick on every `CONF` write of `TARGET0_WORK_EN=1`; IDF rewrites it unchanged on every esp_timer re-arm, so the hand app's 100 Hz esp_timer froze `xTickCount` at 2 (tick-driven waits and NVS erase block forever). With the candidate: exactly 100 Hz, one tick per ISR. This was the cause of "task delay runs long". Same bug and fix on ESP32-C3 and ESP32-P4 firmware (`firmware/probes/systick`). Still pace periodic work with `esp_timer` |
+| **FreeRTOS tick (SYSTIMER)** | **WORKS on stock 0.5.20 (#257 shipped); broken on 0.5.14** | stock `ESP32C3_Systimer` re-arms the periodic tick on every `CONF` write of `TARGET0_WORK_EN=1`; IDF rewrites it unchanged on every esp_timer re-arm, so the hand app's 100 Hz esp_timer froze `xTickCount` at 2 (tick-driven waits and NVS erase block forever). With the candidate: exactly 100 Hz, one tick per ISR. This was the cause of "task delay runs long". Same bug and fix on ESP32-C3 and ESP32-P4 firmware (systick probe, now in git history). Still pace periodic work with `esp_timer` |
+| Xtensa FPU | **WORKS on 0.6.3** | aborted the engine on 0.5.7 at the first FPU instruction; the fpu probe (git history) ran int/float conversion, divide, multiply, compare and print correctly in app_main and a task on 2026-10-08 |
 | GPIO1/2/4/5/6/7 digital input | **WORKS** | register-level injection followed |
 | I2C0 via `i2c_master` driver | **WORKS** | LSM6DS3TR-C + LIS3MDL fixtures pass identity, config, status gating and burst reads. GPIO-matrix routing is NOT modeled, so SDA/SCL pin choice is untested |
 | Scripted I2C/SPI slaves in Python | **WORKS** | `I2C.ScriptedI2cSlave` with a `file:` in the `.repl` |
 | GPTimer / TIMG0 | **WORKS with candidate `ESP32S3_Timg`; BROKEN on stock 0.5.14** | stock wires the C3 register stub: no alarm callbacks, `gptimer_get_raw_count` hangs. Upstream `ESP32S3_Timg` (merged #236, wired by open mcu-lib #222) fires alarms: probe completes with 10 alarms. Prefer `esp_timer` until #222 ships |
 | GPIO43 | **BROKEN** | high-bank GPIO unhandled; reserved for UART0 anyway |
 | NVS read + `set_blob` | **WORKS** | init, open, get, set and commit all return; 29 consecutive saves pass |
-| NVS `erase_key` | **WORKS with candidates** | erase then load reports MISSING; a corrupted blob is rejected with the CRC status; asserted in S1-F. It had hung whenever the tick was dead: the erase yields with `vTaskDelay`. The multi-task phase of `firmware/probes/nvs`, once inconclusive, now completes |
+| NVS `erase_key` | **WORKS with candidates** | erase then load reports MISSING; a corrupted blob is rejected with the CRC status; asserted in S1-F. It had hung whenever the tick was dead: the erase yields with `vTaskDelay`. The multi-task phase of the nvs probe (git history), once inconclusive, completed |
 | `esp_restart` | **WORKS** | software reset (reason 3); calibration restores after reboot, asserted in S1-F. The superseded local TIMG overlay hung it. Aborted on 0.5.7 |
-| Task watchdog (TWDT) | **WORKS on stock 0.5.20 (#258 + mcu-lib #229 shipped)** | `firmware/probes/mwdt` 14/14 (stage-0 interrupt at 200.015 ms for 200 ms on both groups, feed, write-protect, system reset with reasons 7/8); S1-H trips. Stock 0.5.14 never fires: `ESP32S3_Timg` leaves MWDT store-only and the platform still wires the C3 stub. Not a firmware gap |
-| Interrupt watchdog (IWDT) | **WORKS on stock 0.5.20; ENABLED in the hand build** | production settings (`CONFIG_ESP_INT_WDT=y`, 300 ms). The old "expires on healthy firmware" finding was the dead tick: the IWDT is fed from the tick hook. `run_all.sh` fails any suite whose UART shows a panic; with the stock SYSTIMER 7 of 8 hand suites panic, with the candidate none do. `firmware/probes/iwdt`: panics 286 ms after interrupts are disabled |
+| Task watchdog (TWDT) | **WORKS on stock 0.5.20 (#258 + mcu-lib #229 shipped)** | the mwdt probe (git history) 14/14 (stage-0 interrupt at 200.015 ms for 200 ms on both groups, feed, write-protect, system reset with reasons 7/8); S1-H trips. Stock 0.5.14 never fires: `ESP32S3_Timg` leaves MWDT store-only and the platform still wires the C3 stub. Not a firmware gap |
+| Interrupt watchdog (IWDT) | **WORKS on stock 0.5.20; ENABLED in the hand build** | production settings (`CONFIG_ESP_INT_WDT=y`, 300 ms). The old "expires on healthy firmware" finding was the dead tick: the IWDT is fed from the tick hook. `run_all.sh` fails any suite whose UART shows a panic; with the stock SYSTIMER 7 of 8 hand suites panic, with the candidate none do. The iwdt probe (git history) panicked 286 ms after interrupts are disabled |
 | Reset-reason hint after a panic | **BROKEN — model gap** | IDF stores it in S3 `RTC_CNTL_STORE6` (+0xC8); the platform's C3 RTC_CNTL model has STORE4-7 at 0xB8-0xC4, so a panic reboot reports `ESP_RST_SW`, not `INT_WDT`. Addressed by draft renode-infrastructure #245 (S3 RTC_CNTL) |
 | ESP32-S3 BLE, hub holding both hands | **WORKS with candidate BLE radio (#270); stock 0.5.20 cannot hold the second link** | NimBLE peripheral per hand, central on the hub; 50 Hz packets from both hands, zero rejected (S2-A, S2-B). The stock radio model holds one link per radio: a second link never establishes and packets cross between links (model-candidates README). Lossless medium: no RF, range or coexistence claim |
 | Hardware RNG across a reset | **WORKS with candidate RNG (#271); stock 0.5.20 still replays** | stock model replays the same values after every chip reset, so a rebooted hand reused its session |
@@ -231,8 +231,9 @@ settling interval (50 ms provisional), filter/deadband/slew values.
 - **No invented battery data.** Bench firmware reports
   *"USB bench power; battery unavailable"*. Never synthesize a voltage from a
   floating GPIO10.
-- **No floating point anywhere on the control path.** Fixed-point milli-units
-  (0–1000). See the [FPU record](firmware/probes/fpu/README.md).
+- **No floating point on the control path.** Fixed-point milli-units (0–1000).
+  This began as a workaround for an engine 0.5.7 FPU abort; the FPU probe passes
+  on 0.6.3 (2026-10-08), so it is now a design choice.
 - **Do not pace a periodic task with `vTaskDelay`** — use `esp_timer`.
 - **Never write flash from the live control path.** A real ESP-IDF flash write
   suspends the scheduler. `cal save` / `cal erase` are refused while the hand is
@@ -263,50 +264,36 @@ upgrade a partial result into a claim.
 
 ## 8. Repository layout
 
-The repository was trimmed on 2026-09-18 to the active controller project.
-Historical nRF52840/Feather material, the Rev A schematic package, the h7-ble
-and archive design sets, the capability audits and the schematic tooling were
-all removed. Do not resurrect them; they are recoverable from git history at
-`4a4c9a2` if a specific fact is ever needed.
+Trimmed on 2026-09-18 and again on 2026-10-08 (old plan documents, the Fall 2026
+schedule, shipped model candidates and probes for defects fixed in the pinned
+engine). Do not resurrect them; they are in git history.
 
 ```
-README.md                    scope, build order, checkpoints S0-S3 / C0-C7 / D1-D4
+README.md                    what, the plan, status, document map
 CLAUDE.md                    this file
-docs/architecture.md         boundaries, responsibilities, contracts
-docs/controller/             ACTIVE controller spec
-  README.md                  stage table, read order
-  bom.md                     active parts list
-  build-guide.md             exact bench pins and circuits
-  firmware-plan.md           FW-01..FW-06 work packages
-  gesture-mapping.md         PROPOSED v1 gesture table and interlocks
-  simantic-plan.md           S0-S3 gates
-  validation.md              CTRL-001..055 acceptance
-docs/drone-simulation.md     D1-D4, Goal 2
-firmware/                    ACTIVE firmware workspace
+docs/simulation.md           what is simulated, models, physics verification, limits
+docs/test-plan.md            every test in order: A simulation, B physical, C demo
+docs/wiring/                 pins, circuits, build order, pinplanner drawings (gen_wiring.py)
+docs/demo.md                 laptop demo: physical hub, simulated drone, 3D view
+docs/gesture-mapping.md      PROPOSED v1 gesture table and interlocks
+docs/bom.md                  controller parts
+firmware/
   tools/                     env.sh, palmpilot.py, harness.py (one board),
-                             controller.py (both hands + hub), selftest.py
+                             controller.py (both hands + hub + drone), selftest.py
   components/palmpilot_core/ pure logic shared by hand and hub: hand_core,
                              packet, hub_core (mixing + interlocks), link.h
   components/console/        whole-line UART output from any task
   apps/hand/                 hand firmware; `hand:left` / `hand:right` builds
   apps/hub/                  hub firmware: BLE central, one command on UART0
-  apps/replay/               stand-in hand: the hand's BLE peripheral sending
-                             packets a test script supplies (S3-B)
+  apps/replay/               stand-in hand sending packets a test script supplies (S3-B)
   tests/                     simulation suites; run_all.sh runs every one
-                             (s1* one hand, s2* whole controller, s3* with the drone)
-  probes/fpu/                FPU-gap probe and its finding
-  probes/reset/              esp_restart gap
-  probes/nvs/                NVS erase gap
-  probes/gptimer/            timer-group fix and its before/after
-  probes/mwdt/               MWDT (task/interrupt watchdog hardware) probe
-  probes/iwdt/               interrupt watchdog with production settings
-  probes/systick/            FreeRTOS tick under esp_timer load; multichip.py
-                             runs it on S3/C3/P4, stock vs candidate SYSTIMER
+  probes/                    open model defects (ble2link, rngreset, stm32-uart-txdma)
+                             and drone scripts (drone-flight, drone-outputs)
+simulation/drone/            bridge (rc_link, gcs_peer), quad_plant, ardupilot_frame,
+                             sensor peers, test_quad_plant, sitl_reference
 simulation/simantic/
-  README.md                  simulation scope
   hardware-validation/esp32s3-adc/   ADC reference app, runs on silicon and sim
   model-candidates/          simulator models awaiting a Simantic release
-outputs/palmpilot-fall-2026/ schedule
 tmp/                         gitignored toolchain + build output - DO NOT DELETE
 ```
 
@@ -350,15 +337,11 @@ bridge that consumes the hub's commands, and anything physical. The watchdog is 
 discipline and its timeout is now exercised; only the panic and reset after a
 trip remain physical-only. Persistence is implemented
 but **not qualified**. Reboot restore, erase and on-device CRC rejection now
-pass in simulation (S1-F); physical proof remains owed at C2/CTRL-022.
+pass in simulation (S1-F); physical proof remains owed at test plan B2.
 
-## 11. Next firmware milestone
+## 11. Next steps
 
-**S0 for ESP32-S3**, then S1 one-hand acquisition. Per the 2026-09-17 readiness
-record, enough is qualified to start one-hand firmware on: ESP-IDF v5.5.2, the
-upstream ADC1 model, `esp_timer`/FreeRTOS, GPIO7, and UART diagnostics.
-
-Still owed by the project before S1 closes: five-channel acquisition with
-timestamps/filtering/validity, public GPIO driver + debounce + held-at-boot,
-**LSM6DS3TR-C/LIS3MDL register fixtures** (project-owned — the BME280 fixture is
-not IMU coverage), calibration + NVS persistence, and watchdog recovery.
+From `docs/test-plan.md`: build the in-flight failsafe tests (A6), the laptop demo
+runner and 3D view (`docs/demo.md`), and start the physical bench at B0. Open
+decisions: the board (DevKitC-1 or the Freenove), the S2-B 150 ms limit, and the
+remaining 1–2.5° attitude-estimate drift.

@@ -1,9 +1,15 @@
 # ESP32-S3 controller BOM
 
-**Active controller platform: ESP32-S3 only.** Reference board:
-ESP32-S3-DevKitC-1-N8R2 with ESP32-S3-WROOM-1-N8R2. Start with one USB-powered
-board. These quantities are required items, not a statement of parts on hand.
-The final wearable power circuit and revised ESP schematic are still pending.
+Parts for the two hands and the hub, bought in the order the
+[wiring](wiring/README.md#build-order) is built. The drone is simulated, so it
+needs no parts.
+
+**Board choice is open.** The wiring drawings use the genuine Espressif
+ESP32-S3-DevKitC-1 header. The N8R2 variant used as the simulation reference was
+discontinued on 2026-09-30, so the table lists the N8R8. The firmware runs with
+PSRAM off, so the extra PSRAM changes nothing. The ADC bench measurements so far used a
+Freenove ESP32-S3 WROOM (N8R8). Its header differs, so using it needs its own pin
+mapping for the drawings; the GPIO numbers stay the same.
 
 ## Incremental quantities
 
@@ -32,12 +38,9 @@ additional channels.
 
 ## Selection details
 
-The N8R2 module has 8 MB quad flash and 2 MB quad PSRAM. Espressif documents the
-N8R2 DevKit ordering variant, but current retailer stock and delivered PCB
-revision have not been verified here. Confirm the printed module suffix before
-ordering; an N8R8 or WROOM-1U board needs a recorded memory/antenna configuration.
-[Espressif board ordering reference](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.0.html),
-[module datasheet](https://www.espressif.com/sites/default/files/documentation/esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf).
+Before wiring, confirm the module marking printed on each board and its PCB
+revision ([DevKitC-1 guide](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.1.html),
+[module datasheet](https://www.espressif.com/sites/default/files/documentation/esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf)).
 
 The selected [Adafruit #5543](https://www.adafruit.com/product/5543) adds the
 accelerometer, gyroscope and magnetometer that are no longer onboard the MCU
@@ -45,19 +48,9 @@ board. Its default I2C addresses are 0x6A and 0x1C. Use one module on each hand'
 own bus. Start with acceleration/gyro measurements; magnetic calibration and
 heading quality need separate evidence.
 
-## Power and mechanics — design before purchase/assembly
+## Power
 
-USB powers the initial bench. DevKitC-1 needs an external wearable power circuit.
-The later wearable design must specify a protected cell/pack, charger, power-path
-behavior, regulator sized for actual ESP/radio peaks, disconnect switch,
-low-battery measurement and mechanical protection. Record schematics, current
-budget, USB coexistence and charging procedure before selecting these parts.
-
-Do not connect the old 1S pack directly to 3V3, GPIO10 or a supposed BAT pin.
-GPIO10 is only a reserved future ADC input. No divider values or charger model
-are selected in this BOM. An existing #1578 cell may be considered only after
-that design review; its wiring must follow the new power design.
-
-## Scope of purchases
-
-This list covers the ESP32-S3 hand controller and hub. Drone hardware is simulated and does not need to be purchased.
+USB powers every board. Nothing in this list is for battery power. A wearable
+power circuit (cell, charger, regulator, switch, battery monitor) has to be designed
+and reviewed before any parts for it are chosen. Until then, do not connect a cell
+to 3V3, GPIO10 or any other pin.

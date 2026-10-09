@@ -1,13 +1,9 @@
 # Gesture mapping — proposed v1
 
-**Status: PROPOSED, not frozen.** [FW-05](firmware-plan.md) requires this table
-to be frozen at S3 from measured behavior, and re-measured on the prototype at
-C5 (CTRL-051). Every numeric value below is a **starting candidate selected for
-implementation**, not a qualified limit. No value here is evidence.
-
-This fills the gap left open by [architecture.md](../architecture.md): "exact
-gesture mapping, throttle interpretation, serialization, sample rate and
-accepted age/skew limits must be frozen in S3."
+**Status: PROPOSED, not frozen.** The hub firmware implements this table
+(`firmware/components/palmpilot_core/hub_core.c`), and S2-B and S3-B test it in
+simulation. Every number below is a starting candidate. Freeze them from
+measurements on the physical controller (test plan B5). No value here is evidence.
 
 ## Design principle: two hands, two sticks
 
@@ -98,8 +94,9 @@ These are requirements on the firmware, not suggestions.
 
 ## What this does not settle
 
-Serialization, packet rates, `T_hand` maximum age, left/right skew, watchdog
-period and fault-to-invalid latency remain **UNSET** and are frozen in S3 from
+Packet rates, `T_hand` maximum age, left/right skew, watchdog period and
+fault-to-invalid latency remain **UNSET** as qualified limits. The firmware
+currently uses 20 ms packets and a 100 ms hand timeout; freeze them from physical
 measurement. Sign conventions must be re-verified against the drone model's
 body frame at D2 — this table fixes the controller's output frame only.
 

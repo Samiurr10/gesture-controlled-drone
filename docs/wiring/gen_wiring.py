@@ -15,7 +15,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
-# frozen pin map: CLAUDE.md section 2, docs/controller/build-guide.md
+# frozen pin map: CLAUDE.md section 2, docs/wiring/README.md
 # (finger, GPIO, ADC channel, jumper colour, node column)
 FLEX = [("middle", "GPIO4", "ADC1_CH3", "purple", 5), ("ring", "GPIO5", "ADC1_CH4", "teal", 14),
         ("little", "GPIO6", "ADC1_CH5", "pink", 23), ("thumb", "GPIO1", "ADC1_CH0", "orange", 45),
@@ -99,7 +99,7 @@ def hand(side, title, enable):
         conns += button(r, side, "ENABLE")
     return {"version": 1, "title": title,
             "notes": f"PalmPilot {side} hand, bench plan on a full breadboard. Pins match PalmPilot CLAUDE.md section 2 and "
-                     "docs/controller/build-guide.md; not checked on hardware. + rails = this board's 3V3, - rails = its GND; "
+                     "docs/wiring/README.md; not checked on hardware. + rails = this board's 3V3, - rails = its GND; "
                      "the right-end jumpers join the bottom rails to the top ones. Never join supplies across boards. The flex sensors sit on the glove: their two leads come to the rail hole and "
                      "the node hole shown. IMU: leave 3Vo, INT1/INT2/INTM/DRDY and the address pads unconnected. " + DONT
                      + (" ENABLE on GPIO7 is LEFT only." if enable else " RIGHT has no ENABLE button: GPIO7 stays unconnected."),

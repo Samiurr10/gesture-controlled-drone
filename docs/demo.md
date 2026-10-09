@@ -2,24 +2,20 @@
 
 **Status: PLAN.** It describes how to bring up a live demonstration and what is
 still missing. Nothing in it is a test result except where a result is cited.
-It marks no S, C or D milestone complete. Every hardware row is **not tested
+It marks no milestone complete. The steps are Part C of the
+[test plan](test-plan.md#part-c--physical-controller-simulated-drone). Every hardware row is **not tested
 physically**.
 
 The demonstration: an operator wears the two physical hand controllers, the
 physical hub is plugged into a laptop, and the laptop shows a simulated drone
 flying. The drone is stock ArduCopter 4.7.1 on an emulated STM32F405
 (Matek F405-Wing board model) in Simantic, closed through `quad_plant`. No
-physical drone is in scope ([CLAUDE.md §1](../../CLAUDE.md)).
+physical drone is in scope ([CLAUDE.md §1](../CLAUDE.md)).
 
 The hard rule from the project scope applies throughout. The screen shows the
 state of the mechanical model. That model is driven only by the motor pulses
 ArduCopter writes to the emulated F405's timers. Nothing on screen moves
 directly from a gesture.
-
-> `docs/architecture.md` and `docs/drone-simulation.md` still name an
-> STM32H743/KakuteH7 drone candidate. The working path in this repository, and
-> the one this plan uses, is the F405 Matek F405-Wing
-> (`simulation/drone/`, `firmware/probes/drone-flight/`).
 
 ## 1. What already works, and what this plan relies on
 
@@ -42,7 +38,7 @@ Two configuration facts from the simulation work are needed for every run:
   a flight mode.
 
 Arming is a deliberate host action. ENABLE grants gesture permission only; it
-never arms ([CLAUDE.md §5](../../CLAUDE.md)).
+never arms ([CLAUDE.md §5](../CLAUDE.md)).
 
 ## 2. Physical setup
 
@@ -62,17 +58,16 @@ never arms ([CLAUDE.md §5](../../CLAUDE.md)).
                     LAPTOP
 ```
 
-- **Pins and circuits:** use the frozen pin map in [CLAUDE.md §2](../../CLAUDE.md)
-  and the [build guide](../controller/build-guide.md). Per-board wiring is in
-  the pinplanner wiring (in progress).
+- **Pins and circuits:** use the frozen pin map in [CLAUDE.md §2](../CLAUDE.md)
+  and the [wiring guide](wiring/README.md), which has the per-board drawings.
 - **Hub to laptop:** use the board's USB connector wired to the USB-to-UART
   bridge (UART0, GPIO43/44), not the native USB port (GPIO19/20). The hub
   prints its commands on UART0. The macOS device name depends on the bridge
   chip (for example `/dev/cu.usbserial-*`, `/dev/cu.wchusbserial*` or
   `/dev/cu.usbmodem*`). Use the `cu.` device, not `tty.`. Confirm the
   connector on the received board at C0.
-- **Hand power:** the [build guide](../controller/build-guide.md) requires
-  "remain USB powered until a new wearable power schematic is reviewed". For
+- **Hand power:** the [wiring guide](wiring/README.md) keeps every board on USB power until a
+  wearable power circuit is designed and reviewed. For
   the demo, each hand is powered through **its own** USB cable into its own
   board's USB-to-UART connector, from the laptop or a powered USB hub. The
   cables also give access to each hand's console for calibration.
@@ -210,7 +205,7 @@ path. See §4.
   position estimate ArduCopter is expected to land instead. This has **not
   been exercised in flight** in this simulation.
 - **Simulator stall.** The reported four-machine stall was a lock-order
-  deadlock between the hub ESP32-S3's two core threads. The drone-only session
+  deadlock between ESP32-S3 core threads, fixed by renode-infrastructure #340 (open). The drone-only session
   has no ESP32-S3 machine, so that mechanism does not apply. Long drone-only
   runs have not been soaked. The runner should detect simulated time not
   advancing and mark the view as stalled.
@@ -240,7 +235,7 @@ displayed command, a hand pose or a hub value must never move the drone model.
    hand open, `cal curled` with a fist, `cal neutral` with the hand level, then
    `cal finish`. If the result is valid, send `cal save`. The hand restores the
    profile from NVS at boot, which passes in simulation (S1-F). **Physical
-   persistence is not qualified** (C2/CTRL-022).
+   persistence is not qualified** (test plan B2).
 
 ### Demo sequence
 
@@ -301,7 +296,7 @@ Effort is a rough single-person estimate.
 | 2 | **3D view** (option b) with a status panel | 1–2 days | Standard-library SSE plus a three.js page |
 | 3 | **Speed on the demo laptop**: measure unloaded; try SD logging off (`LOG_BACKEND_TYPE`), IMU noise off, and investigate the stall at arming | 0.5–2 days; outcome uncertain | If it stays slower than real time, show it as slow motion |
 | 4 | **Failsafe tuning and test**: lower `RC_OVERRIDE_TIME`; simulate hand loss, ENABLE release and hub loss **in flight**, with limits set before the run | 1 day | In-flight failsafe and landing without a position estimate are unexercised |
-| 5 | **Physical controller**: build both hands and the hub to the pinplanner wiring (in progress); flash; physical calibration; two physical BLE links; hub serial to laptop | Dominated by C1–C6 | Every physical row: **not tested**. The BLE result in simulation is a lossless-medium result with no RF claim |
+| 5 | **Physical controller**: build both hands and the hub to the [wiring](wiring/README.md); flash; physical calibration; two physical BLE links; hub serial to laptop | Dominated by test plan B1–B6 | Every physical row: **not tested**. The BLE result in simulation is a lossless-medium result with no RF claim |
 | 6 | Ground-station view (option a), optional | 0.5–1 day | UDP tee in `gcs_peer`, or a second UART `hostBridge`, which needs USART3 DMA wiring in the board overlay; unverified |
 | 7 | Open attitude-estimate drift (1–2.5°) | Unknown | Investigation in progress. It shows as slow drift the pilot must correct |
 
