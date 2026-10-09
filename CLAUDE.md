@@ -134,8 +134,9 @@ binaries**; only the ROM wrapper differs. Keep it that way.
 
 ## 4. Simulator capability — verified status
 
-Do not re-litigate these; they are measured, with evidence in
-`docs/controller/simantic-plan.md`.
+Do not re-litigate these; they are measured. Evidence is in the test suites,
+`simulation/simantic/model-candidates/README.md`, the open probes and the
+commits that introduced each result.
 
 | Capability | Status | Detail |
 |---|---|---|
