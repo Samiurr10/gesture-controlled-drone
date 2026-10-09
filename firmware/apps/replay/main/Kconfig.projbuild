@@ -1,0 +1,15 @@
+menu "PalmPilot replay hand"
+
+    choice PALMPILOT_HAND_SIDE
+        prompt "Hand side"
+        default PALMPILOT_HAND_LEFT
+        help
+            Which hand this stands in for: `replay:left` or `replay:right`.
+
+        config PALMPILOT_HAND_LEFT
+            bool "Left"
+        config PALMPILOT_HAND_RIGHT
+            bool "Right"
+    endchoice
+
+endmenu

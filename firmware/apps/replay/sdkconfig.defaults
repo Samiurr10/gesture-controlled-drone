@@ -1,0 +1,33 @@
+# Frozen build configuration - CLAUDE.md section 3. The physical board and the
+# simulator run the same binaries, so this file governs both.
+CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_40M=y
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200
+CONFIG_LOG_DEFAULT_LEVEL_WARN=y
+CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y
+CONFIG_FREERTOS_UNICORE=y
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=6144
+
+# Interrupt watchdog ON, production settings (TIMG1 MWDT, 300 ms, fed from the
+# FreeRTOS tick hook). It was disabled while the simulator's SYSTIMER model
+# starved the tick (every esp_timer re-arm restarted it), which left the IWDT
+# unfed and panicked healthy idle firmware. Since engine 0.5.15 it stays quiet
+# on healthy firmware and panics ~286 ms after interrupts are disabled (measured
+# with the iwdt probe, now in git history).
+CONFIG_ESP_INT_WDT=y
+CONFIG_ESP_INT_WDT_TIMEOUT_MS=300
+
+
+# BLE link to the hub: the same NimBLE peripheral as the hand.
+# only. The image outgrows the default 1 MB app partition with the stack in it.
+CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+CONFIG_BT_NIMBLE_ROLE_CENTRAL=n
+CONFIG_BT_NIMBLE_ROLE_OBSERVER=n
+CONFIG_BT_NIMBLE_MAX_CONNECTIONS=1
+CONFIG_BT_NIMBLE_LOG_LEVEL_WARNING=y
+# Modem sleep off, as in the silicon-validated sim-fixtures S3 BLE oracles.
+CONFIG_BT_CTRL_MODEM_SLEEP=n

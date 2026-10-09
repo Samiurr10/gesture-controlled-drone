@@ -1,67 +1,69 @@
-# PalmPilot / Gesture-Controlled Drone
+# PalmPilot — gesture-controlled drone
 
-Build an **ESP32-S3 hand controller** that controls an **STM32H7 drone simulation** on a computer screen.
+Two wearable hand controllers, each an ESP32-S3 with five flex sensors and a
+motion sensor, send their readings over BLE to an ESP32-S3 hub. The hub turns them
+into roll, pitch, yaw and throttle and sends one command every 20 ms over USB to a
+laptop. On the laptop, stock ArduCopter runs on a simulated STM32F405 flight
+controller, and its motor outputs drive a physics model of a quad that is shown on
+screen.
 
-## Build order
+**We build the controller. The drone is only simulated.** No airframe, motors or
+flight test are in scope. The screen shows only what the simulated flight
+controller's motors did; nothing moves the drone straight from a gesture.
 
-1. Simulate one hand in Simantic: one flex input, then five flex inputs, motion sensing and ENABLE.
-2. Add the second ESP32-S3 hand and an ESP32-S3 BLE hub; validate the host command interface.
-3. Build and qualify the physical hand-controller prototype.
-4. Run drone firmware on a simulated STM32H7, drive dynamics from its motor outputs, and display the resulting motion.
+## The plan
 
-The physical project is the controller. The drone remains virtual.
+1. **Simulate everything first.** Both hands, the hub and the drone run in Simantic
+   with the real firmware. The physics is checked twice: first against closed-form
+   results, then against ArduPilot's own SITL physics.
+   → [Simulation plan](docs/simulation.md)
+2. **Wire and test the physical controller, one board at a time.** Start with one
+   flex sensor, then one hand, the second hand, and the hub. Each physical step
+   repeats the simulation tests for that part. → [Wiring](docs/wiring/README.md)
+3. **Physical controller, simulated drone.** Plug the physical hub into the laptop
+   in place of the simulated hands and hub, and fly the simulated drone from a 3D
+   view. → [Demo plan](docs/demo.md)
 
-## Hardware and current status
+The step-by-step order with commands and pass criteria: [Test plan](docs/test-plan.md).
 
-- **Physical bench:** Freenove ESP32-S3 WROOM N8R8. **Simulation reference:** ESP32-S3-WROOM-1-N8R2. Current validation disables PSRAM.
-- **Each hand:** five flex sensors and an external Adafruit #5543 LSM6DS3TR-C + LIS3MDL module. Left hand has ENABLE; the hub has CALIBRATE.
-- **Power:** USB for bench work. Wearable power and the complete ESP32-S3 wearable schematic remain to be designed.
-- **Simulation:** ADC support is in [Simantic PR #168](https://github.com/simantic-dev/renode-infrastructure/pull/168), ready for review. Its calibrated mode passes 51 unit tests and 2,480 firmware reads; it is not included in stock engine 0.5.7.
-- **Next:** complete one-hand acquisition and exact motion-sensor driver tests. NVS persistence, watchdog recovery and two-hand BLE still need qualification. See the [controller simulation plan](docs/controller/simantic-plan.md).
+## Status, 2026-10-08
 
-## Project documents
-
-| Need | Document |
+| Part | State |
 |---|---|
-| System boundaries and command flow | [Architecture](docs/architecture.md) |
-| Controller build sequence | [Controller overview](docs/controller/README.md) |
-| Parts to order | [Controller BOM](docs/controller/bom.md) |
-| Pins and circuit connections | [Build guide](docs/controller/build-guide.md) |
-| Firmware implementation | [Firmware plan](docs/controller/firmware-plan.md) |
-| How gestures map to drone commands | [Gesture mapping](docs/controller/gesture-mapping.md) |
-| Controller firmware source and tests | [Firmware workspace](firmware/README.md) |
-| Simantic setup and remaining work | [Controller simulation plan](docs/controller/simantic-plan.md) |
-| Controller acceptance tests | [Validation checklist](docs/controller/validation.md) |
-| STM32H7, dynamics and display | [Drone simulation plan](docs/drone-simulation.md) |
-| Timeline and course milestones | [Gantt schedule](outputs/palmpilot-fall-2026/README.md) |
+| Hand and hub firmware | Implemented: acquisition, calibration, motion, mapping, interlocks, BLE, persistence, watchdog |
+| Simulation, one hand and both hands (S1, S2) | Pass on engine 0.6.3 with the BLE and RNG model candidates. S2-B reset-to-invalid is 120 or 160 ms against a provisional 150 ms limit |
+| Simulation, controller into ArduCopter (S3) | S3-A and S3-B pass |
+| Closed-loop gesture flight (D2) | Flies in AltHold with both simulated hands. Agrees with ArduPilot SITL to within about 0.4° and 0.05 m/s. Open: a 1–2.5° attitude-estimate drift after manoeuvres |
+| Simulator stall with four machines | Root-caused. Fix open upstream (renode-infrastructure #340) |
+| Physical controller | Wiring drawn, nothing built or tested |
+| Laptop demo | Planned. The runner and the 3D view are not built |
 
-## Full implementation checkpoints
+No milestone is claimed complete. Simulation results are evidence about the
+firmware against Simantic's models, not about hardware.
 
-Check milestones when their exit criteria pass. Keep automated tests with the firmware and record concise results in the relevant pull request. Simulation and physical-controller checks are separate.
+## Documents
 
-### Goal 1A — Simulate the controller first
+| Document | Contents |
+|---|---|
+| [docs/simulation.md](docs/simulation.md) | What is simulated, the models, the physics and its verification, known limits |
+| [docs/wiring/](docs/wiring/README.md) | Pins, circuits, the build order and pinplanner drawings for LEFT, RIGHT and HUB |
+| [docs/test-plan.md](docs/test-plan.md) | Every test in order: simulation (A), physical bench (B), physical controller with simulated drone (C) |
+| [docs/demo.md](docs/demo.md) | Laptop demo: data path, 3D view, operator procedure, what is missing |
+| [docs/gesture-mapping.md](docs/gesture-mapping.md) | Which gesture is which command, and the safety interlocks |
+| [docs/bom.md](docs/bom.md) | Parts for the controller |
+| [firmware/README.md](firmware/README.md) | Building, simulating, the test suites and the firmware's UART commands |
+| [CLAUDE.md](CLAUDE.md) | Frozen constraints: pin map, toolchain, command contract, evidence rules |
 
-- [ ] **S0 — ESP32 simulator baseline:** pin ESP32-S3 toolchain/model versions; boot the chosen framework; verify first-hand ADC, motion-sensor, GPIO and timer support. Record blocked/substituted features and the BLE/host-transport checks to complete in S2/S3.
-- [ ] **S1 — One-hand sensing and calibration:** start with one flex channel, expand to five plus motion and enable; report explicit USB bench-power status and test calibration/sensor faults. Battery monitoring follows its new circuit design.
-- [ ] **S2 — Both hands and hub:** verify identities, two BLE links, acquisition progress, freshness and whole-command invalidation on faults.
-- [ ] **S3 — Controller simulation qualification:** validate bounded commands, enable/stop/recovery behavior and the host-output contract with repeatable normal and fault scenarios. Record unsupported coverage; mocked inputs alone do not qualify missing hardware paths.
+## Layout
 
-### Goal 1B — Build the physical controller prototype
-
-Begin after the controller simulation exit criteria are met. Resolve missing required simulation coverage before marking Goal 1A complete; any change to that gate must be recorded explicitly.
-
-- [ ] **C0 — ESP32 bench preparation:** confirm DevKitC-1 N8R2 board revisions, external sensors, parts, toolchain, inspection and USB diagnostics; publish/review the ESP32 schematic revision before wearable assembly.
-- [ ] **C1 — One physical flex input:** assemble left ESP32 GPIO1 / ADC1_CH0 with 47 kΩ and 100 nF, validate ADC attenuation/calibration, measure readings and test open/short behavior.
-- [ ] **C2 — Complete left-hand sensing:** verify five flex channels, motion axes, calibration and filtering.
-- [ ] **C3 — Left wearable:** qualify the new charger/regulator/battery-monitor design, enable, power switch, fit and strain relief; measure the valid operating range. The DevKit requires an external battery charger and power circuit.
-- [ ] **C4 — Right wearable:** repeat sensing, power, fit and independent calibration with a distinct hand identity.
-- [ ] **C5 — Hub and BLE:** validate both physical links, calibration control, mapping and stale-data handling.
-- [ ] **C6 — Controller-to-computer bridge:** validate serialized commands, session/sequence/freshness, bounds, disconnection and deliberate recovery on the host.
-- [ ] **C7 — Controller qualification:** pass required physical controller tests; archive firmware, calibration, measured latency/runtime and a repeatable command-monitor demonstration. No drone or radio hardware is required.
-
-### Goal 2 — Drone simulation and on-screen demonstration
-
-- [ ] **D1 — Drone hardware/MCU feasibility:** select and validate a Simantic target and firmware, virtual sensors, command input and observable actuator outputs; document fidelity limits.
-- [ ] **D2 — Output-driven mechanics:** decode MCU motor signals, compute forces/torques, integrate drone motion and return simulated sensor data to the MCU.
-- [ ] **D3 — Display and controller integration:** render the dynamics state and connect the qualified physical controller through the command bridge; provide explicit start, stop and reset controls.
-- [ ] **D4 — End-to-end qualification:** demonstrate individual axes and combined motion, loss/fault behavior and reproducible runs; save synchronized command, actuator and motion traces.
+```text
+firmware/apps/hand, hub, replay   hand and hub firmware; replay is a scripted stand-in hand
+firmware/components/              shared logic (hand_core, hub_core, packet) and UART console
+firmware/tests/                   simulation suites S1-S3; run_all.sh runs them all
+firmware/tools/                   env.sh (pinned paths), palmpilot.py (build/sim), controller.py
+firmware/probes/                  engine-defect reproducers and drone flight scripts
+simulation/drone/                 bridge, physics, sensor models, SITL cross-check
+simulation/simantic/              model candidates awaiting release; ADC reference app with physical captures
+docs/                             the documents above
+tmp/                              gitignored toolchain and build output, not reproducible
+```

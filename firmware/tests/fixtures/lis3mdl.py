@@ -2,9 +2,14 @@
 
 Same scope limits as the accelerometer fixture. Magnetic data is read and
 reported but must not reach the command path: yaw is gravity-referenced, never
-magnetic (docs/controller/gesture-mapping.md).
+magnetic (docs/gesture-mapping.md).
 """
 import imu_state
+
+# A two-hand run prepends `HAND = "left"` (or "right") to this script, so each
+# hand's sensor reads its own state. A single-hand run leaves it unset and uses
+# the module-level state.
+STATE = imu_state.for_hand(globals().get("HAND"))
 
 WHO_AM_I = 0x0F
 CTRL_REG1, CTRL_REG5 = 0x20, 0x24
@@ -20,7 +25,7 @@ class Slave:
         self.control = {address: 0x00 for address in range(CTRL_REG1, CTRL_REG5 + 1)}
 
     def on_write(self, data):
-        if not imu_state.mag_present or not data:
+        if not STATE.mag_present or not data:
             return
         self.increment = bool(data[0] & AUTO_INCREMENT)
         self.pointer = data[0] & 0x7F
@@ -31,7 +36,7 @@ class Slave:
                 self.pointer = (self.pointer + 1) & 0x7F
 
     def on_read(self, count):
-        if not imu_state.mag_present:
+        if not STATE.mag_present:
             return bytes()
         out = bytearray()
         for _ in range(count):
@@ -45,13 +50,13 @@ class Slave:
 
     def _register(self, address):
         if address == WHO_AM_I:
-            return imu_state.whoami_mag & 0xFF
+            return STATE.whoami_mag & 0xFF
         if address in self.control:
             return self.control[address] & 0xFF
         if address == STATUS_REG:
-            return 0x08 if imu_state.data_ready else 0x00   # ZYXDA
+            return 0x08 if STATE.data_ready else 0x00   # ZYXDA
         if OUT_X_L <= address < OUT_X_L + 6:
             offset = address - OUT_X_L
-            value = int(imu_state.mag[offset // 2]) & 0xFFFF
+            value = int(STATE.mag[offset // 2]) & 0xFFFF
             return value & 0xFF if offset % 2 == 0 else (value >> 8) & 0xFF
         return 0x00

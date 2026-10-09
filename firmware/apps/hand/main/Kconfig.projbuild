@@ -1,0 +1,17 @@
+menu "PalmPilot hand"
+
+    choice PALMPILOT_HAND_SIDE
+        prompt "Hand side"
+        default PALMPILOT_HAND_LEFT
+        help
+            LEFT carries ENABLE (GPIO7) and drives throttle and yaw. RIGHT has
+            no button and drives roll and pitch. Build with
+            `palmpilot.py build hand:left` or `hand:right`.
+
+        config PALMPILOT_HAND_LEFT
+            bool "Left"
+        config PALMPILOT_HAND_RIGHT
+            bool "Right"
+    endchoice
+
+endmenu

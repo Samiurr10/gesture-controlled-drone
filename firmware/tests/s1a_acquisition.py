@@ -6,8 +6,9 @@
 
 Stimulus is injected as voltages at the modeled ADC and as levels at the
 modeled GPIO, so it traverses the real esp_adc / gpio drivers. Nothing writes
-application state. The ADC model is ideal: these results validate the model
-contract and the firmware's logic, never analog accuracy.
+application state. The ADC model is noise-free and uses the modeled die's
+eFuse calibration: these results validate the model's calibrated contract and
+the firmware's logic, never analog accuracy.
 """
 import sys
 from pathlib import Path
@@ -15,7 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path("firmware/tests/fixtures").resolve()))
 
 import imu_state                                             # noqa: E402
-from harness import FLEX, PalmPilotSim, ideal_raw     # noqa: E402
+from harness import ADC_MV_TOLERANCE, FLEX, PalmPilotSim  # noqa: E402
 
 ATTEN = 3
 FINGERS = list(FLEX)
@@ -78,13 +79,19 @@ with PalmPilotSim(i2c=FIXTURES, timg=True) as sim:
           f"overruns={second['overruns']}")
 
     print("\nchannel identity and calibrated millivolts:", flush=True)
+    # Raw counts are die-specific (eFuse calibration), so the contract is the
+    # calibrated millivolts; raw must only be off the rails and rise with the
+    # injected voltage, which PROBE_UV orders thumb -> little.
     row = sample(sim)
     for index, finger in enumerate(FINGERS):
-        expected = ideal_raw(PROBE_UV[finger], ATTEN)
-        ok = row["raw"][index] == expected and row["status"][index] == 0
+        expected_mv = PROBE_UV[finger] // 1000
+        raw = row["raw"][index]
+        ok = (abs(row["mv"][index] - expected_mv) <= ADC_MV_TOLERANCE
+              and 0 < raw < 4095 and row["status"][index] == 0
+              and (index == 0 or raw > row["raw"][index - 1]))
         check(f"{finger:<6} GPIO{FLEX[finger]['gpio']}", ok,
-              f"{PROBE_UV[finger]//1000} mV -> raw {row['raw'][index]} "
-              f"(expected {expected}) mv={row['mv'][index]}")
+              f"{expected_mv} mV -> mv={row['mv'][index]} (±{ADC_MV_TOLERANCE}) "
+              f"raw={raw}")
     check("healthy with all channels in range", row["healthy"] == 1 and row["fault_mask"] == 0)
 
     print("\nfault classification (near-rail is a fault, never a command):", flush=True)
@@ -97,7 +104,8 @@ with PalmPilotSim(i2c=FIXTURES, timg=True) as sim:
           bin(row["fault_mask"]))
     check("sample reported unhealthy", row["healthy"] == 0)
 
-    # The model's ideal curve saturates at 4.4 V, while silicon saturates at the
+    # 4.4 V saturates the model in both its ideal and calibrated modes, while
+    # silicon saturates at the
     # 3V3 rail. Reaching the short guard therefore needs a voltage that is not
     # physically applicable. This exercises the classifier only; the physical
     # short case must be measured at C1/CTRL-011.
@@ -126,7 +134,7 @@ with PalmPilotSim(i2c=FIXTURES, timg=True) as sim:
 
     sim.save("s1a-acquisition.json", {
         "test": "S1-A acquisition, faults, ENABLE",
-        "scope": "modeled ADC/GPIO drivers; ideal ADC model, not analog accuracy",
+        "scope": "modeled ADC/GPIO drivers; calibrated-state ADC model, not analog accuracy",
         "checks": [{"name": n, "passed": o, "detail": d} for n, o, d in checks],
         "passed": not failures,
     })

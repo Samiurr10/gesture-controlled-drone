@@ -8,6 +8,11 @@ temperature behavior, and output changes the instant the test mutates state.
 """
 import imu_state
 
+# A two-hand run prepends `HAND = "left"` (or "right") to this script, so each
+# hand's sensor reads its own state. A single-hand run leaves it unset and uses
+# the module-level state.
+STATE = imu_state.for_hand(globals().get("HAND"))
+
 WHO_AM_I = 0x0F
 CTRL1_XL, CTRL2_G, CTRL3_C = 0x10, 0x11, 0x12
 STATUS_REG = 0x1E
@@ -22,7 +27,7 @@ class Slave:
     # The driver writes the register pointer, then either continues with data
     # or issues a repeated start and reads.
     def on_write(self, data):
-        if not imu_state.accel_gyro_present or not data:
+        if not STATE.accel_gyro_present or not data:
             return
         self.pointer = data[0]
         for value in data[1:]:
@@ -31,7 +36,7 @@ class Slave:
             self.pointer = (self.pointer + 1) & 0xFF
 
     def on_read(self, count):
-        if not imu_state.accel_gyro_present:
+        if not STATE.accel_gyro_present:
             return bytes()          # absent device: no data, driver should fail
         out = bytearray()
         for _ in range(count):
@@ -44,16 +49,16 @@ class Slave:
 
     def _register(self, address):
         if address == WHO_AM_I:
-            return imu_state.whoami_accel_gyro & 0xFF
+            return STATE.whoami_accel_gyro & 0xFF
         if address in self.control:
             return self.control[address] & 0xFF
         if address == STATUS_REG:
             # bit0 XLDA (accel ready), bit1 GDA (gyro ready), bit2 TDA
-            return 0x03 if imu_state.data_ready else 0x00
+            return 0x03 if STATE.data_ready else 0x00
         if OUTX_L_G <= address < OUTX_L_G + 6:
-            return _byte(imu_state.gyro, address - OUTX_L_G)
+            return _byte(STATE.gyro, address - OUTX_L_G)
         if OUTX_L_XL <= address < OUTX_L_XL + 6:
-            return _byte(imu_state.accel, address - OUTX_L_XL)
+            return _byte(STATE.accel, address - OUTX_L_XL)
         return 0x00
 
 

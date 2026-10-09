@@ -4,7 +4,7 @@
     python3 firmware/tools/palmpilot.py run firmware/apps/hand \
         firmware/tests/s1c_control.py
 
-Exercises the interlocks in docs/controller/gesture-mapping.md: throttle-low to
+Exercises the interlocks in docs/gesture-mapping.md: throttle-low to
 enable, ENABLE held through boot being inert, whole-sample invalidation on
 sensor fault, latched faults requiring a deliberate release and new press, and
 stalled acquisition being detected as stale rather than frozen at the last

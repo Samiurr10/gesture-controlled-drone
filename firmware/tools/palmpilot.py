@@ -8,12 +8,16 @@ from firmware/tools/env.sh (CLAUDE.md section 3).
   palmpilot.py pack  <app>          merge_bin + ROM wrapper -> sim.elf
   palmpilot.py sim   <app> <script> run a harness script against sim.elf
   palmpilot.py run   <app> <script> build + pack + sim
+  palmpilot.py system <script>      build + pack LEFT, RIGHT and HUB, then run a
+                                    whole-controller script (tools/controller.py);
+                                    --replay puts apps/replay in place of the hands
   palmpilot.py env                  print the resolved environment
 
 <app> is a directory containing an ESP-IDF project (CMakeLists.txt), either an
-absolute path or one relative to firmware/apps/.
+absolute path or one relative to firmware/apps/. `<app>:<variant>` adds the
+app's sdkconfig.<variant> on top of sdkconfig.defaults, e.g. `hand:right`.
 
-Build artifacts land in tmp/palmpilot/<app-name>/ and are gitignored. The
+Build artifacts land in tmp/palmpilot/<app-name>[-<variant>]/ and are gitignored. The
 physical board and the simulator are flashed from the SAME bootloader/partition/
 app binaries; only the ROM wrapper differs. Keep it that way.
 """
@@ -26,6 +30,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+COMPONENTS = ROOT / "firmware/components"
 ENV_SH = ROOT / "firmware/tools/env.sh"
 APPS = ROOT / "firmware/apps"
 
@@ -59,18 +64,29 @@ def load_env() -> dict:
     return env
 
 
+class App(type(Path())):
+    """An app directory plus the optional sdkconfig variant it is built with."""
+    variant = ""
+
+
 def resolve_app(name: str) -> Path:
+    name, _, variant = name.partition(":")
     app = Path(name)
     if not app.is_absolute():
         app = (APPS / name) if (APPS / name).exists() else Path.cwd() / name
     app = app.resolve()
     if not (app / "CMakeLists.txt").exists():
         sys.exit(f"{app} is not an ESP-IDF project (no CMakeLists.txt)")
+    app = App(app)
+    app.variant = variant
+    if variant and not (app / f"sdkconfig.{variant}").exists():
+        sys.exit(f"{app} has no sdkconfig.{variant}")
     return app
 
 
 def build_dir(env: dict, app: Path) -> Path:
-    return Path(env["PALMPILOT_BUILD_ROOT"]) / app.name
+    variant = getattr(app, "variant", "")
+    return Path(env["PALMPILOT_BUILD_ROOT"]) / (f"{app.name}-{variant}" if variant else app.name)
 
 
 def run(cmd: list[str], env: dict) -> None:
@@ -98,13 +114,17 @@ def cmd_build(env: dict, app: Path) -> Path:
     # idf.py applies sdkconfig.defaults only when generating a fresh sdkconfig,
     # so an edited defaults file is silently ignored and the build keeps the
     # old configuration. Regenerate when the defaults are newer.
-    defaults, generated = app / "sdkconfig.defaults", out / "sdkconfig"
-    if (defaults.exists() and generated.exists()
-            and defaults.stat().st_mtime > generated.stat().st_mtime):
-        print(f"+ sdkconfig.defaults changed — regenerating {generated}")
+    defaults = [app / "sdkconfig.defaults"]
+    if app.variant:
+        defaults.append(app / f"sdkconfig.{app.variant}")
+    generated = out / "sdkconfig"
+    if generated.exists() and any(d.exists() and d.stat().st_mtime > generated.stat().st_mtime
+                                  for d in defaults):
+        print(f"+ sdkconfig defaults changed — regenerating {generated}")
         generated.replace(generated.with_suffix(".superseded"))
     run([f"{env['IDF_PYTHON_ENV_PATH']}/bin/python", f"{env['IDF_PATH']}/tools/idf.py",
          "-C", str(app), "-B", str(out), "-D", f"SDKCONFIG={out}/sdkconfig",
+         "-D", "SDKCONFIG_DEFAULTS=" + ";".join(str(d) for d in defaults if d.exists()),
          "-D", "IDF_TARGET=esp32s3", "build"], env)
     return out
 
@@ -131,7 +151,8 @@ def cmd_pack(env: dict, app: Path) -> Path:
     return sim_elf
 
 
-def cmd_sim(env: dict, app: Path, script: str, extra: list[str]) -> None:
+def fresh_sim_elf(env: dict, app: Path) -> Path:
+    """The packed image for `app`, refusing one older than its sources."""
     out = build_dir(env, app)
     sim_elf = out / "sim.elf"
     if not sim_elf.exists():
@@ -139,13 +160,37 @@ def cmd_sim(env: dict, app: Path, script: str, extra: list[str]) -> None:
     # Simulating a stale image silently tests the previous firmware, which is
     # worse than failing: the results look real.
     app_bin = out / f"{project_name(app)}.bin"
-    newer = [p for p in (app_bin, *app.rglob("*.c"), *app.rglob("*.h"))
+    sources = [*app.rglob("*.c"), *app.rglob("*.h"),
+               *COMPONENTS.rglob("*.c"), *COMPONENTS.rglob("*.h")]
+    newer = [p for p in (app_bin, *sources)
              if p.exists() and p.stat().st_mtime > sim_elf.stat().st_mtime]
     if newer:
         sys.exit(f"{sim_elf} is older than {newer[0]} — run `pack` (or `run`) first")
+    return sim_elf
+
+
+def cmd_sim(env: dict, app: Path, script: str, extra: list[str]) -> None:
+    sim_elf = fresh_sim_elf(env, app)
     child = dict(env, PALMPILOT_APP=str(app), PALMPILOT_SIM_ELF=str(sim_elf),
                  PALMPILOT_OUT=str(build_dir(env, app)),
                  PYTHONPATH=str(ROOT / "firmware/tools") + os.pathsep + env.get("PYTHONPATH", ""))
+    run([env["PALMPILOT_SIM_PYTHON"], str(Path(script).resolve()), *extra], child)
+
+
+SYSTEM_APPS = {"LEFT": "hand:left", "RIGHT": "hand:right", "HUB": "hub"}
+# --replay: stand-in hands that send the packets a script gives them (apps/replay).
+REPLAY_APPS = {"LEFT": "replay:left", "RIGHT": "replay:right", "HUB": "hub"}
+
+
+def cmd_system(env: dict, script: str, extra: list[str], build: bool, replay: bool) -> None:
+    child = dict(env, PALMPILOT_OUT=str(Path(env["PALMPILOT_BUILD_ROOT"]) / "system"),
+                 PYTHONPATH=str(ROOT / "firmware/tools") + os.pathsep + env.get("PYTHONPATH", ""))
+    for role, name in (REPLAY_APPS if replay else SYSTEM_APPS).items():
+        app = resolve_app(name)
+        if build:
+            cmd_build(env, app)
+            cmd_pack(env, app)
+        child[f"PALMPILOT_{role}_ELF"] = str(fresh_sim_elf(env, app))
     run([env["PALMPILOT_SIM_PYTHON"], str(Path(script).resolve()), *extra], child)
 
 
@@ -160,6 +205,11 @@ def main() -> None:
         node.add_argument("app")
         node.add_argument("script")
         node.add_argument("extra", nargs="*")
+    node = sub.add_parser("system")
+    node.add_argument("script")
+    node.add_argument("extra", nargs="*")
+    node.add_argument("--no-build", action="store_true")
+    node.add_argument("--replay", action="store_true")
     sub.add_parser("env")
     args = parser.parse_args()
 
@@ -167,6 +217,9 @@ def main() -> None:
     if args.action == "env":
         for key in sorted(k for k in env if k.startswith(("IDF_", "SIMANTIC_", "PALMPILOT_"))):
             print(f"{key}={env[key]}")
+        return
+    if args.action == "system":
+        cmd_system(env, args.script, args.extra, build=not args.no_build, replay=args.replay)
         return
     app = resolve_app(args.app)
     if args.action in ("build", "run"):

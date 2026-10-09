@@ -14,6 +14,32 @@ run() {
     printf '!!! %s FAILED\n' "$label"
     failed=$((failed + 1))
   fi
+  # A panic (e.g. an interrupt-watchdog trip) reboots the chip and can hide
+  # behind passing checks, so any panic in the run's UART fails the suite.
+  uart="tmp/palmpilot/$(basename "$app")/uart.txt"
+  if [ -f "$uart" ] && grep -q "Guru Meditation" "$uart"; then
+    printf '!!! %s PANICKED: %s\n' "$label" "$(grep -m1 'Guru Meditation' "$uart")"
+    failed=$((failed + 1))
+  fi
+}
+
+# Whole controller: LEFT, RIGHT and HUB on one BLE medium. The first run builds
+# all three images.
+system() {
+  script="$1"; label="$2"; build="$3"
+  printf '\n=== %s ===\n' "$label"
+  if ! $DRIVER system $build "$script" > tmp/palmpilot/system.log 2>&1; then
+    printf '!!! %s FAILED\n' "$label"
+    failed=$((failed + 1))
+  fi
+  grep -E 'FAIL|checks passed|Traceback' tmp/palmpilot/system.log || true
+  for board in left right hub; do
+    uart="tmp/palmpilot/system/uart-$board.txt"
+    if [ -f "$uart" ] && grep -q "Guru Meditation" "$uart"; then
+      printf '!!! %s PANICKED on %s\n' "$label" "$board"
+      failed=$((failed + 1))
+    fi
+  done
 }
 
 run simulation/simantic/hardware-validation/esp32s3-adc firmware/tools/selftest.py "toolchain self-test"
@@ -25,6 +51,10 @@ run firmware/apps/hand firmware/tests/s1e_attitude.py "S1-E attitude and gesture
 run firmware/apps/hand firmware/tests/s1f_persistence.py "S1-F persistence"
 run firmware/apps/hand firmware/tests/s1g_packet.py "S1-G packet contract"
 run firmware/apps/hand firmware/tests/s1h_watchdog.py "S1-H watchdog discipline"
+system firmware/tests/s2a_link.py "S2-A hand-hub BLE link" ""
+system firmware/tests/s2b_controller.py "S2-B whole controller" --no-build
+system firmware/tests/s3a_drone.py "S3-A hands + hub drive ArduCopter" --no-build
+system firmware/tests/s3b_replay.py "S3-B scripted BLE input -> hub -> ArduCopter" --replay
 
 printf '\n===========================================\n'
 if [ "$failed" -eq 0 ]; then
