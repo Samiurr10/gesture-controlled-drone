@@ -4,9 +4,10 @@
     python3 firmware/tools/palmpilot.py run firmware/apps/hand \
         firmware/tests/s1g_packet.py
 
-The decoder below is written independently of the firmware, from the layout in
-packet.h, so a passing round trip means the contract is actually interoperable
-rather than two copies of the same code agreeing.
+The decoder (packet_decode.py, shared with the bench) is written independently
+of the firmware, from the layout in packet.h, so a passing round trip means the
+contract is actually interoperable rather than two copies of the same code
+agreeing.
 
 Scope: this freezes the payload only. The BLE stack is unqualified on this
 platform, so transport binding, MTU, notification rate, bonding and reconnect
@@ -14,13 +15,15 @@ are NOT covered and remain S2 work.
 """
 import struct
 import sys
-import zlib
 from pathlib import Path
 
 sys.path.insert(0, str(Path("firmware/tests/fixtures").resolve()))
 
 import imu_state                                             # noqa: E402
 from harness import FLEX, PalmPilotSim                       # noqa: E402
+from packet_decode import (PACKET_SIZE, FLAG_VALID, FLAG_ENABLE,  # noqa: E402
+                           FLAG_CALIBRATED, FLAG_HOLD, FLAG_PRECISION,
+                           FLAG_MOTION_OK, FLAG_USB_POWER, decode)
 
 FIXTURES = {
     0x6A: "firmware/tests/fixtures/lsm6ds3trc.py",
@@ -28,9 +31,6 @@ FIXTURES = {
 }
 FINGERS = list(FLEX)
 EXTENDED_UV, CURLED_UV = 2154000, 1055000
-PACKET_SIZE, PACKET_VERSION = 59, 1
-(FLAG_VALID, FLAG_ENABLE, FLAG_CALIBRATED, FLAG_HOLD,
- FLAG_PRECISION, FLAG_MOTION_OK, FLAG_USB_POWER) = (1 << i for i in range(7))
 
 checks, failures = [], []
 
@@ -40,30 +40,6 @@ def check(name, ok, detail=""):
     print(f"  {'PASS' if ok else 'FAIL'}  {name}{'  ' + detail if detail else ''}", flush=True)
     if not ok:
         failures.append(name)
-
-
-def decode(raw: bytes) -> dict:
-    """Independent decoder. Framing is checked before any field is read."""
-    if len(raw) != PACKET_SIZE:
-        raise ValueError(f"wrong length {len(raw)}")
-    if raw[0] != PACKET_VERSION:
-        raise ValueError(f"wrong version {raw[0]}")
-    if raw[1] != PACKET_SIZE:
-        raise ValueError(f"declared length {raw[1]} != {PACKET_SIZE}")
-    crc = struct.unpack_from("<I", raw, 55)[0]
-    if zlib.crc32(raw[:55]) & 0xFFFFFFFF != crc:
-        raise ValueError("CRC mismatch")
-    side, state, fault = raw[2], raw[3], raw[4]
-    flags, session, sequence, acquisition = struct.unpack_from("<HIII", raw, 5)
-    (timestamp,) = struct.unpack_from("<q", raw, 19)
-    curl = list(struct.unpack_from("<5h", raw, 27))
-    accel = list(struct.unpack_from("<3h", raw, 37))
-    gyro = list(struct.unpack_from("<3h", raw, 43))
-    roll, pitch, throttle = struct.unpack_from("<3h", raw, 49)
-    return dict(side=side, state=state, fault=fault, flags=flags, session=session,
-                sequence=sequence, acquisition=acquisition, timestamp=timestamp,
-                curl=curl, accel=accel, gyro=gyro, roll=roll, pitch=pitch,
-                throttle=throttle)
 
 
 def command(sim, line, kind, timeout=8.0, step=0.05):

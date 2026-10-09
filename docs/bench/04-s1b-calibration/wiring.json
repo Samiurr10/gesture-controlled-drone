@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "title": "PalmPilot one hand on the bench (S1-A acquisition, S1-B calibration)",
-  "notes": "PalmPilot LEFT hand, bench plan on a full breadboard. Pins match PalmPilot CLAUDE.md section 2 and docs/wiring/README.md; not checked on hardware. + rails = this board's 3V3, - rails = its GND; the right-end jumpers join the bottom rails to the top ones. Never join supplies across boards. The flex sensors sit on the glove: their two leads come to the rail hole and the node hole shown. IMU: leave 3Vo, INT1/INT2/INTM/DRDY and the address pads unconnected. Do not use GPIO0/3/45/46 (strapping), GPIO19/20 (native USB), GPIO43/44 (UART0 bridge). GPIO10 is reserved for battery sense: leave it disconnected. ENABLE on GPIO7 is LEFT only.",
+  "title": "Bench 04 / S1-B: calibration (LEFT, five flex + motion)",
+  "notes": "PalmPilot LEFT hand, bench plan on a full breadboard. Pins match PalmPilot CLAUDE.md section 2 and docs/wiring/README.md; not checked on hardware. + rails = this board's 3V3, - rails = its GND; the right-end jumpers join the bottom rails to the top ones. Never join supplies across boards. The flex sensors sit on the glove: their two leads come to the rail hole and the node hole shown. IMU: leave 3Vo, INT1/INT2/INTM/DRDY and the address pads unconnected. Do not use GPIO0/3/45/46 (strapping), GPIO19/20 (native USB), GPIO43/44 (UART0 bridge). GPIO10 is reserved for battery sense: leave it disconnected. The ENABLE button is added at bench 05; GPIO7 stays unconnected until then.",
   "parts": [
     {
       "id": "bb",
@@ -207,40 +207,6 @@
       "to": "esp:GPIO2",
       "color": "green",
       "label": "index node -> GPIO2 (ADC1_CH1)"
-    },
-    {
-      "from": "bb:TP25",
-      "to": "bb:33a",
-      "component": "resistor",
-      "value": "10k",
-      "label": "LEFT 3V3 -> 10k -> ENABLE node (pull-up)"
-    },
-    {
-      "from": "bb:33b",
-      "to": "bb:TN28",
-      "component": "capacitor",
-      "value": "100nF",
-      "label": "ENABLE node -> 100nF -> GND (debounce)"
-    },
-    {
-      "from": "bb:33d",
-      "to": "bb:38d",
-      "component": "resistor",
-      "value": "1k",
-      "label": "ENABLE node -> 1k -> switch"
-    },
-    {
-      "from": "bb:38a",
-      "to": "bb:TN31",
-      "component": "button",
-      "value": "ENABLE",
-      "label": "normally-open ENABLE switch -> GND"
-    },
-    {
-      "from": "bb:33e",
-      "to": "esp:GPIO7",
-      "color": "lime",
-      "label": "ENABLE node -> GPIO7, active low"
     }
   ]
 }

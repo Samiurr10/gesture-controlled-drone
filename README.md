@@ -48,6 +48,7 @@ firmware against Simantic's models, not about hardware.
 | [docs/simulation.md](docs/simulation.md) | What is simulated, the models, the physics and its verification, known limits |
 | [docs/wiring/](docs/wiring/README.md) | Pins, circuits, the build order and pinplanner drawings for LEFT, RIGHT and HUB |
 | [docs/test-plan.md](docs/test-plan.md) | Every test in order: simulation (A), physical bench (B), physical controller with simulated drone (C) |
+| [docs/bench/](docs/bench/README.md) | Bench procedures for part B: one per simulation suite, each with its wiring drawing, the firmware to flash and the console steps (not tested on hardware) |
 | [docs/demo.md](docs/demo.md) | Laptop demo: data path, 3D view, operator procedure, what is missing |
 | [docs/gesture-mapping.md](docs/gesture-mapping.md) | Which gesture is which command, and the safety interlocks |
 | [docs/bom.md](docs/bom.md) | Parts for the controller |

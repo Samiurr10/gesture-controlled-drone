@@ -1,0 +1,212 @@
+{
+  "version": 1,
+  "title": "Bench 03 / S1-D: five flex + Adafruit #5543 motion (LEFT)",
+  "notes": "PalmPilot LEFT hand, bench plan on a full breadboard. Pins match PalmPilot CLAUDE.md section 2 and docs/wiring/README.md; not checked on hardware. + rails = this board's 3V3, - rails = its GND; the right-end jumpers join the bottom rails to the top ones. Never join supplies across boards. The flex sensors sit on the glove: their two leads come to the rail hole and the node hole shown. IMU: leave 3Vo, INT1/INT2/INTM/DRDY and the address pads unconnected. Do not use GPIO0/3/45/46 (strapping), GPIO19/20 (native USB), GPIO43/44 (UART0 bridge). GPIO10 is reserved for battery sense: leave it disconnected. The ENABLE button is added at bench 05; GPIO7 stays unconnected until then.",
+  "parts": [
+    {
+      "id": "bb",
+      "board": "breadboard-full",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "esp",
+      "board": "esp32-s3-devkitc-1",
+      "x": 4,
+      "y": 62,
+      "label": "LEFT hand ESP32-S3-DevKitC-1"
+    },
+    {
+      "id": "imu",
+      "board": "adafruit-5543",
+      "x": 82,
+      "y": 68,
+      "label": "LEFT Adafruit #5543 (0x6A / 0x1C)"
+    }
+  ],
+  "connections": [
+    {
+      "from": "esp:J1-1",
+      "to": "bb:BP1",
+      "color": "red",
+      "label": "LEFT 3V3 -> bottom + rail"
+    },
+    {
+      "from": "esp:J3-1",
+      "to": "bb:BN9",
+      "color": "black",
+      "label": "LEFT GND -> bottom - rail"
+    },
+    {
+      "from": "bb:BP50",
+      "to": "bb:TP50",
+      "color": "red",
+      "label": "bottom + rail -> top + rail"
+    },
+    {
+      "from": "bb:BN50",
+      "to": "bb:TN50",
+      "color": "black",
+      "label": "bottom - rail -> top - rail"
+    },
+    {
+      "from": "bb:BP27",
+      "to": "imu:VIN",
+      "color": "red",
+      "label": "LEFT 3V3 -> IMU VIN"
+    },
+    {
+      "from": "bb:BN29",
+      "to": "imu:GND",
+      "color": "black",
+      "label": "LEFT GND -> IMU GND"
+    },
+    {
+      "from": "esp:GPIO8",
+      "to": "imu:SDA",
+      "color": "blue",
+      "label": "I2C SDA <-> GPIO8 (breakout pull-ups)"
+    },
+    {
+      "from": "esp:GPIO9",
+      "to": "imu:SCL",
+      "color": "yellow",
+      "label": "I2C SCL GPIO9 -> IMU (100 kHz)"
+    },
+    {
+      "from": "bb:TP1",
+      "to": "bb:5a",
+      "component": "flex",
+      "value": "middle",
+      "label": "LEFT 3V3 -> middle flex -> node"
+    },
+    {
+      "from": "bb:5b",
+      "to": "bb:TN5",
+      "component": "resistor",
+      "value": "47k",
+      "label": "middle node -> 47k -> GND"
+    },
+    {
+      "from": "bb:5d",
+      "to": "bb:TN8",
+      "component": "capacitor",
+      "value": "100nF",
+      "label": "middle node -> 100nF -> GND"
+    },
+    {
+      "from": "bb:5e",
+      "to": "esp:GPIO4",
+      "color": "purple",
+      "label": "middle node -> GPIO4 (ADC1_CH3)"
+    },
+    {
+      "from": "bb:TP9",
+      "to": "bb:14a",
+      "component": "flex",
+      "value": "ring",
+      "label": "LEFT 3V3 -> ring flex -> node"
+    },
+    {
+      "from": "bb:14b",
+      "to": "bb:TN12",
+      "component": "resistor",
+      "value": "47k",
+      "label": "ring node -> 47k -> GND"
+    },
+    {
+      "from": "bb:14d",
+      "to": "bb:TN15",
+      "component": "capacitor",
+      "value": "100nF",
+      "label": "ring node -> 100nF -> GND"
+    },
+    {
+      "from": "bb:14e",
+      "to": "esp:GPIO5",
+      "color": "teal",
+      "label": "ring node -> GPIO5 (ADC1_CH4)"
+    },
+    {
+      "from": "bb:TP16",
+      "to": "bb:23a",
+      "component": "flex",
+      "value": "little",
+      "label": "LEFT 3V3 -> little flex -> node"
+    },
+    {
+      "from": "bb:23b",
+      "to": "bb:TN20",
+      "component": "resistor",
+      "value": "47k",
+      "label": "little node -> 47k -> GND"
+    },
+    {
+      "from": "bb:23d",
+      "to": "bb:TN23",
+      "component": "capacitor",
+      "value": "100nF",
+      "label": "little node -> 100nF -> GND"
+    },
+    {
+      "from": "bb:23e",
+      "to": "esp:GPIO6",
+      "color": "pink",
+      "label": "little node -> GPIO6 (ADC1_CH5)"
+    },
+    {
+      "from": "bb:TP35",
+      "to": "bb:45a",
+      "component": "flex",
+      "value": "thumb",
+      "label": "LEFT 3V3 -> thumb flex -> node"
+    },
+    {
+      "from": "bb:45b",
+      "to": "bb:TN38",
+      "component": "resistor",
+      "value": "47k",
+      "label": "thumb node -> 47k -> GND"
+    },
+    {
+      "from": "bb:45d",
+      "to": "bb:TN41",
+      "component": "capacitor",
+      "value": "100nF",
+      "label": "thumb node -> 100nF -> GND"
+    },
+    {
+      "from": "bb:45e",
+      "to": "esp:GPIO1",
+      "color": "orange",
+      "label": "thumb node -> GPIO1 (ADC1_CH0)"
+    },
+    {
+      "from": "bb:TP42",
+      "to": "bb:54a",
+      "component": "flex",
+      "value": "index",
+      "label": "LEFT 3V3 -> index flex -> node"
+    },
+    {
+      "from": "bb:54b",
+      "to": "bb:TN45",
+      "component": "resistor",
+      "value": "47k",
+      "label": "index node -> 47k -> GND"
+    },
+    {
+      "from": "bb:54d",
+      "to": "bb:TN49",
+      "component": "capacitor",
+      "value": "100nF",
+      "label": "index node -> 100nF -> GND"
+    },
+    {
+      "from": "bb:54e",
+      "to": "esp:GPIO2",
+      "color": "green",
+      "label": "index node -> GPIO2 (ADC1_CH1)"
+    }
+  ]
+}
