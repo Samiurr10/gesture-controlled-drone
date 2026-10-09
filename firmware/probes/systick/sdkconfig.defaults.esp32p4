@@ -1,3 +1,0 @@
-# P4 simulation boots the rev0 mask ROM (esp32p4_rev0_rom.elf).
-CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y
-CONFIG_ESP32P4_REV_MIN_0=y

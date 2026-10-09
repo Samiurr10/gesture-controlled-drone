@@ -15,10 +15,9 @@ The timeout itself is now exercised too: the timer-group model counts and
 raises the watchdog interrupt, so starving the loop past the period trips
 ESP-IDF's real task watchdog.
 
-BLOCKED: the panic and the reset. Bench firmware sets trigger_panic false so a
-trip is observable instead of resetting, because esp_restart aborts this engine
-(firmware/probes/reset/README.md). Production must enable trigger_panic, and
-what state the firmware returns in after a watchdog reset is physical-only at C2.
+Not covered: the panic and the reset. Bench firmware sets trigger_panic false
+so a trip is counted instead of resetting the chip. Production must enable
+trigger_panic, and the state after a watchdog reset is tested on hardware (B2).
 """
 import sys
 from pathlib import Path

@@ -81,9 +81,9 @@ bool debounce_update(struct debounce *d, bool observation);
 #define HAND_MIN_TRAVEL_RAW 200
 #define HAND_MAX_CAPTURE_SPREAD_RAW 120
 
-// All control arithmetic is fixed-point in milli-units (0..1000). The Xtensa
-// FPU aborts this simulator model on its first instruction - see
-// firmware/probes/fpu and docs/implementation-records/2026-09-18_esp32s3-fpu-gap.md.
+// All control arithmetic is fixed-point in milli-units (0..1000). This began as
+// a workaround: engine 0.5.7 aborted on the first Xtensa FPU instruction, which
+// no longer happens on 0.6.3.
 // Integer math is also the better choice for a fixed-rate control loop.
 #define HAND_MILLI 1000
 
@@ -199,7 +199,7 @@ enum calibration_result hand_calibration_finish(struct hand_calibration *c);
 int hand_curl_milli(const struct hand_calibration *c, int index, int raw);
 
 // ---------------------------------------------------------------------------
-// Gesture mapping and control state (FW-05, docs/controller/gesture-mapping.md)
+// Gesture mapping and control state (FW-05, docs/gesture-mapping.md)
 //
 // Left hand: index+middle+ring+little mean curl = throttle; thumb = PRECISION.
 // Right hand: all five curled = HOLD.

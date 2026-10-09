@@ -96,12 +96,12 @@ static uint32_t s_session;
 static uint32_t s_packet_sequence;
 
 // Watchdog bookkeeping. The count is incremented from the timeout handler, so
-// a trip is observable without requiring the reset that this platform cannot
-// execute (firmware/probes/reset).
+// a trip is observable without a reset: bench builds leave trigger_panic off,
+// so a test can count trips and keep talking to the hand.
 static volatile uint32_t s_watchdog_trips;
-// Counts services. The watchdog hardware cannot fire in this model (TIMG has
-// no execution behavior), so the feed count is how the FW-06 rule - service
-// only after real work - is actually verified.
+// Counts services. With the trip count above, the feed count is how the rule
+// "service only after real work" is verified (S1-H): feeds stop when the loop
+// stalls, and the watchdog then trips.
 static volatile uint32_t s_watchdog_feeds;
 static bool s_watchdog_ready;
 static volatile uint32_t s_stall_sweeps;  // deliberate acquisition stall, test hook
@@ -693,11 +693,11 @@ void app_main(void)
         printf("{\"type\":\"error\",\"op\":\"control_task\"}\n");
         return;
     }
-    // The ESP32-S3 task watchdog is backed by the Timer Group watchdog, which
-    // has no execution behavior in this model, so it can never fire here. The
-    // subscription and the feed discipline are still correct firmware and are
-    // verified through the feed counter; the timeout, the panic and the reset
-    // are physical-only at C2 (firmware/probes/reset).
+    // The ESP32-S3 task watchdog is backed by the Timer Group watchdog. Its
+    // timeout fires in simulation (S1-H). Bench builds leave trigger_panic off
+    // so a trip is counted rather than resetting the chip; the panic and the
+    // reset after a trip are tested on hardware only (test plan B2).
+    // The feed discipline is verified through the feed counter.
     // PRODUCTION MUST ENABLE trigger_panic.
     const esp_task_wdt_config_t watchdog = {
         .timeout_ms = WATCHDOG_TIMEOUT_MS,

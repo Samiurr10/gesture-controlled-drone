@@ -8,7 +8,7 @@ hand's ADC model, tilt through each hand's own I2C motion fixtures, ENABLE and
 CALIBRATE through GPIO7. What is observed is the hub's command stream on UART0,
 the same bytes the host bridge will read.
 
-Mapping under test (docs/controller/gesture-mapping.md, hub_core.h):
+Mapping under test (docs/gesture-mapping.md, hub_core.h):
   roll = right roll tilt, pitch = right pitch tilt, yaw = left roll tilt,
   throttle = left four-finger curl; HOLD = right fist; PRECISION = left thumb.
 

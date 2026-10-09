@@ -95,7 +95,7 @@ with PalmPilotSim(i2c=FIXTURES, timg=True) as sim:
     result = command(sim, "cal save", "storage")
     check("save accepted", result["status"] == PERSIST_OK, str(result["status"]))
 
-    print("\nreload from storage (reboot is BLOCKED, see probes/reset):", flush=True)
+    print("\nreload from storage, without a reboot:", flush=True)
     command(sim, "cal reset", "calibration")
     state = command(sim, "control", "control")
     check("reset clears the in-memory profile", state["valid"] == 0, state["state"])

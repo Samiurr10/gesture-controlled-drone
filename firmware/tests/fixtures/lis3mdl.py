@@ -2,7 +2,7 @@
 
 Same scope limits as the accelerometer fixture. Magnetic data is read and
 reported but must not reach the command path: yaw is gravity-referenced, never
-magnetic (docs/controller/gesture-mapping.md).
+magnetic (docs/gesture-mapping.md).
 """
 import imu_state
 

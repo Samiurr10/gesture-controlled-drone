@@ -39,8 +39,8 @@ export PALMPILOT_ROM="$PALMPILOT_ROOT/tmp/simantic/esp-idf-tools/esp32s3_rev0_ro
 #  - BLE radio: a central can hold two links (the hub). renode-infrastructure#270
 #  - RNG: a new boot draws new random values. #271
 #  - STM32 UART: TX DMA request is a level, so ArduCopter's telemetry runs.
-# The SYSTIMER (#257) and S3 MWDT (#258) candidates shipped in 0.5.15+; they stay
-# selectable for comparison runs on older engines.
+# The SYSTIMER (#257) and S3 MWDT (#258) candidates shipped in 0.5.15+; their
+# variables stay empty (the sources are in git history).
 export PALMPILOT_SYSTIMER_OVERLAY="${PALMPILOT_SYSTIMER_OVERLAY-}"
 export PALMPILOT_S3_MWDT_OVERLAY="${PALMPILOT_S3_MWDT_OVERLAY-}"
 export PALMPILOT_BLE_RADIO_OVERLAY="${PALMPILOT_BLE_RADIO_OVERLAY-$PALMPILOT_ROOT/tmp/simantic/upstream-candidates/ble-radio/bin/Debug/net10.0/BleFixed.dll}"

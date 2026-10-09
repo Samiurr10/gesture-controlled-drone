@@ -13,9 +13,9 @@ CONFIG_ESP_MAIN_TASK_STACK_SIZE=6144
 # Interrupt watchdog ON, production settings (TIMG1 MWDT, 300 ms, fed from the
 # FreeRTOS tick hook). It was disabled while the simulator's SYSTIMER model
 # starved the tick (every esp_timer re-arm restarted it), which left the IWDT
-# unfed and panicked healthy idle firmware. With the SYSTIMER and MWDT
-# candidates (env.sh) it stays quiet on healthy firmware and panics ~286 ms
-# after interrupts are disabled (firmware/probes/iwdt).
+# unfed and panicked healthy idle firmware. Since engine 0.5.15 it stays quiet
+# on healthy firmware and panics ~286 ms after interrupts are disabled (measured
+# with the iwdt probe, now in git history).
 CONFIG_ESP_INT_WDT=y
 CONFIG_ESP_INT_WDT_TIMEOUT_MS=300
 

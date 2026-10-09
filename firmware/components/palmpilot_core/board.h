@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Frozen bench pin map - docs/controller/build-guide.md, CLAUDE.md section 2.
+// Frozen bench pin map - docs/wiring/README.md, CLAUDE.md section 2.
 // Header position numbers are not GPIO numbers. Do not translate Feather labels.
 #pragma once
 

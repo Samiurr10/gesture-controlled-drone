@@ -1,11 +1,9 @@
 # Simantic model candidates
 
-Simulator models this project needs that are not yet in a Simantic engine release. They are loaded as overlays on engine 0.5.14 by default (`firmware/tools/env.sh`). The SYSTIMER, BLE radio and RNG copies use their own namespaces (`SystFixed`, `BleFixed`, `RngFixed`), because the engine already contains classes with those names.
+Simulator models this project needs that are not yet in a Simantic engine release. They are loaded as overlays on engine 0.6.3 by default (`firmware/tools/env.sh`). Each copy uses its own namespace (`BleFixed`, `RngFixed`, `UartFixed`), because the engine already contains classes with those names. The SYSTIMER (#257) and S3 MWDT (#258) candidates shipped in engine 0.5.15; on 0.5.20 every single-hand suite passed without them, and they were deleted.
 
 | Directory | Upstream | What it fixes |
 |---|---|---|
-| `systimer-work-en/` | [renode-infrastructure #257](https://github.com/simantic-dev/renode-infrastructure/pull/257) | The SYSTIMER re-armed the periodic FreeRTOS tick on every `CONF` write of `WORK_EN=1`. ESP-IDF rewrites that bit on every esp_timer re-arm, so the tick died: `vTaskDelay` blocked forever, NVS erase hung, and the interrupt watchdog panicked healthy firmware. |
-| `s3-mwdt/` | [renode-infrastructure #258](https://github.com/simantic-dev/renode-infrastructure/pull/258), wiring in [mcu-lib #229](https://github.com/simantic-dev/mcu-lib/pull/229) on [#222](https://github.com/simantic-dev/mcu-lib/pull/222) | `ESP32S3_Timg` stored the main-watchdog registers but never ran it, so the IDF task and interrupt watchdogs could not fire. |
 | `ble-radio/` | [renode-infrastructure #270](https://github.com/simantic-dev/renode-infrastructure/pull/270) | `ESP32C3_Radio` (the ESP32-C3/S3 BLE radio) assumed one connection per radio. A central could not hold two links, so the hub could not connect both hands. See the fixes listed below. |
 | `rng-reset/` | [renode-infrastructure #271](https://github.com/simantic-dev/renode-infrastructure/pull/271) | `ESP32C3_Rng` restarted its sequence on every chip reset, so a rebooted board drew the same "random" values, and a hand reported the same session after a reset. |
 | `stm32-uart-tx-dma/` | renode-infrastructure #325 (issue simantic-core #635; fixture sim-fixtures #387) | `STM32_UART` (STM32F4 USART) pulsed its TX DMA request only when TXE rose after a write. Silicon holds it as a level (DMAT and TXE), so a stream enabled while the transmitter was idle never started, and ArduCopter's MAVLink telemetry never left the drone. |
@@ -15,25 +13,12 @@ Build them into `tmp/simantic/upstream-candidates/` (gitignored):
 ```sh
 . firmware/tools/env.sh
 export DOTNET_ROOT="$PWD/tmp/simantic/dotnet-sdk" DOTNET_CLI_HOME="$PWD/tmp/simantic/dotnet-home"
-"$DOTNET_ROOT/dotnet" build simulation/simantic/model-candidates/systimer-work-en/SystFixed.csproj
-"$DOTNET_ROOT/dotnet" build simulation/simantic/model-candidates/s3-mwdt/S3MwdtUnderTest.csproj
 "$DOTNET_ROOT/dotnet" build simulation/simantic/model-candidates/ble-radio/BleFixed.csproj
 "$DOTNET_ROOT/dotnet" build simulation/simantic/model-candidates/rng-reset/RngFixed.csproj
+"$DOTNET_ROOT/dotnet" build simulation/simantic/model-candidates/stm32-uart-tx-dma/UartFixed.csproj
 ```
 
 To run the engine's own model instead, set the matching `PALMPILOT_*_OVERLAY=` variable to an empty string. Delete a candidate once an engine release contains its PR, and re-run `firmware/tests/run_all.sh`.
-
-## Evidence, recorded 2026-09-27
-
-Each item is a before/after on the same firmware.
-
-- **SYSTIMER, measured by `firmware/probes/systick` (`multichip.py`)**, as ticks and `vTaskDelay(10 ms)` loops per second:
-  - ESP32-S3, ESP32-C3, ESP32-C6 and ESP32-P4: 0 / 0 on the shipped model, 100 / 100 with the candidate.
-  - Also committed upstream as sim-fixtures#314. With the same 0.5.14 engine rebuilt with and without the fixes, all 130 ESP fixtures give identical outcomes.
-- **MWDT, measured by `firmware/probes/mwdt`:** 4/11 on the shipped model (nothing fires), 14/14 with the candidate.
-- **Interrupt watchdog in the hand application** (production settings), measured by `firmware/tests/run_all.sh`: 7 of 8 hand suites panicked on the shipped SYSTIMER. With the candidate, 0 panics and all suites pass.
-
-These results validate the simulator's models. They do not qualify anything on silicon.
 
 ## BLE radio fixes, recorded 2026-09-29
 
@@ -84,7 +69,3 @@ The candidate sets `DMATransmitRequest` to `DMAT && TXE` on every change, which 
 - Engine rebuilt from source with and without #325: the 163 STM fixtures give identical outcomes.
 
 The silicon run on a NUCLEO board is pending (sim-fixtures #387).
-
-## Shipped
-
-SYSTIMER (#257) and the S3 MWDT (#258, wiring mcu-lib #229) are in engine 0.5.15 and later. On 0.5.20 every single-hand suite passes with neither candidate loaded, and env.sh no longer loads them.

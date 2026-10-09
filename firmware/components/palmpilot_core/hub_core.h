@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Hub logic: validates both hands and mixes them into one drone command.
-// Pure C, no ESP-IDF. Mapping (docs/controller/gesture-mapping.md):
+// Pure C, no ESP-IDF. Mapping (docs/gesture-mapping.md):
 //
 //   roll = right roll tilt     pitch = right pitch tilt
 //   yaw  = left roll tilt      throttle = left four-finger curl
