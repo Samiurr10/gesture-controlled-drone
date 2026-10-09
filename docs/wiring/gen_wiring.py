@@ -90,29 +90,39 @@ DONT = ("Do not use GPIO0/3/45/46 (strapping), GPIO19/20 (native USB), GPIO43/44
         "GPIO10 is reserved for battery sense: leave it disconnected.")
 
 
-def hand(side, title, enable):
+FINGERS = [f[0] for f in FLEX]
+
+
+def hand(side, title, enable, fingers=FINGERS, with_imu=True):
+    """One hand. A bench stage leaves parts out, but every part keeps the holes it has
+    on the finished hand, so going to the next stage only ever adds parts."""
     r = Rails()
-    conns = power(r, side) + imu(r, side)
+    groups = [("power", power(r, side)), ("imu", imu(r, side))]
     for name, gpio, adc, color, c in FLEX:
-        conns += flex_channel(r, side, name, gpio, adc, color, c)
+        groups.append((name, flex_channel(r, side, name, gpio, adc, color, c)))
     if enable:
-        conns += button(r, side, "ENABLE")
+        groups.append(("enable", button(r, side, "ENABLE")))
+    keep = {"power", "enable", *fingers} | ({"imu"} if with_imu else set())
+    conns = [c for group, cs in groups if group in keep for c in cs]
+    parts = [{"id": "bb", "board": "breadboard-full", "x": 0, "y": 0},
+             {"id": "esp", "board": "esp32-s3-devkitc-1", "x": 4, "y": 62, "label": f"{side} hand ESP32-S3-DevKitC-1"}]
+    if with_imu:
+        parts.append({"id": "imu", "board": "adafruit-5543", "x": 82, "y": 68, "label": f"{side} Adafruit #5543 (0x6A / 0x1C)"})
     return {"version": 1, "title": title,
             "notes": f"PalmPilot {side} hand, bench plan on a full breadboard. Pins match PalmPilot CLAUDE.md section 2 and "
                      "docs/wiring/README.md; not checked on hardware. + rails = this board's 3V3, - rails = its GND; "
                      "the right-end jumpers join the bottom rails to the top ones. Never join supplies across boards. The flex sensors sit on the glove: their two leads come to the rail hole and "
                      "the node hole shown. IMU: leave 3Vo, INT1/INT2/INTM/DRDY and the address pads unconnected. " + DONT
-                     + (" ENABLE on GPIO7 is LEFT only." if enable else " RIGHT has no ENABLE button: GPIO7 stays unconnected."),
-            "parts": [{"id": "bb", "board": "breadboard-full", "x": 0, "y": 0},
-                      {"id": "esp", "board": "esp32-s3-devkitc-1", "x": 4, "y": 62, "label": f"{side} hand ESP32-S3-DevKitC-1"},
-                      {"id": "imu", "board": "adafruit-5543", "x": 82, "y": 68, "label": f"{side} Adafruit #5543 (0x6A / 0x1C)"}],
-            "connections": conns}
+                     + (" ENABLE on GPIO7 is LEFT only." if enable
+                        else " RIGHT has no ENABLE button: GPIO7 stays unconnected." if side == "RIGHT"
+                        else " The ENABLE button is added at bench 05; GPIO7 stays unconnected until then."),
+            "parts": parts, "connections": conns}
 
 
-def hub():
+def hub(title="PalmPilot HUB: CALIBRATE button, USB-UART to laptop"):
     r = Rails("breadboard-half")
     conns = power(r, "HUB", far=29) + button(r, "HUB", "CALIBRATE", c=14)
-    return {"version": 1, "title": "PalmPilot HUB: CALIBRATE button, USB-UART to laptop",
+    return {"version": 1, "title": title,
             "notes": "PalmPilot HUB, bench plan on a half breadboard. Pins match PalmPilot CLAUDE.md section 2; not checked on hardware. "
                      "Laptop link: USB data cable from the DevKit port labelled UART (on-board USB-to-UART bridge on UART0, 115200 baud) "
                      "to the laptop; it also powers the hub. GPIO43 (U0TXD) and GPIO44 (U0RXD) are highlighted because the bridge uses "
@@ -126,10 +136,43 @@ FILES = {
     "left-hand": hand("LEFT", "PalmPilot LEFT hand: 5 flex + LSM6DS3TR-C/LIS3MDL + ENABLE", True),
     "right-hand": hand("RIGHT", "PalmPilot RIGHT hand: 5 flex + LSM6DS3TR-C/LIS3MDL", False),
     "hub": hub(),
-    "one-hand-s1": hand("LEFT", "PalmPilot one hand on the bench (S1-A acquisition, S1-B calibration)", True),
+}
+
+# One wiring per bench stage (docs/bench/<stage>/), in build order.
+FULL_LEFT = dict(enable=True)   # stages 05-09 share the finished LEFT wiring
+BOARD_CHECK = {
+    "version": 1, "title": "Bench 00 / board check: bare DevKit, GPIO1 to GND for the ADC ground check",
+    "notes": "One DevKit, nothing else connected. The single jumper is only for the ADC reference app's ground check "
+             "(simulation/simantic/hardware-validation/esp32s3-adc); remove it before bench 01. GPIO1 is an ADC input "
+             "there and is never driven, so tying it to GND is safe.",
+    "parts": [{"id": "esp", "board": "esp32-s3-devkitc-1", "x": 0, "y": 0, "label": "ESP32-S3-DevKitC-1 (record its markings)"}],
+    "connections": [{"from": "esp:GPIO1", "to": "esp:J3-1", "color": "black", "label": "GPIO1 -> GND, ADC ground check only"}],
+}
+
+BENCH = {
+    "00-board-check": BOARD_CHECK,
+    "01-s1a-one-flex": hand("LEFT", "Bench 01 / S1-A: one flex channel (LEFT thumb, GPIO1)", False,
+                            fingers=["thumb"], with_imu=False),
+    "02-s1a-five-flex": hand("LEFT", "Bench 02 / S1-A: five flex channels (LEFT)", False, with_imu=False),
+    "03-s1d-motion": hand("LEFT", "Bench 03 / S1-D: five flex + Adafruit #5543 motion (LEFT)", False),
+    "04-s1b-calibration": hand("LEFT", "Bench 04 / S1-B: calibration (LEFT, five flex + motion)", False),
+    "05-s1c-enable-control": hand("LEFT", "Bench 05 / S1-A + S1-C: ENABLE and control (full LEFT hand)", **FULL_LEFT),
+    "06-s1e-attitude": hand("LEFT", "Bench 06 / S1-E: tilt and gestures (full LEFT hand)", **FULL_LEFT),
+    "07-s1f-persistence": hand("LEFT", "Bench 07 / S1-F: calibration persistence (full LEFT hand)", **FULL_LEFT),
+    "08-s1g-packet": hand("LEFT", "Bench 08 / S1-G: hand packet (full LEFT hand)", **FULL_LEFT),
+    "09-s1h-watchdog": hand("LEFT", "Bench 09 / S1-H: watchdog (full LEFT hand)", **FULL_LEFT),
+    "10-right-hand": hand("RIGHT", "Bench 10 / S1 on RIGHT: five flex + motion, no ENABLE", False),
+    "11-s2a-link": hub("Bench 11 / S2-A: HUB for the two-hand BLE link"),
+    "12-s2b-controller": hub("Bench 12 / S2-B: HUB with CALIBRATE, whole controller"),
+    "13-s3-host": hub("Bench 13 / S3: HUB to the laptop over the UART USB port"),
 }
 
 if __name__ == "__main__":
     for name, doc in FILES.items():
         (HERE / f"{name}.wiring.json").write_text(json.dumps(doc, indent=2) + "\n")
         print(name, len(doc["connections"]), "connections")
+    bench = HERE.parent / "bench"
+    for stage, doc in BENCH.items():
+        (bench / stage).mkdir(parents=True, exist_ok=True)
+        (bench / stage / "wiring.json").write_text(json.dumps(doc, indent=2) + "\n")
+        print(stage, len(doc["connections"]), "connections")
