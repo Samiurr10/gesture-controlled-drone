@@ -180,9 +180,11 @@ class ControllerSim:
             imu_state.for_hand(hand).reset()
         rc_link.reset()
         machines = {}
+        # Per process: simulations run side by side must not read each other's half-written files.
+        platforms = self.out / "platforms" / str(os.getpid())
         for name in MACHINES:
             i2c = MOTION_FIXTURES if name != "hub" else None
-            platform = build_platform(self.platform, self.out, i2c=i2c,
+            platform = build_platform(self.platform, platforms, i2c=i2c,
                                       hand=name if i2c else None,
                                       name=f"platform-{name}.repl",
                                       mac=FACTORY_MAC[name])
@@ -193,7 +195,7 @@ class ControllerSim:
         }
         if self.drone:
             quad_plant.PLANT.reset()
-            machines["drone"] = {"repl": str(build_drone_platform(self.out, self.plant)),
+            machines["drone"] = {"repl": str(build_drone_platform(platforms, self.plant)),
                                  "elf": os.environ["PALMPILOT_DRONE_ELF"]}
             scenario["media"].append({"type": "uart", "connect": ["drone.usart1", "drone.gcs"]})
         if self.quantum is not None:
