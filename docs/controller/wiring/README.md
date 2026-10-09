@@ -1,102 +1,112 @@
 # Controller wiring
 
-Wiring diagrams for the PalmPilot controller, drawn with
+Breadboard wiring for the PalmPilot controller, drawn with
 [pinplanner](https://github.com/simantic-dev/pinplanner). The pin assignments are
-the frozen map in CLAUDE.md section 2 and [build-guide.md](../build-guide.md). The
-header positions match the build guide's table. Nothing here has been checked on
-hardware.
+the frozen map in CLAUDE.md section 2 and [build-guide.md](../build-guide.md), and
+the circuits are the build guide's. These are bench plans. Nothing here has been
+built or checked on hardware.
 
-## One hand on the bench: S1-A and S1-B
-
-![One hand on the bench](one-hand-s1.png)
-
-`one-hand-s1.wiring.json` ([SVG](one-hand-s1.svg)) is the LEFT hand on an
-ESP32-S3-DevKitC-1:
-- the five flex channels (S1-A acquisition);
-- the Adafruit #5543 motion breakout, whose resting orientation S1-B captures;
-- the ENABLE button.
-
-The RIGHT hand is the same without the button. Both hands and the hub are below.
-
-pinplanner has no resistors or capacitors, so each brown block stands for one
-small circuit from the build guide, with three connections: 3V3, the signal and GND.
-- **Flex block:** 3V3 to the flex sensor to the signal node, then 47 kOhm and
-  100 nF in parallel from the node to GND.
-- **Button block:** 10 kOhm from 3V3 to the signal, 100 nF from the signal to GND,
-  and 1 kOhm plus a normally-open switch from the signal to GND.
-
-The blocks show which DevKit pins each circuit uses, not where its parts sit.
-
-Leave unconnected: GPIO10 (battery sense, reserved), the breakout's 3Vo and
-interrupt pins, GPIO19/20, GPIO43/44, and GPIO0/3/45/46. Power the hand from its
-own USB. Never join supplies across boards.
-
-### Jumper table
-
-| # | wire | header pins | colour | tests |
-|---|---|---|---|---|
-| 1 | thumb:SIG -> esp:GPIO1 | thumb:T-2 -> esp:J3-4 | orange | thumb flex -> GPIO1 (ADC1_CH0) |
-| 2 | esp:3V3 -> thumb:3V3 | esp:J1-2 -> thumb:T-1 | red | LEFT 3V3 -> thumb flex |
-| 3 | esp:GND -> thumb:GND | esp:J3-1 -> thumb:T-3 | black | thumb 47k + 100nF -> LEFT GND |
-| 4 | index:SIG -> esp:GPIO2 | index:T-2 -> esp:J3-5 | green | index flex -> GPIO2 (ADC1_CH1) |
-| 5 | esp:3V3 -> index:3V3 | esp:J1-2 -> index:T-1 | red | LEFT 3V3 -> index flex |
-| 6 | esp:GND -> index:GND | esp:J3-1 -> index:T-3 | black | index 47k + 100nF -> LEFT GND |
-| 7 | middle:SIG -> esp:GPIO4 | middle:T-2 -> esp:J1-4 | purple | middle flex -> GPIO4 (ADC1_CH3) |
-| 8 | esp:3V3 -> middle:3V3 | esp:J1-1 -> middle:T-1 | red | LEFT 3V3 -> middle flex |
-| 9 | esp:GND -> middle:GND | esp:J1-22 -> middle:T-3 | black | middle 47k + 100nF -> LEFT GND |
-| 10 | ring:SIG -> esp:GPIO5 | ring:T-2 -> esp:J1-5 | teal | ring flex -> GPIO5 (ADC1_CH4) |
-| 11 | esp:3V3 -> ring:3V3 | esp:J1-1 -> ring:T-1 | red | LEFT 3V3 -> ring flex |
-| 12 | esp:GND -> ring:GND | esp:J1-22 -> ring:T-3 | black | ring 47k + 100nF -> LEFT GND |
-| 13 | little:SIG -> esp:GPIO6 | little:T-2 -> esp:J1-6 | pink | little flex -> GPIO6 (ADC1_CH5) |
-| 14 | esp:3V3 -> little:3V3 | esp:J1-1 -> little:T-1 | red | LEFT 3V3 -> little flex |
-| 15 | esp:GND -> little:GND | esp:J1-22 -> little:T-3 | black | little 47k + 100nF -> LEFT GND |
-| 16 | esp:3V3 -> imu:VIN | esp:J1-2 -> imu:JP4-1 | red | LEFT 3V3 -> IMU VIN |
-| 17 | esp:GND -> imu:GND | esp:J1-22 -> imu:JP4-3 | black | LEFT GND -> IMU GND |
-| 18 | esp:GPIO8 <-> imu:SDA | esp:J1-12 <-> imu:JP4-5 | blue | I2C SDA <-> GPIO8 (breakout pull-ups) |
-| 19 | esp:GPIO9 -> imu:SCL | esp:J1-15 -> imu:JP4-4 | yellow | I2C SCL GPIO9 -> IMU (100 kHz) |
-| 20 | button:OUT -> esp:GPIO7 | button:T-2 -> esp:J1-7 | lime | ENABLE -> GPIO7, active low (10k pull-up) |
-| 21 | esp:3V3 -> button:3V3 | esp:J1-1 -> button:T-1 | red | LEFT 3V3 -> 10k pull-up |
-| 22 | esp:GND -> button:GND | esp:J1-22 -> button:T-3 | black | 100nF + switch -> LEFT GND |
-
-Wires 2 and 5 and 16 share esp:J1-2.
-Wires 3 and 6 share esp:J3-1.
-Wires 8 and 11 and 14 and 21 share esp:J1-1.
-Wires 9 and 12 and 15 and 17 and 22 share esp:J1-22.
-
-## Both hands and the hub
-
-Three ESP32-S3-DevKitC-1 boards. The hands reach the hub over BLE only. Each
-board's parts use that board's own 3V3 and GND, and no wire joins two boards.
+Each board has its own breadboard and its own supply. No wire joins two boards.
 
 | file | board | what is wired |
 |---|---|---|
-| [`left-hand.wiring.json`](left-hand.wiring.json) | LEFT | 5 flex, Adafruit #5543, ENABLE button |
-| [`right-hand.wiring.json`](right-hand.wiring.json) | RIGHT | 5 flex, Adafruit #5543 |
-| [`hub.wiring.json`](hub.wiring.json) | HUB | CALIBRATE button; USB-UART port to the laptop |
+| [`left-hand.wiring.json`](left-hand.wiring.json) | LEFT | 5 flex channels, Adafruit #5543, ENABLE button |
+| [`right-hand.wiring.json`](right-hand.wiring.json) | RIGHT | 5 flex channels, Adafruit #5543 |
+| [`hub.wiring.json`](hub.wiring.json) | HUB | CALIBRATE button; the UART USB port goes to the laptop |
+| [`one-hand-s1.wiring.json`](one-hand-s1.wiring.json) | one hand for S1-A / S1-B | the LEFT hand wiring under the S1 title |
 
-### LEFT hand
+The wiring files are generated by [`gen_wiring.py`](gen_wiring.py). Edit that, not
+the JSON.
+
+## How the breadboard is laid out
+
+- The DevKit's 3V3 (J1-1) and GND (J3-1) go to the bottom rails, next to the DevKit.
+  Two jumpers at the right end carry them to the top rails. On every board, + is
+  3V3 and - is GND.
+- Each circuit node has one column strip (rows a-e). The parts run from the strip
+  to a top rail, and one jumper from row e takes the node to its GPIO.
+- Strips fed from the J1 header (GPIO4/5/6/7) sit left of those fed from J3
+  (GPIO1/2), so the jumpers don't cross.
+- **Flex channel** (one per finger): the flex sensor from the + rail to the node,
+  then 47 kOhm and 100 nF as separate branches from the node to the - rail. The
+  sensor sits on the glove; its two leads come to the rail hole and node hole shown.
+- **Button** (ENABLE on LEFT, CALIBRATE on the hub): 10 kOhm from the + rail to
+  the GPIO7 node, 100 nF from the node to the - rail, and 1 kOhm from the node to a
+  second strip that holds the normally-open switch to the - rail.
+- The IMU breakout is wired with jumpers: VIN and GND from the bottom rails, SDA
+  and SCL straight to GPIO8 and GPIO9.
+
+`pinplanner check` reports no errors or warnings for any of the four files. That
+covers rail shorts, a part with both legs in one strip, and two leads in one hole.
+It is a drawing check, not an electrical test.
+
+## LEFT hand
 
 ![LEFT hand](left-hand.png)
 
-The same wiring as the one-hand bench above, as the LEFT hand of the full system
-([SVG](left-hand.svg)).
+([SVG](left-hand.svg))
 
-### RIGHT hand
+### Jumper and part table (LEFT)
+
+| # | wire | header pins | colour | tests |
+|---|---|---|---|---|
+| 1 | esp:3V3 -> bb:BP | esp:J1-1 -> bb:BP1 | red | LEFT 3V3 -> bottom + rail |
+| 2 | esp:GND -> bb:BN | esp:J3-1 -> bb:BN9 | black | LEFT GND -> bottom - rail |
+| 3 | bb:BP -> bb:TP | bb:BP50 -> bb:TP50 | red | bottom + rail -> top + rail |
+| 4 | bb:BN -> bb:TN | bb:BN50 -> bb:TN50 | black | bottom - rail -> top - rail |
+| 5 | bb:BP -> imu:VIN | bb:BP27 -> imu:JP4-1 | red | LEFT 3V3 -> IMU VIN |
+| 6 | bb:BN -> imu:GND | bb:BN29 -> imu:JP4-3 | black | LEFT GND -> IMU GND |
+| 7 | esp:GPIO8 <-> imu:SDA | esp:J1-12 <-> imu:JP4-5 | blue | I2C SDA <-> GPIO8 (breakout pull-ups) |
+| 8 | esp:GPIO9 -> imu:SCL | esp:J1-15 -> imu:JP4-4 | yellow | I2C SCL GPIO9 -> IMU (100 kHz) |
+| 9 | middle flex between bb:TP and bb:5a | bb:TP1 - bb:5a | part | LEFT 3V3 -> middle flex -> node |
+| 10 | 47k resistor between bb:5b and bb:TN | bb:5b - bb:TN5 | part | middle node -> 47k -> GND |
+| 11 | 100nF capacitor between bb:5d and bb:TN | bb:5d - bb:TN8 | part | middle node -> 100nF -> GND |
+| 12 | bb:5e -> esp:GPIO4 | bb:5e -> esp:J1-4 | purple | middle node -> GPIO4 (ADC1_CH3) |
+| 13 | ring flex between bb:TP and bb:14a | bb:TP9 - bb:14a | part | LEFT 3V3 -> ring flex -> node |
+| 14 | 47k resistor between bb:14b and bb:TN | bb:14b - bb:TN12 | part | ring node -> 47k -> GND |
+| 15 | 100nF capacitor between bb:14d and bb:TN | bb:14d - bb:TN15 | part | ring node -> 100nF -> GND |
+| 16 | bb:14e -> esp:GPIO5 | bb:14e -> esp:J1-5 | teal | ring node -> GPIO5 (ADC1_CH4) |
+| 17 | little flex between bb:TP and bb:23a | bb:TP16 - bb:23a | part | LEFT 3V3 -> little flex -> node |
+| 18 | 47k resistor between bb:23b and bb:TN | bb:23b - bb:TN20 | part | little node -> 47k -> GND |
+| 19 | 100nF capacitor between bb:23d and bb:TN | bb:23d - bb:TN23 | part | little node -> 100nF -> GND |
+| 20 | bb:23e -> esp:GPIO6 | bb:23e -> esp:J1-6 | pink | little node -> GPIO6 (ADC1_CH5) |
+| 21 | thumb flex between bb:TP and bb:45a | bb:TP35 - bb:45a | part | LEFT 3V3 -> thumb flex -> node |
+| 22 | 47k resistor between bb:45b and bb:TN | bb:45b - bb:TN38 | part | thumb node -> 47k -> GND |
+| 23 | 100nF capacitor between bb:45d and bb:TN | bb:45d - bb:TN41 | part | thumb node -> 100nF -> GND |
+| 24 | bb:45e -> esp:GPIO1 | bb:45e -> esp:J3-4 | orange | thumb node -> GPIO1 (ADC1_CH0) |
+| 25 | index flex between bb:TP and bb:54a | bb:TP42 - bb:54a | part | LEFT 3V3 -> index flex -> node |
+| 26 | 47k resistor between bb:54b and bb:TN | bb:54b - bb:TN45 | part | index node -> 47k -> GND |
+| 27 | 100nF capacitor between bb:54d and bb:TN | bb:54d - bb:TN49 | part | index node -> 100nF -> GND |
+| 28 | bb:54e -> esp:GPIO2 | bb:54e -> esp:J3-5 | green | index node -> GPIO2 (ADC1_CH1) |
+| 29 | 10k resistor between bb:TP and bb:33a | bb:TP25 - bb:33a | part | LEFT 3V3 -> 10k -> ENABLE node (pull-up) |
+| 30 | 100nF capacitor between bb:33b and bb:TN | bb:33b - bb:TN28 | part | ENABLE node -> 100nF -> GND (debounce) |
+| 31 | 1k resistor between bb:33d and bb:38d | bb:33d - bb:38d | part | ENABLE node -> 1k -> switch |
+| 32 | ENABLE button between bb:38a and bb:TN | bb:38a - bb:TN31 | part | normally-open ENABLE switch -> GND |
+| 33 | bb:33e -> esp:GPIO7 | bb:33e -> esp:J1-7 | lime | ENABLE node -> GPIO7, active low |
+
+## RIGHT hand
 
 ![RIGHT hand](right-hand.png)
 
-The LEFT hand without the ENABLE button: GPIO7 stays unconnected
+The LEFT hand without the ENABLE circuit: GPIO7 stays unconnected
 ([SVG](right-hand.svg)).
 
-### HUB
+## HUB
 
 ![HUB](hub.png)
 
-The CALIBRATE button on GPIO7, active low, using the same button block as ENABLE
-([SVG](hub.svg)). The laptop link is the DevKit's UART USB port: the on-board
-USB-to-UART bridge on UART0, 115200 baud, which also powers the hub. GPIO43 and
-GPIO44 are ringed because the bridge uses them, so don't wire them. The hub has
-no flex sensors and no motion sensor.
+The CALIBRATE circuit on a half breadboard ([SVG](hub.svg)). The laptop link is the
+DevKit's UART USB port: the on-board USB-to-UART bridge on UART0 at 115200 baud,
+which also powers the hub. GPIO43 and GPIO44 are ringed because the bridge uses
+them; do not wire them. The hub has no flex sensors and no motion sensor.
+
+## One hand on the bench: S1-A and S1-B
+
+`one-hand-s1.wiring.json` ([PNG](one-hand-s1.png), [SVG](one-hand-s1.svg)) is the
+LEFT hand wiring: the five flex channels (S1-A acquisition), the Adafruit #5543
+motion breakout whose resting orientation S1-B captures, and the ENABLE button.
+
+## Pins
 
 | function | pin | DevKit header |
 |---|---|---|
@@ -104,7 +114,10 @@ no flex sensors and no motion sensor.
 | middle / ring / little flex | GPIO4 / GPIO5 / GPIO6 (ADC1_CH3 / CH4 / CH5) | J1-4 / J1-5 / J1-6 |
 | ENABLE (LEFT only) / CALIBRATE (HUB only) | GPIO7, active low | J1-7 |
 | IMU SDA / SCL | GPIO8 / GPIO9 | J1-12 / J1-15 |
-| 3V3 / GND | own board | J1-1, J1-2 / J1-22, J3-1 |
+| 3V3 / GND | own board | J1-1 / J3-1 |
+
+Leave unconnected: GPIO10 (battery sense, reserved), the breakout's 3Vo and
+interrupt pins, GPIO19/20, GPIO43/44, and GPIO0/3/45/46.
 
 **Board variant:** the header positions are for a genuine DevKitC-1 (the BOM's
 N8R8 has the same headers as the N8R2). On the N8R8, GPIO35-37 go to octal
@@ -113,11 +126,13 @@ WROOM board has a different header and needs its own mapping.
 
 ## Re-rendering
 
-The parts (`flex-divider-47k`, `button-active-low-rc`, `adafruit-5543`) are in
-pinplanner main since simantic-dev/pinplanner#11. From a pinplanner checkout:
+Needs pinplanner main (breadboards and parts since simantic-dev/pinplanner#12).
+From this folder, then from a pinplanner checkout:
 
+    python3 gen_wiring.py
     node cli/pinplanner.ts check <this folder>/<name>.wiring.json
     node cli/pinplanner.ts svg   <this folder>/<name>.wiring.json -o <this folder>/<name>.svg
 
-The PNGs are the SVGs rendered in Chrome at 1800 px wide. `test/shot.mjs` in
-pinplanner does this when it is given a page that shows the SVG at 900 px.
+The PNGs are the SVGs rendered in Chrome at 1800 px wide. pinplanner's
+`test/shot.mjs` does this when it is given a page that shows the SVG at 900 px.
+`node cli/pinplanner.ts link <file>` opens a diagram in the pinplanner app.

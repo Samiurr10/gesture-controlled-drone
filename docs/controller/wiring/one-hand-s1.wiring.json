@@ -1,219 +1,246 @@
 {
   "version": 1,
   "title": "PalmPilot one hand on the bench (S1-A acquisition, S1-B calibration)",
-  "notes": "PalmPilot LEFT hand, bench plan. Pins match PalmPilot CLAUDE.md section 2 and docs/controller/build-guide.md; not checked on hardware. Own-board 3V3/GND only; never join supplies across boards. Flex blocks stand for flex + 47k + 100nF; button block for 10k / 100nF / 1k + NO switch. IMU: leave 3Vo, INT1/INT2/INTM/DRDY and the address pads unconnected. GPIO10 is reserved for battery sense: leave it disconnected. Do not use GPIO0/3/45/46 (strapping), GPIO19/20 (native USB), GPIO43/44 (UART0 bridge). ENABLE on GPIO7 is LEFT only.",
+  "notes": "PalmPilot LEFT hand, bench plan on a full breadboard. Pins match PalmPilot CLAUDE.md section 2 and docs/controller/build-guide.md; not checked on hardware. + rails = this board's 3V3, - rails = its GND; the right-end jumpers join the bottom rails to the top ones. Never join supplies across boards. The flex sensors sit on the glove: their two leads come to the rail hole and the node hole shown. IMU: leave 3Vo, INT1/INT2/INTM/DRDY and the address pads unconnected. Do not use GPIO0/3/45/46 (strapping), GPIO19/20 (native USB), GPIO43/44 (UART0 bridge). GPIO10 is reserved for battery sense: leave it disconnected. ENABLE on GPIO7 is LEFT only.",
   "parts": [
+    {
+      "id": "bb",
+      "board": "breadboard-full",
+      "x": 0,
+      "y": 0
+    },
     {
       "id": "esp",
       "board": "esp32-s3-devkitc-1",
-      "x": 0,
-      "y": 0,
+      "x": 4,
+      "y": 62,
       "label": "LEFT hand ESP32-S3-DevKitC-1"
-    },
-    {
-      "id": "thumb",
-      "board": "flex-divider-47k",
-      "x": 38,
-      "y": 4,
-      "label": "LEFT thumb flex"
-    },
-    {
-      "id": "index",
-      "board": "flex-divider-47k",
-      "x": 38,
-      "y": 26,
-      "label": "LEFT index flex"
-    },
-    {
-      "id": "middle",
-      "board": "flex-divider-47k",
-      "x": -80,
-      "y": 0,
-      "label": "LEFT middle flex"
-    },
-    {
-      "id": "ring",
-      "board": "flex-divider-47k",
-      "x": -80,
-      "y": 22,
-      "label": "LEFT ring flex"
-    },
-    {
-      "id": "little",
-      "board": "flex-divider-47k",
-      "x": -80,
-      "y": 44,
-      "label": "LEFT little flex"
     },
     {
       "id": "imu",
       "board": "adafruit-5543",
-      "x": -58,
-      "y": 90,
+      "x": 82,
+      "y": 68,
       "label": "LEFT Adafruit #5543 (0x6A / 0x1C)"
-    },
-    {
-      "id": "button",
-      "board": "button-active-low-rc",
-      "x": -80,
-      "y": 66,
-      "label": "LEFT ENABLE button (active low)"
     }
   ],
   "connections": [
     {
-      "from": "thumb:SIG",
-      "to": "esp:GPIO1",
-      "color": "orange",
-      "label": "thumb flex -> GPIO1 (ADC1_CH0)",
-      "bend": 5.6
-    },
-    {
-      "from": "esp:J1-2",
-      "to": "thumb:3V3",
+      "from": "esp:J1-1",
+      "to": "bb:BP1",
       "color": "red",
-      "label": "LEFT 3V3 -> thumb flex",
-      "bend": -14
+      "label": "LEFT 3V3 -> bottom + rail"
     },
     {
       "from": "esp:J3-1",
-      "to": "thumb:GND",
+      "to": "bb:BN9",
       "color": "black",
-      "label": "thumb 47k + 100nF -> LEFT GND",
-      "bend": 5.8
+      "label": "LEFT GND -> bottom - rail"
     },
     {
-      "from": "index:SIG",
-      "to": "esp:GPIO2",
-      "color": "green",
-      "label": "index flex -> GPIO2 (ADC1_CH1)",
-      "bend": -5.6
-    },
-    {
-      "from": "esp:J1-2",
-      "to": "index:3V3",
+      "from": "bb:BP50",
+      "to": "bb:TP50",
       "color": "red",
-      "label": "LEFT 3V3 -> index flex",
-      "bend": -14
+      "label": "bottom + rail -> top + rail"
     },
     {
-      "from": "esp:J3-1",
-      "to": "index:GND",
+      "from": "bb:BN50",
+      "to": "bb:TN50",
       "color": "black",
-      "label": "index 47k + 100nF -> LEFT GND",
-      "bend": 6.3
+      "label": "bottom - rail -> top - rail"
     },
     {
-      "from": "middle:SIG",
-      "to": "esp:GPIO4",
-      "color": "purple",
-      "label": "middle flex -> GPIO4 (ADC1_CH3)",
-      "bend": -8.5
-    },
-    {
-      "from": "esp:J1-1",
-      "to": "middle:3V3",
-      "color": "red",
-      "label": "LEFT 3V3 -> middle flex",
-      "bend": 8.7
-    },
-    {
-      "from": "esp:J1-22",
-      "to": "middle:GND",
-      "color": "black",
-      "label": "middle 47k + 100nF -> LEFT GND",
-      "bend": 10
-    },
-    {
-      "from": "ring:SIG",
-      "to": "esp:GPIO5",
-      "color": "teal",
-      "label": "ring flex -> GPIO5 (ADC1_CH4)",
-      "bend": 8.4
-    },
-    {
-      "from": "esp:J1-1",
-      "to": "ring:3V3",
-      "color": "red",
-      "label": "LEFT 3V3 -> ring flex",
-      "bend": -8.8
-    },
-    {
-      "from": "esp:J1-22",
-      "to": "ring:GND",
-      "color": "black",
-      "label": "ring 47k + 100nF -> LEFT GND",
-      "bend": 9.2
-    },
-    {
-      "from": "little:SIG",
-      "to": "esp:GPIO6",
-      "color": "pink",
-      "label": "little flex -> GPIO6 (ADC1_CH5)",
-      "bend": 8.9
-    },
-    {
-      "from": "esp:J1-1",
-      "to": "little:3V3",
-      "color": "red",
-      "label": "LEFT 3V3 -> little flex",
-      "bend": -9.8
-    },
-    {
-      "from": "esp:J1-22",
-      "to": "little:GND",
-      "color": "black",
-      "label": "little 47k + 100nF -> LEFT GND",
-      "bend": 8.2
-    },
-    {
-      "from": "esp:J1-2",
+      "from": "bb:BP27",
       "to": "imu:VIN",
       "color": "red",
-      "label": "LEFT 3V3 -> IMU VIN",
-      "bend": -16
+      "label": "LEFT 3V3 -> IMU VIN"
     },
     {
-      "from": "esp:J1-22",
+      "from": "bb:BN29",
       "to": "imu:GND",
       "color": "black",
-      "label": "LEFT GND -> IMU GND",
-      "bend": -16
+      "label": "LEFT GND -> IMU GND"
     },
     {
       "from": "esp:GPIO8",
       "to": "imu:SDA",
       "color": "blue",
-      "label": "I2C SDA <-> GPIO8 (breakout pull-ups)",
-      "bend": -16
+      "label": "I2C SDA <-> GPIO8 (breakout pull-ups)"
     },
     {
       "from": "esp:GPIO9",
       "to": "imu:SCL",
       "color": "yellow",
-      "label": "I2C SCL GPIO9 -> IMU (100 kHz)",
-      "bend": -16
+      "label": "I2C SCL GPIO9 -> IMU (100 kHz)"
     },
     {
-      "from": "button:OUT",
+      "from": "bb:TP1",
+      "to": "bb:5a",
+      "component": "flex",
+      "value": "middle",
+      "label": "LEFT 3V3 -> middle flex -> node"
+    },
+    {
+      "from": "bb:5b",
+      "to": "bb:TN5",
+      "component": "resistor",
+      "value": "47k",
+      "label": "middle node -> 47k -> GND"
+    },
+    {
+      "from": "bb:5d",
+      "to": "bb:TN8",
+      "component": "capacitor",
+      "value": "100nF",
+      "label": "middle node -> 100nF -> GND"
+    },
+    {
+      "from": "bb:5e",
+      "to": "esp:GPIO4",
+      "color": "purple",
+      "label": "middle node -> GPIO4 (ADC1_CH3)"
+    },
+    {
+      "from": "bb:TP9",
+      "to": "bb:14a",
+      "component": "flex",
+      "value": "ring",
+      "label": "LEFT 3V3 -> ring flex -> node"
+    },
+    {
+      "from": "bb:14b",
+      "to": "bb:TN12",
+      "component": "resistor",
+      "value": "47k",
+      "label": "ring node -> 47k -> GND"
+    },
+    {
+      "from": "bb:14d",
+      "to": "bb:TN15",
+      "component": "capacitor",
+      "value": "100nF",
+      "label": "ring node -> 100nF -> GND"
+    },
+    {
+      "from": "bb:14e",
+      "to": "esp:GPIO5",
+      "color": "teal",
+      "label": "ring node -> GPIO5 (ADC1_CH4)"
+    },
+    {
+      "from": "bb:TP16",
+      "to": "bb:23a",
+      "component": "flex",
+      "value": "little",
+      "label": "LEFT 3V3 -> little flex -> node"
+    },
+    {
+      "from": "bb:23b",
+      "to": "bb:TN20",
+      "component": "resistor",
+      "value": "47k",
+      "label": "little node -> 47k -> GND"
+    },
+    {
+      "from": "bb:23d",
+      "to": "bb:TN23",
+      "component": "capacitor",
+      "value": "100nF",
+      "label": "little node -> 100nF -> GND"
+    },
+    {
+      "from": "bb:23e",
+      "to": "esp:GPIO6",
+      "color": "pink",
+      "label": "little node -> GPIO6 (ADC1_CH5)"
+    },
+    {
+      "from": "bb:TP35",
+      "to": "bb:45a",
+      "component": "flex",
+      "value": "thumb",
+      "label": "LEFT 3V3 -> thumb flex -> node"
+    },
+    {
+      "from": "bb:45b",
+      "to": "bb:TN38",
+      "component": "resistor",
+      "value": "47k",
+      "label": "thumb node -> 47k -> GND"
+    },
+    {
+      "from": "bb:45d",
+      "to": "bb:TN41",
+      "component": "capacitor",
+      "value": "100nF",
+      "label": "thumb node -> 100nF -> GND"
+    },
+    {
+      "from": "bb:45e",
+      "to": "esp:GPIO1",
+      "color": "orange",
+      "label": "thumb node -> GPIO1 (ADC1_CH0)"
+    },
+    {
+      "from": "bb:TP42",
+      "to": "bb:54a",
+      "component": "flex",
+      "value": "index",
+      "label": "LEFT 3V3 -> index flex -> node"
+    },
+    {
+      "from": "bb:54b",
+      "to": "bb:TN45",
+      "component": "resistor",
+      "value": "47k",
+      "label": "index node -> 47k -> GND"
+    },
+    {
+      "from": "bb:54d",
+      "to": "bb:TN49",
+      "component": "capacitor",
+      "value": "100nF",
+      "label": "index node -> 100nF -> GND"
+    },
+    {
+      "from": "bb:54e",
+      "to": "esp:GPIO2",
+      "color": "green",
+      "label": "index node -> GPIO2 (ADC1_CH1)"
+    },
+    {
+      "from": "bb:TP25",
+      "to": "bb:33a",
+      "component": "resistor",
+      "value": "10k",
+      "label": "LEFT 3V3 -> 10k -> ENABLE node (pull-up)"
+    },
+    {
+      "from": "bb:33b",
+      "to": "bb:TN28",
+      "component": "capacitor",
+      "value": "100nF",
+      "label": "ENABLE node -> 100nF -> GND (debounce)"
+    },
+    {
+      "from": "bb:33d",
+      "to": "bb:38d",
+      "component": "resistor",
+      "value": "1k",
+      "label": "ENABLE node -> 1k -> switch"
+    },
+    {
+      "from": "bb:38a",
+      "to": "bb:TN31",
+      "component": "button",
+      "value": "ENABLE",
+      "label": "normally-open ENABLE switch -> GND"
+    },
+    {
+      "from": "bb:33e",
       "to": "esp:GPIO7",
       "color": "lime",
-      "label": "ENABLE -> GPIO7, active low (10k pull-up)",
-      "bend": 9.9
-    },
-    {
-      "from": "esp:J1-1",
-      "to": "button:3V3",
-      "color": "red",
-      "label": "LEFT 3V3 -> 10k pull-up",
-      "bend": -10
-    },
-    {
-      "from": "esp:J1-22",
-      "to": "button:GND",
-      "color": "black",
-      "label": "100nF + switch -> LEFT GND",
-      "bend": -8.1
+      "label": "ENABLE node -> GPIO7, active low"
     }
   ]
 }
