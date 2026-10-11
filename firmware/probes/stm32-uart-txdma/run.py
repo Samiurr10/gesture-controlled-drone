@@ -18,7 +18,7 @@ load()
 from Antmicro.Renode.Core import EmulationManager  # noqa: E402
 from System import Action, Byte  # noqa: E402
 from simantic import Sim  # noqa: E402
-from harness import load_overlay  # noqa: E402
+from harness import accept_repl_files, load_overlay  # noqa: E402
 
 text = (ROOT / "tmp/simantic/platform/STM32F446RE-0.5.20.repl").read_text()
 text += (HERE / "usart2-txdma.repl-frag").read_text()
@@ -31,7 +31,9 @@ repl.parent.mkdir(parents=True, exist_ok=True)
 repl.write_text(text)
 
 out = bytearray()
-with Sim(repl=repl, elf=HERE / "uart_txdma.elf", uart="usart2") as sim:
+accept_repl_files()
+with Sim(scenario={"machines": {"m": {"mcu": str(repl), "elf": str(HERE / "uart_txdma.elf")}}},
+         machine="m", uart="usart2") as sim:
     machine = list(EmulationManager.Instance.CurrentEmulation.Machines)[0]
     uart = machine["sysbus.usart2"]
     uart.GetType().GetEvent("CharReceived").AddEventHandler(uart, Action[Byte](lambda b: out.append(int(b))))

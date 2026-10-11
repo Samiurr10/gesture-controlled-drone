@@ -12,7 +12,7 @@ import re
 import sys
 from pathlib import Path
 
-from harness import build_platform
+from harness import accept_repl_files, build_platform
 
 ROOT = Path(__file__).resolve().parents[3]
 BUILD = ROOT / "tmp/palmpilot"
@@ -31,13 +31,14 @@ from simantic import Sim  # noqa: E402
 out = BUILD / "ble2link-run"
 platform = Path(os.environ["PALMPILOT_PLATFORM"])
 machines = {
-    name: {"repl": str(build_platform(platform, out, mac=mac, name=f"{name}.repl")),
+    name: {"mcu": str(build_platform(platform, out, mac=mac, name=f"{name}.repl")),
            "elf": str(BUILD / build / "sim.elf")}
     for name, (build, mac) in MACHINES.items()
 }
 scenario = {"machines": machines,
             "media": [{"type": "ble", "connect": [f"{n}.radio" for n in machines]}]}
 
+accept_repl_files()
 with Sim(scenario=scenario, machine="central", uart="uart0") as sim:
     from Antmicro.Renode.Core import EmulationManager
     from System import Action, Byte
