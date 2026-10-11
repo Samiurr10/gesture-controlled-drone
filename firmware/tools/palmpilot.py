@@ -25,8 +25,10 @@ import argparse
 import hashlib
 import os
 import shlex
+import signal
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -92,6 +94,73 @@ def build_dir(env: dict, app: Path) -> Path:
 def run(cmd: list[str], env: dict) -> None:
     print(f"+ {shlex.join(str(c) for c in cmd)}", flush=True)
     if subprocess.run(cmd, cwd=ROOT, env=env).returncode != 0:
+        sys.exit("command failed")
+
+
+# Limits on a simulation run. A healthy run keeps at least one core busy; the engine's
+# lock-order deadlock (renode-infrastructure#340) leaves it near 0% CPU with no progress.
+MAX_WALL_S = float(os.environ.get("PALMPILOT_MAX_WALL_S", "3600"))
+STALL_S = float(os.environ.get("PALMPILOT_STALL_S", "120"))
+STALL_CPU = 0.05                    # fraction of one core, averaged over STALL_S
+
+
+def _cpu_seconds(pid: int) -> float | None:
+    out = subprocess.run(["ps", "-o", "time=", "-p", str(pid)], capture_output=True, text=True).stdout.strip()
+    if not out:
+        return None
+    days, _, clock = out.rpartition("-")
+    parts = [float(x) for x in clock.split(":")]
+    while len(parts) < 3:
+        parts.insert(0, 0.0)
+    return (float(days) if days else 0.0) * 86400 + parts[0] * 3600 + parts[1] * 60 + parts[2]
+
+
+def _dump_stacks(pid: int, env: dict) -> None:
+    """Managed stacks of a stalled engine, next to the run's other output."""
+    tool = ROOT / "tmp/dotnet-tools/dotnet-stack"
+    if not tool.exists():
+        return
+    out = Path(env.get("PALMPILOT_OUT", env["PALMPILOT_BUILD_ROOT"])) / "stall-stacks.txt"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w") as f:
+        subprocess.run([str(tool), "report", "-p", str(pid)], stdout=f, stderr=subprocess.STDOUT, timeout=120,
+                       env=dict(env, DOTNET_ROOT=str(ROOT / "tmp/simantic/dotnet-sdk")))
+    print(f"engine stacks saved to {out}", flush=True)
+
+
+def run_sim(cmd: list[str], env: dict) -> None:
+    """run(), but killed when it stalls (under STALL_CPU of a core for STALL_S) or passes MAX_WALL_S."""
+    print(f"+ {shlex.join(str(c) for c in cmd)}", flush=True)
+    child = subprocess.Popen(cmd, cwd=ROOT, env=env, start_new_session=True)
+    start = time.monotonic()
+    window = (start, 0.0)
+    reason = None
+    while child.poll() is None:
+        try:
+            child.wait(timeout=5)
+            break
+        except subprocess.TimeoutExpired:
+            pass
+        now, cpu = time.monotonic(), _cpu_seconds(child.pid)
+        if cpu is None:
+            continue
+        if now - start > MAX_WALL_S:
+            reason = f"TIMED OUT after {MAX_WALL_S:.0f} s wall"
+        elif now - window[0] >= STALL_S:
+            if (cpu - window[1]) / (now - window[0]) < STALL_CPU:
+                reason = f"STALLED: under {STALL_CPU:.0%} of a core for {now - window[0]:.0f} s"
+                _dump_stacks(child.pid, env)
+            window = (now, cpu)
+        if reason:
+            print(reason, flush=True)
+            os.killpg(child.pid, signal.SIGTERM)
+            try:
+                child.wait(timeout=20)
+            except subprocess.TimeoutExpired:
+                os.killpg(child.pid, signal.SIGKILL)
+                child.wait()
+            sys.exit(reason)
+    if child.returncode != 0:
         sys.exit("command failed")
 
 
@@ -174,7 +243,7 @@ def cmd_sim(env: dict, app: Path, script: str, extra: list[str]) -> None:
     child = dict(env, PALMPILOT_APP=str(app), PALMPILOT_SIM_ELF=str(sim_elf),
                  PALMPILOT_OUT=str(build_dir(env, app)),
                  PYTHONPATH=str(ROOT / "firmware/tools") + os.pathsep + env.get("PYTHONPATH", ""))
-    run([env["PALMPILOT_SIM_PYTHON"], str(Path(script).resolve()), *extra], child)
+    run_sim([env["PALMPILOT_SIM_PYTHON"], str(Path(script).resolve()), *extra], child)
 
 
 SYSTEM_APPS = {"LEFT": "hand:left", "RIGHT": "hand:right", "HUB": "hub"}
@@ -191,7 +260,7 @@ def cmd_system(env: dict, script: str, extra: list[str], build: bool, replay: bo
             cmd_build(env, app)
             cmd_pack(env, app)
         child[f"PALMPILOT_{role}_ELF"] = str(fresh_sim_elf(env, app))
-    run([env["PALMPILOT_SIM_PYTHON"], str(Path(script).resolve()), *extra], child)
+    run_sim([env["PALMPILOT_SIM_PYTHON"], str(Path(script).resolve()), *extra], child)
 
 
 def main() -> None:
