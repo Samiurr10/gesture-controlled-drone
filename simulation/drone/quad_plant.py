@@ -32,13 +32,21 @@ R = ARM_M / math.sqrt(2)
 # (x, y, yaw sign) per motor; CCW props push the body clockwise seen from above (+yaw).
 MOTORS = ((R, R, 1), (-R, -R, 1), (R, -R, -1), (-R, R, -1))
 
-# Matek F405-Wing hwdef: PWM1 PB7 TIM4_CH2, PWM2 PB6 TIM4_CH1, PWM3 PB0 TIM3_CH3, PWM4 PB1 TIM3_CH4.
-TIM3, TIM4 = 0x40000400, 0x40000800
+# Motor outputs 1-4 as (timer base, channel), and the timer clock the firmware programs PSC for.
+# PALMPILOT_DRONE picks the flight controller.
+BOARDS = {
+    # Matek F405-Wing hwdef: PWM1 PB7 TIM4_CH2, PWM2 PB6 TIM4_CH1, PWM3 PB0 TIM3_CH3, PWM4 PB1 TIM3_CH4.
+    # APB1 timers: 168 MHz SYSCLK, APB1 /4, x2.
+    "f405": (((0x40000800, 2), (0x40000800, 1), (0x40000400, 3), (0x40000400, 4)), 84_000_000),
+    # Pixhawk6X hwdef, FMU outputs with BRD_IO_ENABLE 0: PWM1-4 = TIM5 CH4, CH3, CH2, CH1.
+    # ArduPilot runs this H743 at 400 MHz: APB1 timers at 200 MHz.
+    "h7": (((0x40000C00, 4), (0x40000C00, 3), (0x40000C00, 2), (0x40000C00, 1)), 200_000_000),
+}
+MOTOR_CHANNELS, TIMER_CLOCK_HZ = BOARDS[os.environ.get("PALMPILOT_DRONE", "h7")]
 PSC, CCR1 = 0x28, 0x34
-MOTOR_CHANNELS = ((TIM4, 2), (TIM4, 1), (TIM3, 3), (TIM3, 4))
-TIMER_CLOCK_HZ = 84_000_000           # APB1 timers: 168 MHz SYSCLK, APB1 /4, x2
 BUS_READ = None                       # set by the harness when a peer ctx has no bus_read
 SD_CARD = None                        # sd_card.py's card, when the board has one
+BARO_SET = None                       # pressure (Pa) -> a built-in barometer model; set by the harness
 
 
 def _mul(q, r):
@@ -82,6 +90,7 @@ class Plant:
         self.on_ground = True
         self.last_us = None
         self.samples = 0
+        self.last_log_us = -50_000
         self.imu_drops = 0            # samples the IMU FIFO had no room for
         self.log = []                 # (t_s, pos, vel, roll, pitch, yaw, pulses)
 
@@ -104,7 +113,8 @@ class Plant:
         for _ in range(steps):
             self._step(dt / steps)
         self.samples += 1
-        if self.samples % 50 == 0:    # 20 Hz at the IMU's 1 kHz
+        if now_us - self.last_log_us >= 50_000:    # 20 Hz
+            self.last_log_us = now_us
             self.log.append((now_us / 1e6, tuple(self.pos), tuple(self.vel), *self.euler_deg(),
                              tuple(round(p) for p in self.pulses)))
 

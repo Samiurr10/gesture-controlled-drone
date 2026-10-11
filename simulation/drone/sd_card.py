@@ -1,9 +1,9 @@
 # The board's microSD card, kept reachable so a harness can save the card image
 # (ArduPilot's dataflash logs) after a run: quad_plant.SD_CARD.save(path).
-import _matek_peers
+import _board_peers
 import quad_plant
 
-_base = _matek_peers.load("sd_spi")
+_base = _board_peers.load("sd_spi")
 
 
 class Slave(_base.Slave):

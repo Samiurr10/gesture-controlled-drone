@@ -8,9 +8,9 @@ the hub links them over BLE, the bridge sends its commands to stock ArduCopter
 4.7.1 as RC overrides, and quad_plant flies the airframe from ArduCopter's motor
 pulses, feeding the motion back to the flight controller's IMU and barometer.
 
-Bench setup a real first flight would also need, done here over MAVLink by the
-host: frame = quad X, arming checks skipped (the board model has no compass and
-no accelerometer calibration), AltHold, arm. ENABLE is permission, not arming.
+Bench setup a real first flight would also need, done over MAVLink by the host
+(ControllerSim.setup_drone), then AltHold and arm. ENABLE is permission, not arming.
+PALMPILOT_DRONE picks the flight controller: h7 (Pixhawk 6X) or f405 (Matek F405-Wing).
 """
 import math
 import os
@@ -21,7 +21,6 @@ from pymavlink.dialects.v20 import ardupilotmega as mavlink
 
 EXTENDED_UV, CURLED_UV = 2154000, 1055000
 FINGERS = ["index", "middle", "ring", "little"]
-SKIP_ALL = 0xFFFFE
 ALT_HOLD = 2
 TILT = 16384 // 2
 PLANT = quad_plant.PLANT
@@ -29,7 +28,7 @@ PLANT = quad_plant.PLANT
 
 # PALMPILOT_FLIGHT_PARAMS: a .parm file (e.g. ArduPilot's SITL copter.parm) applied before
 # the reboot; sensor and simulator settings that do not apply to this board are skipped.
-SKIP_PREFIXES = ("SIM_", "COMPASS_", "GPS", "SERIAL", "ARSPD_", "FENCE_", "BATT_", "FLTMODE", "FRAME_", "RC7_OPTION")
+SKIP_PREFIXES = ("SIM_", "COMPASS_", "GPS", "SERIAL", "ARSPD_", "FENCE_", "BATT_", "FLTMODE", "FRAME_", "RC7_OPTION", "BRD_")
 
 
 def flight_params():
@@ -40,7 +39,7 @@ def flight_params():
     for line in Path(path).read_text().splitlines():
         parts = line.split()
         if len(parts) >= 2 and not line.startswith("#") and not parts[0].startswith(SKIP_PREFIXES):
-            out.append((parts[0].encode(), float(parts[1])))
+            out.append((parts[0], float(parts[1])))
     return out
 
 
@@ -57,13 +56,6 @@ def mav(fn):
 def command(cmd, *params):
     params = list(params) + [0] * (7 - len(params))
     mav(lambda m: m.command_long_encode(1, 1, cmd, 0, *params))
-
-
-def standby(sim, limit=25):
-    rc_link.heartbeat = None
-    start = sim.time()
-    while not (rc_link.heartbeat and rc_link.heartbeat["system_status"] in (3, 4)) and sim.time() - start < limit:
-        sim.run_for(0.5)
 
 
 def texts(since):
@@ -98,21 +90,10 @@ def main():
         sim.wait_linked(timeout=5.0)
         for hand in ("left", "right"):
             print(f"{hand} calibration:", sim.calibrate(hand, EXTENDED_UV, CURLED_UV)["reason"])
-        standby(sim)
-        for name, value, kind in ((b"FRAME_CLASS", 1, mavlink.MAV_PARAM_TYPE_INT8), (b"FRAME_TYPE", 1, mavlink.MAV_PARAM_TYPE_INT8),
-                                  (b"ARMING_SKIPCHK", SKIP_ALL, mavlink.MAV_PARAM_TYPE_INT32),
-                                  # The bridge holds ch5 at 1500 us; as a mode switch it would force mode slot 3.
-                                  (b"FLTMODE_CH", 0, mavlink.MAV_PARAM_TYPE_INT8)):
-            mav(lambda m, n=name, v=value, k=kind: m.param_set_encode(1, 1, n, v, k))
         extra = flight_params()
-        for name, value in extra:
-            mav(lambda m, n=name, v=value: m.param_set_encode(1, 1, n, v, mavlink.MAV_PARAM_TYPE_REAL32))
-        print(f"airframe: {type(PLANT.airframe).__name__ if PLANT.airframe else 'quad_plant 1 kg'}; "
-              f"extra parameters: {len(extra)}")
-        sim.run_for(1.0)
-        command(mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN, 1)
-        sim.run_for(1.0)
-        standby(sim)
+        print(f"drone: {os.environ.get('PALMPILOT_DRONE', 'h7')}; airframe: "
+              f"{type(PLANT.airframe).__name__ if PLANT.airframe else 'quad_plant 1 kg'}; extra parameters: {len(extra)}")
+        sim.setup_drone(extra)
         sim.run_for(6.0)                  # EKF alignment
         seen = texts(0)
         command(mavlink.MAV_CMD_SET_MESSAGE_INTERVAL, mavlink.MAVLINK_MSG_ID_ATTITUDE, 50_000)
@@ -181,7 +162,7 @@ def main():
         sim.save("flight_log.json", {
             "arm_at_s": arm_at,
             "airframe": type(PLANT.airframe).__name__ if PLANT.airframe else "quad_plant",
-            "scope": "quad_plant PROVISIONAL airframe; ArduCopter 4.7.1 MatekF405-Wing, AltHold; hands simulated",
+            "scope": f"quad_plant PROVISIONAL airframe; ArduCopter 4.7.1 on {os.environ.get('PALMPILOT_DRONE', 'h7')}, AltHold; hands simulated",
             "columns": ["t_s", "pos_ned_m", "vel_ned_mps", "roll_deg", "pitch_deg", "yaw_deg", "motor_us"],
             "log": PLANT.log,
             "hub_commands": sim.commands(),

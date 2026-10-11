@@ -4,7 +4,7 @@ import math
 import os
 import random
 
-import _matek_peers
+import _board_peers
 import quad_plant
 
 # ICM-42688-P datasheet noise densities, over the 1 kHz output's ~500 Hz bandwidth.
@@ -13,7 +13,7 @@ GYRO_NOISE_DPS = 0.0028 * math.sqrt(500)
 ACCEL_NOISE_G = 70e-6 * math.sqrt(500)
 _noise = random.Random(42) if os.environ.get("PALMPILOT_IMU_NOISE", "1") != "0" else None
 
-_base = _matek_peers.load("icm42688")
+_base = _board_peers.load("icm42688")
 
 
 class Slave(_base.Slave):
