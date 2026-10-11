@@ -76,8 +76,8 @@ Hands share nothing but BLE. Never join supplies across boards.
 |---|---|
 | Framework | **ESP-IDF v5.5.2** |
 | Compiler | xtensa-esp-elf-gcc **14.2.0** (crosstool-NG esp-14.2.0_20251107) |
-| Simantic CLI/engine | **0.6.3** (0.5.20, 0.5.14 and 0.5.7 kept in `tmp/simantic/runtime/engine/` for comparison runs) |
-| Simantic Python SDK | **0.3.1** |
+| Simantic CLI/engine | **0.6.6** (older engines kept in `tmp/simantic/runtime/engine/` for comparison runs) |
+| Simantic Python SDK | **0.4.0** (no `repl=`: `harness.accept_repl_files()` takes a .repl path as `mcu`) |
 | IDF python env | 3.12.14 |
 | Config | UART0 @115200, `FREERTOS_UNICORE=y`, no PSRAM, DIO 40 MHz, 4 MB layout |
 
@@ -96,13 +96,14 @@ IDF_TOOLS_PATH       tmp/simantic/esp-idf-tools
 IDF_PYTHON_ENV_PATH  tmp/simantic/esp-idf-python
 Xtensa toolchain     tmp/simantic/audit/esp32s3/toolchain/xtensa-esp-elf/bin
 SIMANTIC_HOME        tmp/simantic/runtime
-SIMANTIC_ENGINE_DIR  tmp/simantic/runtime/engine/0.6.3
-Platform .repl       tmp/simantic/platform/ESP32-S3-WROOM-1-N8R2-0.6.3.repl  (stock)
-Drone platform       tmp/simantic/platform/STM32F405RG-0.6.3.repl + Matek board from
+SIMANTIC_ENGINE_DIR  tmp/simantic/runtime/engine/0.6.6
+Platform .repl       tmp/simantic/platform/ESP32-S3-WROOM-1-N8R2-0.6.6.repl  (stock)
+Drone platform       PALMPILOT_DRONE=h7 (default): Pixhawk6X-0.6.6.repl + sim-fixtures pixhawk6x board;
+                     f405: STM32F405RG-0.6.6.repl + Matek board; both boards from
                      tmp/simantic/sim-fixtures (private checkout, not copied into this repo)
 ArduCopter ELF       tmp/drone/matekf405-wing-arducopter.elf (simulation/drone/fetch_arducopter.sh)
 ESP32-S3 mask ROM    tmp/simantic/esp-idf-tools/esp32s3_rev0_rom.bin
-Model candidates     tmp/simantic/upstream-candidates/{ble-radio,rng-reset,stm32-uart-tx-dma}/  built from
+Model candidates     tmp/simantic/upstream-candidates/rng-reset/  built from
                      simulation/simantic/model-candidates/ (committed; see its README)
 RISC-V toolchain     tmp/simantic/esp-idf-tools/tools/riscv32-esp-elf  (C3/C6/P4 probe only)
 C3/C6 mask ROMs      tmp/simantic/roms  (SHA-256 pinned as in the CLI)
@@ -120,10 +121,10 @@ re-deriving these paths.
 2. `esptool merge_bin` @ `0x0 / 0x8000 / 0x10000` → flash image
 3. `esp32s3_build_image.py --rom <mask rom> --flash <flash.bin> --out sim.elf`
    (packs IROM @0x40000000, DROM @0x3FF00000, flash @0x30000000, entry 0x40000400)
-4. `Sim(repl=..., elf=sim.elf, uart='uart0')` on the stock platform, with the
-   model candidates in `simulation/simantic/model-candidates/` loaded for every
-   run (env.sh): BLE radio (#270), RNG (#271) and STM32 UART TX DMA, none
-   released yet. SYSTIMER (#257) and S3 MWDT (#258) shipped in 0.5.15+.
+4. `Sim(scenario=...)` with the .repl path as the machine's `mcu` (accept_repl_files), on
+   the stock platform with the RNG model candidate (#271, unreleased) loaded for every run
+   (env.sh). SYSTIMER (#257) and S3 MWDT (#258) shipped in 0.5.15; BLE radio (#270) and
+   STM32 UART TX DMA (#325) in 0.6.6.
    The whole controller runs as three machines (`palmpilot.py system`), each
    with its own factory MAC in eFuse. Without one, all three chips share one
    Bluetooth address.
@@ -144,7 +145,7 @@ commits that introduced each result.
 | ADC1 one-shot, public `esp_adc` driver | **WORKS, stock 0.5.14** | calibrated mV within ±5 mV of injection on all five flex channels |
 | `esp_timer` (SYSTIMER-backed) | **WORKS** | create/start/stop/delete; periodic callbacks fire |
 | **FreeRTOS tick (SYSTIMER)** | **WORKS on stock 0.5.20 (#257 shipped); broken on 0.5.14** | stock `ESP32C3_Systimer` re-arms the periodic tick on every `CONF` write of `TARGET0_WORK_EN=1`; IDF rewrites it unchanged on every esp_timer re-arm, so the hand app's 100 Hz esp_timer froze `xTickCount` at 2 (tick-driven waits and NVS erase block forever). With the candidate: exactly 100 Hz, one tick per ISR. This was the cause of "task delay runs long". Same bug and fix on ESP32-C3 and ESP32-P4 firmware (systick probe, now in git history). Still pace periodic work with `esp_timer` |
-| Xtensa FPU | **WORKS on 0.6.3** | aborted the engine on 0.5.7 at the first FPU instruction; the fpu probe (git history) ran int/float conversion, divide, multiply, compare and print correctly in app_main and a task on 2026-10-08 |
+| Xtensa FPU | **WORKS on 0.6.3 and later** | aborted the engine on 0.5.7 at the first FPU instruction; the fpu probe (git history) ran int/float conversion, divide, multiply, compare and print correctly in app_main and a task on 2026-10-08 |
 | GPIO1/2/4/5/6/7 digital input | **WORKS** | register-level injection followed |
 | I2C0 via `i2c_master` driver | **WORKS** | LSM6DS3TR-C + LIS3MDL fixtures pass identity, config, status gating and burst reads. GPIO-matrix routing is NOT modeled, so SDA/SCL pin choice is untested |
 | Scripted I2C/SPI slaves in Python | **WORKS** | `I2C.ScriptedI2cSlave` with a `file:` in the `.repl` |
@@ -156,10 +157,11 @@ commits that introduced each result.
 | Task watchdog (TWDT) | **WORKS on stock 0.5.20 (#258 + mcu-lib #229 shipped)** | the mwdt probe (git history) 14/14 (stage-0 interrupt at 200.015 ms for 200 ms on both groups, feed, write-protect, system reset with reasons 7/8); S1-H trips. Stock 0.5.14 never fires: `ESP32S3_Timg` leaves MWDT store-only and the platform still wires the C3 stub. Not a firmware gap |
 | Interrupt watchdog (IWDT) | **WORKS on stock 0.5.20; ENABLED in the hand build** | production settings (`CONFIG_ESP_INT_WDT=y`, 300 ms). The old "expires on healthy firmware" finding was the dead tick: the IWDT is fed from the tick hook. `run_all.sh` fails any suite whose UART shows a panic; with the stock SYSTIMER 7 of 8 hand suites panic, with the candidate none do. The iwdt probe (git history) panicked 286 ms after interrupts are disabled |
 | Reset-reason hint after a panic | **BROKEN — model gap** | IDF stores it in S3 `RTC_CNTL_STORE6` (+0xC8); the platform's C3 RTC_CNTL model has STORE4-7 at 0xB8-0xC4, so a panic reboot reports `ESP_RST_SW`, not `INT_WDT`. Addressed by draft renode-infrastructure #245 (S3 RTC_CNTL) |
-| ESP32-S3 BLE, hub holding both hands | **WORKS with candidate BLE radio (#270); stock 0.5.20 cannot hold the second link** | NimBLE peripheral per hand, central on the hub; 50 Hz packets from both hands, zero rejected (S2-A, S2-B). The stock radio model holds one link per radio: a second link never establishes and packets cross between links (model-candidates README). Lossless medium: no RF, range or coexistence claim |
+| ESP32-S3 BLE, hub holding both hands | **WORKS on stock 0.6.6 (#270 shipped); 0.5.20 could not hold the second link** | NimBLE peripheral per hand, central on the hub; 50 Hz packets from both hands, zero rejected (S2-A, S2-B). The stock radio model holds one link per radio: a second link never establishes and packets cross between links (model-candidates README). Lossless medium: no RF, range or coexistence claim |
 | Hardware RNG across a reset | **WORKS with candidate RNG (#271); stock 0.5.20 still replays** | stock model replays the same values after every chip reset, so a rebooted hand reused its session |
 | Pin inputs across an MCU reset | **bench re-applies them** | Renode resets injected ADC voltages and GPIO levels with the chip (simantic-core#561); `harness.ExternalInputs` re-drives them, as real sensors would |
-| Drone: stock ArduCopter 4.7.1, STM32F405 (Matek F405-Wing model) | **WORKS with candidate STM32 UART (renode-infrastructure #325)** | boots to standby in ~9 s virtual; RC arrives as MAVLink RC_CHANNELS_OVERRIDE on SERIAL1 and ArduCopter reports it back exactly (S3-A). Stock 0.5.20's STM32_UART never runs TX DMA, so no telemetry leaves. Disarmed, no vehicle physics yet |
+| Drone: ArduCopter 4.7.1, STM32F405 (Matek F405-Wing model) | **WORKS on stock 0.6.6 (#325 shipped)** | RC as MAVLink RC_CHANNELS_OVERRIDE on SERIAL1 is reported back exactly (S3-A); gesture flight closed through quad_plant (fly.py) |
+| Drone: ArduCopter 4.7.1, STM32H753 (mcu-lib Pixhawk6X + sim-fixtures pixhawk6x board) | **WORKS on 0.6.6 with two project pieces** | the stock release stops on "Failed to update IO firmware" (no IOMCU model), so the ELF is built from Copter-4.7.1 with BRD_IO_ENABLE 0 (simulation/drone/pixhawk6x/build.sh). F-RAM parameters were lost on reboot: ScriptedSpiSlave takes the STM32H7 SPI's end of transfer as a deselect (simantic-core#658, fix PR #659); simulation/drone/fram_peer.py keeps the peer framed until it ships. S3-A, S3-B and fly.py pass; the sim runs about 3x slower than with the F405 |
 | ADC2, DMA/continuous, ADC interrupts | **OUT OF SCOPE** | not modeled |
 
 The ADC fix is **PR #168**, merged into `simantic-main` on 2026-09-26 and
@@ -288,7 +290,7 @@ firmware/
   apps/hub/                  hub firmware: BLE central, one command on UART0
   apps/replay/               stand-in hand sending packets a test script supplies (S3-B)
   tests/                     simulation suites; run_all.sh runs every one
-  probes/                    open model defects (ble2link, rngreset, stm32-uart-txdma)
+  probes/                    open model defect (rngreset)
                              and drone scripts (drone-flight, drone-outputs)
 simulation/drone/            bridge (rc_link, gcs_peer), quad_plant, ardupilot_frame,
                              sensor peers, test_quad_plant, sitl_reference

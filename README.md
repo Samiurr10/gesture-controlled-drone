@@ -3,7 +3,7 @@
 Two wearable hand controllers, each an ESP32-S3 with five flex sensors and a
 motion sensor, send their readings over BLE to an ESP32-S3 hub. The hub turns them
 into roll, pitch, yaw and throttle and sends one command every 20 ms over USB to a
-laptop. On the laptop, stock ArduCopter runs on a simulated STM32F405 flight
+laptop. On the laptop, ArduCopter runs on a simulated Pixhawk 6X (STM32H753) flight
 controller, and its motor outputs drive a physics model of a quad that is shown on
 screen.
 
@@ -26,15 +26,15 @@ controller's motors did; nothing moves the drone straight from a gesture.
 
 The step-by-step order with commands and pass criteria: [Test plan](docs/test-plan.md).
 
-## Status, 2026-10-08
+## Status, 2026-10-11
 
 | Part | State |
 |---|---|
 | Hand and hub firmware | Implemented: acquisition, calibration, motion, mapping, interlocks, BLE, persistence, watchdog |
-| Simulation, one hand and both hands (S1, S2) | Pass on engine 0.6.3 with the BLE and RNG model candidates. S2-B reset-to-invalid is 120 or 160 ms against a provisional 150 ms limit |
+| Simulation, one hand and both hands (S1, S2) | Pass on engine 0.6.6 with the RNG model candidate. S2-B reset-to-invalid is 120 or 160 ms against a provisional 150 ms limit |
 | Simulation, controller into ArduCopter (S3) | S3-A and S3-B pass |
-| Closed-loop gesture flight (D2) | Flies in AltHold with both simulated hands. Agrees with ArduPilot SITL to within about 0.4° and 0.05 m/s. Open: a 1–2.5° attitude-estimate drift after manoeuvres |
-| Simulator stall with four machines | Root-caused. Fix open upstream (renode-infrastructure #340) |
+| Closed-loop gesture flight (D2) | Flies in AltHold with both simulated hands, on the Pixhawk 6X (H7) and the F405. On the F405, agrees with ArduPilot SITL to within about 0.4° and 0.05 m/s. Open: a 1–3° attitude-estimate drift after manoeuvres, the same on both boards |
+| Simulator gaps | Four-machine stall: fix open upstream (renode-infrastructure #340); runs are stopped by a watchdog. H7 F-RAM framing: fix open (simantic-core #659), worked around in this repo |
 | Physical controller | Wiring drawn, nothing built or tested |
 | Laptop demo | Planned. The runner and the 3D view are not built |
 

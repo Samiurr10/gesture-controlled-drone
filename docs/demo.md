@@ -8,8 +8,12 @@ physically**.
 
 The demonstration: an operator wears the two physical hand controllers, the
 physical hub is plugged into a laptop, and the laptop shows a simulated drone
-flying. The drone is stock ArduCopter 4.7.1 on an emulated STM32F405
-(Matek F405-Wing board model) in Simantic, closed through `quad_plant`. No
+flying. The drone is ArduCopter 4.7.1 on an emulated flight controller in
+Simantic, closed through `quad_plant`. The default is the Pixhawk 6X (STM32H753);
+`PALMPILOT_DRONE=f405` selects the Matek F405-Wing. This plan was written against the
+F405, and its F405 measurements below are kept as measured. On engine 0.6.6 the H7
+runs the full four-machine flight about 3× slower than the F405, which matters for a
+live demo. No
 physical drone is in scope ([CLAUDE.md §1](../CLAUDE.md)).
 
 The hard rule from the project scope applies throughout. The screen shows the

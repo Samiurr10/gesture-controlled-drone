@@ -78,14 +78,16 @@ failure.
 
 The wrapper encodes these findings so they are not rediscovered:
 
-- **Three simulator model candidates load by default** (`env.sh`), from
-  `simulation/simantic/model-candidates/`: BLE radio (renode-infrastructure #270),
-  RNG (#271) and STM32 UART TX DMA (#325). Set `PALMPILOT_BLE_RADIO_OVERLAY=`,
-  `PALMPILOT_RNG_OVERLAY=` or `PALMPILOT_STM32_UART_OVERLAY=` (empty) to run the
-  engine's own model.
+- **One simulator model candidate loads by default** (`env.sh`): RNG
+  (renode-infrastructure #271), from `simulation/simantic/model-candidates/`. Set
+  `PALMPILOT_RNG_OVERLAY=` (empty) to run the engine's own model.
+- **Runs are time-limited.** `palmpilot.py` stops a simulation that stays under 5% of a
+  core for `PALMPILOT_STALL_S` (120 s), saving the engine's stacks to
+  `stall-stacks.txt`, or that passes `PALMPILOT_MAX_WALL_S` (3600 s).
+- **The drone board** is `PALMPILOT_DRONE=h7` (Pixhawk 6X, default) or `f405`.
 - **ADC1 is upstream since engine 0.5.14** (PR #168), in its calibrated-state
   mode: raw counts are die-specific, so tests assert calibrated millivolts.
-- **`Sim.read_uart` is unreliable** with SDK 0.3.1 — it duplicates
+- **`Sim.read_uart` is unreliable** with the SDK — it duplicates
   and interleaves fragments. The harness captures the Renode `CharReceived`
   event instead. Assert against `sim.records()`, never `read_uart`.
 - **ADC injection is not in the SDK.** `set_flex_uv` / `set_channel_uv` go
@@ -147,9 +149,7 @@ defects fixed in the pinned engine were removed; they are in git history.
 
 | Probe | Finding |
 |---|---|
-| `probes/ble2link` | one central, two peripherals: second link and cross-link packets, fixed by the #270 candidate (`run.py`; `PALMPILOT_BLE_RADIO_OVERLAY=` for stock) |
 | `probes/rngreset` | RNG replays after `esp_restart()`, fixed by the #271 candidate (`run.py`; `PALMPILOT_RNG_OVERLAY=` for stock) |
-| `probes/stm32-uart-txdma` | STM32F4 USART TX DMA never starts on stock, fixed by #325 |
 | `probes/drone-outputs` | ArduCopter motor outputs observed at the timer registers |
 | `probes/drone-flight` | `fly.py` gesture flight; `shake`/`tilt`/`spin` single-axis checks; `soak`/`stress` long runs; `loop_rate`, `params_dump` |
 
@@ -160,7 +160,7 @@ for the FW-04 stalled-acquisition case, not production behavior.
 
 - **Fixed-point control path.** All control arithmetic is in milli-units. The FPU
   gap that forced this (the first Xtensa FPU instruction aborted engine 0.5.7) no
-  longer reproduces on engine 0.6.3, so this is now a design choice, not a
+  longer reproduces on engine 0.6.3 and later, so this is now a design choice, not a
   simulator limitation.
 - **Pace periodic work with `esp_timer`, not `vTaskDelay`.**
 - **Never write flash from the live control path.** A real flash write suspends
