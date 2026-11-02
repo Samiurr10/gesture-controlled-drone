@@ -118,7 +118,9 @@ The order of execution, the commands and the pass criteria are in the
   is much slower.
 - **Attitude estimate drift.** After a manoeuvre, ArduCopter's estimate is off by
   1–3° and the vehicle drifts slowly, by the same amount on the emulated F405 and
-  H7. Native SITL does not show this. Ruled out so far: physics, sensor signs, scale
+  H7. Native SITL with GPS does not show it; without GPS (the board's sensor set)
+  two scripted SITL runs stayed 2.1–2.6° off after a roll, while a replay of the
+  F405 flight stayed within 0.7° ([demo.md §3](demo.md#3-laptop-data-path)). Ruled out so far: physics, sensor signs, scale
   and rate, dropped samples, noise, parameters, the CPU/FPU (ArduPilot's Replay tool
   reproduces the estimate exactly from the log) and, now, the flight-controller
   model. Still open.
@@ -135,7 +137,8 @@ The order of execution, the commands and the pass criteria are in the
   time with the F405 and about 11× with the H7. The demo simulates only the flight
   controller: the F405 alone runs flight at 1.47 s of wall time per simulated second
   (`demo_speed.py`, two runs, 2026-11-01), so the demo drone moves about 1.5× slower
-  than real time. See [demo.md §4](demo.md#4-visualisation).
+  than real time. The demo therefore runs ArduCopter as native SITL in real time
+  instead ([demo.md](demo.md)).
 - **One BLE medium per simulation.** Scenarios with several separate BLE media did
   not link. This is not investigated, and nothing in the plan needs more than one.
 - **Not modelled:** RF range or interference (the BLE medium is lossless), ADC noise,

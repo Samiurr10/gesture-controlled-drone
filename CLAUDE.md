@@ -24,8 +24,11 @@ Current position: S1–S3 suites and the D2 gesture flight run in simulation;
 nothing physical is built. No step is claimed complete.
 
 The display must never move the drone directly from a gesture. Displayed motion
-has to pass through the simulated drone MCU's motor outputs and the mechanical
-model. A gesture-driven animation does not satisfy Goal 2.
+has to pass through a flight controller's motor outputs and a mechanical model. A
+gesture-driven animation does not satisfy Goal 2. In the simulation suites that is
+the emulated F405's timers and quad_plant. In the laptop demo it is ArduCopter 4.7.1
+SITL's motor outputs and ArduPilot's physics, with no emulated MCU (decision
+2026-11-01, `docs/demo.md`): the emulated F405 runs 1.47× slower than real time.
 
 ## 2. Hardware baseline
 
@@ -293,7 +296,8 @@ firmware/
   probes/                    open model defect (rngreset)
                              and drone scripts (drone-flight, drone-outputs)
 simulation/drone/            bridge (rc_link, gcs_peer), quad_plant, ardupilot_frame,
-                             sensor peers, test_quad_plant, sitl_reference
+                             sensor peers, test_quad_plant, sitl_reference,
+                             sitl_live (the demo drone: SITL fed by hub lines)
 simulation/simantic/
   hardware-validation/esp32s3-adc/   ADC reference app, runs on silicon and sim
   model-candidates/          simulator models awaiting a Simantic release
@@ -344,7 +348,7 @@ pass in simulation (S1-F); physical proof remains owed at test plan B2.
 
 ## 11. Next steps
 
-From `docs/test-plan.md`: build the in-flight failsafe tests (A6), the laptop demo
-runner and 3D view (`docs/demo.md`), and start the physical bench at B0. Open
+From `docs/test-plan.md`: build the in-flight failsafe tests (A6), the 3D view and
+the rest of the demo runner (`docs/demo.md`), and start the physical bench at B0. Open
 decisions: the board (DevKitC-1 or the Freenove), the S2-B 150 ms limit, and the
 remaining 1–2.5° attitude-estimate drift.

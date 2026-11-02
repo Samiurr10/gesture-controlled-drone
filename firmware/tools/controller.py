@@ -174,11 +174,7 @@ def _serial_execution(enabled: bool):
 
 def bridge_hub_line(line: str) -> None:
     """The computer bridge: every hub command line updates the drone's RC channels."""
-    if line.startswith('{"type":"command"'):
-        try:
-            rc_link.apply_command(json.loads(line))
-        except json.JSONDecodeError:
-            rc_link.apply_command(None)
+    rc_link.apply_line(line)
 
 
 class ControllerSim:
