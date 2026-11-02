@@ -11,6 +11,8 @@ from firmware/tools/env.sh (CLAUDE.md section 3).
   palmpilot.py system <script>      build + pack LEFT, RIGHT and HUB, then run a
                                     whole-controller script (tools/controller.py);
                                     --replay puts apps/replay in place of the hands
+  palmpilot.py drone <script>       the flight controller alone, no ESP32-S3 machines
+                                    (ControllerSim(hands=False), the laptop demo's setup)
   palmpilot.py env                  print the resolved environment
 
 <app> is a directory containing an ESP-IDF project (CMakeLists.txt), either an
@@ -263,6 +265,13 @@ def cmd_system(env: dict, script: str, extra: list[str], build: bool, replay: bo
     run_sim([env["PALMPILOT_SIM_PYTHON"], str(Path(script).resolve()), *extra], child)
 
 
+def cmd_drone(env: dict, script: str, extra: list[str]) -> None:
+    """The flight controller alone, without the three ESP32-S3 machines (the demo's setup)."""
+    child = dict(env, PALMPILOT_OUT=str(Path(env["PALMPILOT_BUILD_ROOT"]) / "drone"),
+                 PYTHONPATH=str(ROOT / "firmware/tools") + os.pathsep + env.get("PYTHONPATH", ""))
+    run_sim([env["PALMPILOT_SIM_PYTHON"], str(Path(script).resolve()), *extra], child)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -279,6 +288,9 @@ def main() -> None:
     node.add_argument("extra", nargs="*")
     node.add_argument("--no-build", action="store_true")
     node.add_argument("--replay", action="store_true")
+    node = sub.add_parser("drone")
+    node.add_argument("script")
+    node.add_argument("extra", nargs="*")
     sub.add_parser("env")
     args = parser.parse_args()
 
@@ -289,6 +301,9 @@ def main() -> None:
         return
     if args.action == "system":
         cmd_system(env, args.script, args.extra, build=not args.no_build, replay=args.replay)
+        return
+    if args.action == "drone":
+        cmd_drone(env, args.script, args.extra)
         return
     app = resolve_app(args.app)
     if args.action in ("build", "run"):

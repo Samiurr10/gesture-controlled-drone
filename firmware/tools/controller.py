@@ -90,7 +90,7 @@ class Console:
         return out
 
 
-DRONE = os.environ.get("PALMPILOT_DRONE", "h7")
+DRONE = os.environ.get("PALMPILOT_DRONE", "f405")
 # The flight controller's telemetry port (ArduCopter SERIAL1), where the bridge connects.
 DRONE_UART = {"h7": "uart7", "f405": "usart1"}[DRONE]
 
@@ -182,12 +182,11 @@ def bridge_hub_line(line: str) -> None:
 
 
 class ControllerSim:
-    def __init__(self, out=None, show_logs=False, quantum=None, drone=False, plant=False, serial=None):
-        self.elf = {
-            "left": Path(os.environ["PALMPILOT_LEFT_ELF"]),
-            "right": Path(os.environ["PALMPILOT_RIGHT_ELF"]),
-            "hub": Path(os.environ["PALMPILOT_HUB_ELF"]),
-        }
+    def __init__(self, out=None, show_logs=False, quantum=None, drone=False, plant=False, serial=None,
+                 hands=True):
+        # hands=False: the drone alone, as in the laptop demo where the hands and hub are physical.
+        self.names = MACHINES if hands else ()
+        self.elf = {name: Path(os.environ[f"PALMPILOT_{name.upper()}_ELF"]) for name in self.names}
         self.out = Path(out or os.environ.get("PALMPILOT_OUT", "."))
         self.platform = Path(os.environ["PALMPILOT_PLATFORM"])
         self.show_logs, self.quantum, self.drone, self.plant = show_logs, quantum, drone, plant
@@ -195,7 +194,7 @@ class ControllerSim:
         # races or lock-order deadlocks between cores, at the cost of speed.
         self.serial = os.environ.get("PALMPILOT_SERIAL") == "1" if serial is None else serial
         self.console = {name: Console(name, bridge_hub_line if drone and name == "hub" else None)
-                        for name in MACHINES}
+                        for name in self.names}
         self.sim = None
         self._hooks = []
 
@@ -214,7 +213,7 @@ class ControllerSim:
         machines = {}
         # Per process: simulations run side by side must not read each other's half-written files.
         platforms = self.out / "platforms" / str(os.getpid())
-        for name in MACHINES:
+        for name in self.names:
             i2c = MOTION_FIXTURES if name != "hub" else None
             platform = build_platform(self.platform, platforms, i2c=i2c,
                                       hand=name if i2c else None,
@@ -223,7 +222,7 @@ class ControllerSim:
             machines[name] = {"mcu": str(platform), "elf": str(self.elf[name])}
         scenario = {
             "machines": machines,
-            "media": [{"type": "ble", "connect": [f"{n}.radio" for n in MACHINES]}],
+            "media": [{"type": "ble", "connect": [f"{n}.radio" for n in self.names]}] if self.names else [],
         }
         if self.drone:
             quad_plant.PLANT.reset()
@@ -235,7 +234,9 @@ class ControllerSim:
             scenario["quantum"] = self.quantum
         accept_repl_files()
         with _serial_execution(self.serial):
-            self.sim = Sim(scenario=scenario, machine="hub", uart="uart0",
+            # Drone alone: the SDK's console goes on a UART ArduCopter leaves unused.
+            self.sim = Sim(scenario=scenario, machine="hub" if self.names else "drone",
+                           uart="uart0" if self.names else "usart6",
                            show_logs=self.show_logs).__enter__()
 
         emulation = EmulationManager.Instance.CurrentEmulation
@@ -256,7 +257,7 @@ class ControllerSim:
                     pressure = baro.GetType().GetProperty("Pressure")
                     quad_plant.BARO_SET = lambda pa, b=baro, prop=pressure: prop.SetValue(b, Decimal(pa / 100.0))
         self.inputs = {name: ExternalInputs(m) for name, m in self.machine.items()}
-        missing = set(MACHINES) - set(self.machine)
+        missing = set(self.names) - set(self.machine)
         if missing:
             raise RuntimeError(f"scenario machines not found: {sorted(missing)}")
         for name, machine in self.machine.items():

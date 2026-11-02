@@ -27,6 +27,6 @@ with ControllerSim(drone=True, plant=True) as sim:
         total = rc_link.params[-1].param_count if rc_link.params else None
         if total and len(got) >= total:
             break
-    out = Path(os.environ.get("PALMPILOT_OUT", ".")).parents[0] / "params" / f"{os.environ.get('PALMPILOT_DRONE', 'h7')}.json"
+    out = Path(os.environ.get("PALMPILOT_OUT", ".")).parents[0] / "params" / f"{os.environ.get('PALMPILOT_DRONE', 'f405')}.json"
     out.write_text(json.dumps(got, indent=1, sort_keys=True))
     print(f"PARAMS {len(got)} of {total} -> {out}")

@@ -48,11 +48,11 @@ export PALMPILOT_STM32_UART_OVERLAY="${PALMPILOT_STM32_UART_OVERLAY-}"
 export PALMPILOT_RNG_OVERLAY="${PALMPILOT_RNG_OVERLAY-$PALMPILOT_ROOT/tmp/simantic/upstream-candidates/rng-reset/bin/Debug/net10.0/RngFixed.dll}"
 
 # --- Drone (Goal 2): stock ArduCopter 4.7.1 -----------------------------------
-# PALMPILOT_DRONE=h7 (default): Holybro Pixhawk 6X, STM32H753, the mcu-lib Pixhawk6X model.
-# PALMPILOT_DRONE=f405: Matek F405-Wing, STM32F405.
+# PALMPILOT_DRONE=f405 (default): Matek F405-Wing, STM32F405. About 3x faster to simulate.
+# PALMPILOT_DRONE=h7: Holybro Pixhawk 6X, STM32H753, the mcu-lib Pixhawk6X model.
 # ELFs: simulation/drone/fetch_arducopter.sh. Board overlays and sensor scripts come
 # from a local sim-fixtures checkout (private, not copied here).
-export PALMPILOT_DRONE="${PALMPILOT_DRONE:-h7}"
+export PALMPILOT_DRONE="${PALMPILOT_DRONE:-f405}"
 case "$PALMPILOT_DRONE" in
   h7)
     export PALMPILOT_DRONE_ELF="$PALMPILOT_ROOT/tmp/drone/pixhawk6x-arducopter.elf"

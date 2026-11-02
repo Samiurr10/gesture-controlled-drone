@@ -84,7 +84,10 @@ The wrapper encodes these findings so they are not rediscovered:
 - **Runs are time-limited.** `palmpilot.py` stops a simulation that stays under 5% of a
   core for `PALMPILOT_STALL_S` (120 s), saving the engine's stacks to
   `stall-stacks.txt`, or that passes `PALMPILOT_MAX_WALL_S` (3600 s).
-- **The drone board** is `PALMPILOT_DRONE=h7` (Pixhawk 6X, default) or `f405`.
+- **The drone board** is `PALMPILOT_DRONE=f405` (Matek F405-Wing, default) or `h7`
+  (Pixhawk 6X, about 3× slower to simulate).
+- **`palmpilot.py drone <script>`** runs the flight controller without the three
+  ESP32-S3 machines (`ControllerSim(hands=False)`), as the laptop demo will.
 - **ADC1 is upstream since engine 0.5.14** (PR #168), in its calibrated-state
   mode: raw counts are die-specific, so tests assert calibrated millivolts.
 - **`Sim.read_uart` is unreliable** with the SDK — it duplicates

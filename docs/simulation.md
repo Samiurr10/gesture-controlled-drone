@@ -21,7 +21,7 @@ RIGHT hand ESP32-S3 ─┤ BLE (one simulated medium)
                            │ MAVLink RC_CHANNELS_OVERRIDE every 20 ms, SERIAL1
                            v
                      ArduCopter 4.7.1 on an emulated flight controller:
-                     Pixhawk 6X (STM32H753, default) or Matek F405-Wing (STM32F405)
+                     Matek F405-Wing (STM32F405, default) or Pixhawk 6X (STM32H753)
                            │ motor PWM read from the timer compare registers
                            v
                      quad_plant.py: rigid-body quad X
@@ -35,19 +35,22 @@ RIGHT hand ESP32-S3 ─┤ BLE (one simulated medium)
 | Stand-in hand | A hand's BLE peripheral that sends packets a test script supplies, for exact hub inputs | `firmware/apps/replay` |
 | ESP32-S3 model | Stock engine 0.6.6 platform plus one model candidate: RNG (renode-infrastructure #271, so a reset gives new session ids) | `simulation/simantic/model-candidates/` |
 | Drone firmware | ArduCopter 4.7.1. Pixhawk 6X: built from the release commit with `BRD_IO_ENABLE 0` as its only built-in default, because no IOMCU is modelled and the stock release stops at boot without one. F405: the stock release, unmodified | `simulation/drone/pixhawk6x/build.sh`, `fetch_arducopter.sh` |
-| Drone board | `PALMPILOT_DRONE=h7` (default): mcu-lib Pixhawk6X with sim-fixtures' pixhawk6x board (three ICM-45686, BMP388, F-RAM, SD). `f405`: STM32F405 with the sim-fixtures Matek board | private sim-fixtures checkout in `tmp/` |
+| Drone board | `PALMPILOT_DRONE=f405` (default): STM32F405 with the sim-fixtures Matek board. `h7`: mcu-lib Pixhawk6X with sim-fixtures' pixhawk6x board (three ICM-45686, BMP388, F-RAM, SD) | private sim-fixtures checkout in `tmp/` |
 | Bridge | Turns the newest hub command into RC channels and sends them as a ground station would. Stops sending on an invalid command or when no fresh command has arrived for 100 ms, using its own clock | `simulation/drone/rc_link.py`, `gcs_peer.py` |
 | Physics and sensors | Integrates the airframe from the four motor pulses and answers the flight controller's sensor bus reads | `simulation/drone/quad_plant.py`; H7 `imu45686_plant.py`, `fram_peer.py`; F405 `imu_plant.py`, `baro_plant.py`, `sd_card.py` |
 
 `python3 firmware/tools/palmpilot.py system <script>` builds and starts all four
-machines. `firmware/tools/controller.py` (`ControllerSim`) is the test-facing API.
+machines. `python3 firmware/tools/palmpilot.py drone <script>` starts the flight
+controller alone, as in the laptop demo (`ControllerSim(hands=False)`).
+`firmware/tools/controller.py` (`ControllerSim`) is the test-facing API.
 
-The drone target is the **Pixhawk 6X (STM32H753)**; the F405 stays selectable for
-comparison. On engine 0.6.6 both fly the same gesture flight and land, with the same
-estimate error (mean 0.95–1.07°, worst 2.6–3.0°; for each airframe the H7 and F405
-means are within 0.01°), and the four-machine system runs about 11× slower than real time with the
-H7 against about 3.7× with the F405. `ControllerSim.setup_drone` does each board's
-bench setup over MAVLink.
+The drone target is the **Matek F405-Wing (STM32F405)**, chosen for speed; the
+Pixhawk 6X (STM32H753) stays selectable with `PALMPILOT_DRONE=h7`. On engine 0.6.6
+both fly the same gesture flight and land, with the same estimate error (mean
+0.95–1.07°, worst 2.6–3.0°; for each airframe the H7 and F405 means are within
+0.01°). The four-machine system runs about 3.7× slower than real time with the F405
+and about 11× with the H7. `ControllerSim.setup_drone` does each board's bench setup
+over MAVLink.
 
 ## What a test controls
 
@@ -128,9 +131,11 @@ The order of execution, the commands and the pass criteria are in the
 - **S2-B reset-to-invalid.** The time from a hand reset to an invalid command is
   bimodal, 120 or 160 ms, on both the stock and the fixed engine. The provisional
   limit is 150 ms. Whether to raise it is open.
-- **Speed.** On an M4 laptop on battery, fly.py's four machines run about 3.7× slower
-  than real time with the F405 and about 11× with the H7. That gives a slow-motion
-  demo unless it is made faster.
+- **Speed.** On an M4 laptop, fly.py's four machines run about 3.7× slower than real
+  time with the F405 and about 11× with the H7. The demo simulates only the flight
+  controller: the F405 alone runs flight at 1.47 s of wall time per simulated second
+  (`demo_speed.py`, two runs, 2026-11-01), so the demo drone moves about 1.5× slower
+  than real time. See [demo.md §4](demo.md#4-visualisation).
 - **One BLE medium per simulation.** Scenarios with several separate BLE media did
   not link. This is not investigated, and nothing in the plan needs more than one.
 - **Not modelled:** RF range or interference (the BLE medium is lossless), ADC noise,

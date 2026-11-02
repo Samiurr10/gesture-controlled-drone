@@ -42,7 +42,7 @@ BOARDS = {
     # ArduPilot runs this H743 at 400 MHz: APB1 timers at 200 MHz.
     "h7": (((0x40000C00, 4), (0x40000C00, 3), (0x40000C00, 2), (0x40000C00, 1)), 200_000_000),
 }
-MOTOR_CHANNELS, TIMER_CLOCK_HZ = BOARDS[os.environ.get("PALMPILOT_DRONE", "h7")]
+MOTOR_CHANNELS, TIMER_CLOCK_HZ = BOARDS[os.environ.get("PALMPILOT_DRONE", "f405")]
 PSC, CCR1 = 0x28, 0x34
 BUS_READ = None                       # set by the harness when a peer ctx has no bus_read
 SD_CARD = None                        # sd_card.py's card, when the board has one

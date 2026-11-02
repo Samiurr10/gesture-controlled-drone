@@ -91,7 +91,7 @@ def main():
         for hand in ("left", "right"):
             print(f"{hand} calibration:", sim.calibrate(hand, EXTENDED_UV, CURLED_UV)["reason"])
         extra = flight_params()
-        print(f"drone: {os.environ.get('PALMPILOT_DRONE', 'h7')}; airframe: "
+        print(f"drone: {os.environ.get('PALMPILOT_DRONE', 'f405')}; airframe: "
               f"{type(PLANT.airframe).__name__ if PLANT.airframe else 'quad_plant 1 kg'}; extra parameters: {len(extra)}")
         sim.setup_drone(extra)
         sim.run_for(6.0)                  # EKF alignment
@@ -162,7 +162,7 @@ def main():
         sim.save("flight_log.json", {
             "arm_at_s": arm_at,
             "airframe": type(PLANT.airframe).__name__ if PLANT.airframe else "quad_plant",
-            "scope": f"quad_plant PROVISIONAL airframe; ArduCopter 4.7.1 on {os.environ.get('PALMPILOT_DRONE', 'h7')}, AltHold; hands simulated",
+            "scope": f"quad_plant PROVISIONAL airframe; ArduCopter 4.7.1 on {os.environ.get('PALMPILOT_DRONE', 'f405')}, AltHold; hands simulated",
             "columns": ["t_s", "pos_ned_m", "vel_ned_mps", "roll_deg", "pitch_deg", "yaw_deg", "motor_us"],
             "log": PLANT.log,
             "hub_commands": sim.commands(),

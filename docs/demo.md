@@ -9,12 +9,10 @@ physically**.
 The demonstration: an operator wears the two physical hand controllers, the
 physical hub is plugged into a laptop, and the laptop shows a simulated drone
 flying. The drone is ArduCopter 4.7.1 on an emulated flight controller in
-Simantic, closed through `quad_plant`. The default is the Pixhawk 6X (STM32H753);
-`PALMPILOT_DRONE=f405` selects the Matek F405-Wing. This plan was written against the
-F405, and its F405 measurements below are kept as measured. On engine 0.6.6 the H7
-runs the full four-machine flight about 3× slower than the F405, which matters for a
-live demo. No
-physical drone is in scope ([CLAUDE.md §1](../CLAUDE.md)).
+Simantic, closed through `quad_plant`. The flight controller is the Matek F405-Wing
+(STM32F405), chosen because it simulates about 3× faster than the Pixhawk 6X
+(`PALMPILOT_DRONE=h7` still selects that). No physical drone is in scope
+([CLAUDE.md §1](../CLAUDE.md)).
 
 The hard rule from the project scope applies throughout. The screen shows the
 state of the mechanical model. That model is driven only by the motor pulses
@@ -25,7 +23,7 @@ directly from a gesture.
 
 | Link in the chain | Evidence status | Where |
 |---|---|---|
-| Two hands → BLE → hub → command line on UART0 | PASS in simulation (S2-A, S2-B; BLE needs the #270 radio candidate). **Not tested physically** | `firmware/tests/s2*.py` |
+| Two hands → BLE → hub → command line on UART0 | PASS in simulation (S2-A, S2-B; the #270 radio fix shipped in engine 0.6.6). **Not tested physically** | `firmware/tests/s2*.py` |
 | Hub line → RC channels → MAVLink `RC_CHANNELS_OVERRIDE` on ArduCopter SERIAL1 | PASS in simulation (S3-A 18/18, S3-B 38/38); ArduCopter reports the channels back within ±5 µs | `simulation/drone/rc_link.py`, `gcs_peer.py`, `firmware/tests/s3a_drone.py`, `s3b_replay.py` |
 | Motor PWM from the F405 timers → airframe → IMU/baro back into ArduCopter | PASS in simulation; `shake.py` decoded pulses match `SERVO_OUTPUT_RAW` within 1 µs | `quad_plant.py`, `imu_plant.py`, `baro_plant.py` |
 | Gesture flight in AltHold: climb, hold, roll, pitch, yaw, descend, land | Observed in simulation with the real hand and hub firmware (`fly.py`). The ArduPilot SITL cross-check on the same airframe matches within about 0.4° and 0.05 m/s once the RC range is calibrated | `firmware/probes/drone-flight/fly.py`, `simulation/drone/sitl_reference.py` |
@@ -123,8 +121,8 @@ One Python process (`.venv-simantic`) does the following:
    `build_drone_platform(plant=True)` and the same `uart` medium between
    `drone.usart1` and `drone.gcs` that `ControllerSim(drone=True)` uses. The
    three ESP32-S3 machines are dropped, so the BLE and RNG candidates are not
-   needed. The STM32 UART TX DMA candidate still is, because without it no
-   telemetry leaves ArduCopter.
+   needed. `ControllerSim(hands=False)` and `palmpilot.py drone` already start this
+   session; `firmware/probes/drone-flight/demo_speed.py` uses them.
 2. Runs a reader thread on the hub's serial port. The thread opens the port
    with DTR and RTS deasserted. On common ESP32 DevKits those lines drive the
    EN/IO0 auto-reset circuit, so opening the port could reset the hub. This is
@@ -174,21 +172,26 @@ path. See §4.
 
 ### Real-time pacing and what happens when the laptop is slow
 
-- **Speed, measured without a clean baseline.** This was a drone-only session
-  (ArduCopter, `quad_plant`, in-sim `gcs_peer`, a host thread calling
-  `rc_link.apply_command`) on an Apple M4 (10 cores). Other simulations were
-  running at the same time, with a load average of 20–90.
-  - The best run took 0.55–1.7 s of wall time per simulated second in standby
-    and 1.7–2.8 s per simulated second in AltHold flight.
-  - Runs under heavier load took 4–6 s per simulated second.
-  - The first simulated second after arming took 7–20 s in all three runs. The
-    cause was not identified.
-  - A 1 ms quantum in place of the default 100 µs did not change the flight
-    trajectory and gave no clear speed gain.
-  - For comparison, the four-machine run (hands and hub simulated) is about
-    3.4× slower than real time.
-  - The unloaded speed on the demo laptop is **not measured**. Measure it
-    before choosing a demo format.
+- **Speed of the drone-only session.** Measured with `demo_speed.py` on
+  2026-11-01: the F405 and `quad_plant` alone, hub command lines fed through
+  `bridge_hub_line` every 20 ms of virtual time, the simulation run in 20 ms slices
+  as the runner would. Apple M4 (10 cores), load average about 3–4, engine 0.6.6.
+  Two runs gave the same figures to within 0.1 s per phase:
+
+  | Phase | Wall s per simulated s |
+  |---|---|
+  | Boot, parameters, reboot, EKF alignment (22.5 s simulated) | 0.8 (17.9 s wall) |
+  | Standby, disarmed | 1.2 |
+  | Mode change to AltHold | 2.7–2.8; one 20 ms slice took about 1.5 s |
+  | First second after arming | 6.8–7.1 |
+  | Armed on the ground | 1.6 |
+  | Flight: climb, hover, roll, pitch, yaw, descend | 1.38–1.59, overall **1.47** |
+
+  The pauses at the mode change and at arming are not explained. Earlier
+  drone-only runs under a load average of 20–90 took 1.7–2.8 s per simulated
+  second in flight, so host load matters. The four-machine run (hands and hub
+  simulated) is about 3.7× slower than real time. The demo laptop itself is not
+  measured.
 - **Pacing.** `Sim.run_for` free-runs. The engine has a `RealTime` session
   setting, which the CLI exposes as `--real-time`, but SDK 0.3.1 does not pass
   it on. The runner can set it on the session spec the same way the harness
@@ -198,10 +201,10 @@ path. See §4.
   the drone moves in slow motion. The viewer must then show the real-time
   factor rather than imply live speed.
 - **Expiry in slowed time.** The bridge's expiry is 5 virtual ticks (100 ms
-  virtual). At 2–3× slower than real time that is roughly 200–300 ms of wall
+  virtual). At the measured 1.47× that is roughly 150 ms of wall
   time after the last hub line. When overrides stop, ArduCopter keeps using the
   last overrides for `RC_OVERRIDE_TIME`. That is 3.0 s by default (checked in
-  the ArduPilot 4.7.1 source), so it can be 6–9 s of wall time before RC
+  the ArduPilot 4.7.1 source), so it can be about 4.4 s of wall time before RC
   failsafe. S3-A measured failsafe within 4 s of virtual time, disarmed.
   Lowering `RC_OVERRIDE_TIME` is the obvious mitigation. It is unverified and
   needs a simulated in-flight test with limits set first.
@@ -209,7 +212,7 @@ path. See §4.
   position estimate ArduCopter is expected to land instead. This has **not
   been exercised in flight** in this simulation.
 - **Simulator stall.** The reported four-machine stall was a lock-order
-  deadlock between ESP32-S3 core threads, fixed by renode-infrastructure #340 (open). The drone-only session
+  deadlock between ESP32-S3 core threads, fixed by renode-infrastructure #340 (merged upstream, not in engine 0.6.6). The drone-only session
   has no ESP32-S3 machine, so that mechanism does not apply. Long drone-only
   runs have not been soaked. The runner should detect simulated time not
   advancing and mark the view as stalled.
@@ -229,6 +232,44 @@ real time. Add (a) later as an engineering view if the estimate itself is of
 interest. Without GPS a ground station's map has no position to show. A
 displayed command, a hand pose or a hub value must never move the drone model.
 
+### What the screen can show, and how late
+
+Every value below exists in the session today; the view that draws them does not.
+
+| Shown | Source | Rate available | Notes |
+|---|---|---|---|
+| Drone position (north, east, altitude) and velocity | `quad_plant.PLANT.pos`, `.vel` | Every slice; the plant steps at each IMU read | Truth from the physics, NED metres from the take-off point |
+| Drone attitude: roll, pitch, yaw | `PLANT.euler_deg()` | Every slice | Truth. Drawn as the 3D model's orientation |
+| Four motor pulses (µs) | `PLANT.pulses`, read from the F405 timer compare registers | Every slice | Propeller speed or a bar per motor. This is the evidence that the motion comes from the motors |
+| On the ground or airborne | `PLANT.on_ground` | Every slice | |
+| Armed, flight mode, system state | ArduCopter HEARTBEAT (`rc_link.heartbeat`) | 1 Hz | Disarmed, AltHold, failsafe |
+| ArduCopter's messages | STATUSTEXT (`rc_link.statustext`) | As sent | "EKF3 IMU0 initialised", arming refusals, failsafe |
+| ArduCopter's own attitude estimate | ATTITUDE (`rc_link.latest`) | On request (`fly.py` asks for 20 Hz) | Shows the open 1–3° estimate drift next to the truth |
+| RC channels ArduCopter received | RC_CHANNELS | 10 Hz | Stick positions as the flight controller sees them |
+| Hub command and its validity | the latest hub line (`rc_link.channels`, `rc_link.failsafe`) | 50 Hz | Status line only; it never moves the drone |
+| Simulated time, real-time factor, stall | `sim.time()` against wall time | Every slice | Required, so slow motion is never shown as live |
+
+No position estimate, GPS or map is available: GPS is not modelled.
+
+**Delay.** A new hub line reaches ArduCopter at the next 20 ms slice, so input is
+never queued. After that, the drone's own response plays out at the simulation's
+speed. Measured in `demo_speed.py` (F405 alone, 1.47 s wall per simulated second):
+
+| Stick step | Airframe reaches 90% of its change | On screen |
+|---|---|---|
+| Roll right (one third of full stick) | 0.44 s simulated, +9.3° | about 0.65 s |
+| Pitch forward (one third) | 0.46 s simulated, −9.5° | about 0.68 s |
+| Back to level after the roll | 0.38 s simulated | about 0.56 s |
+| Throttle up for a climb | 1.78 s simulated to +0.9 m/s | about 2.6 s |
+
+About two thirds of each figure is the flight controller and airframe responding,
+as they would on a real drone; the rest is the simulation running 1.47× slow.
+Because the simulation falls further behind wall time the longer it runs, the
+view must show simulated time and the real-time factor. Not included and not
+measured: the physical hands, BLE and hub (packets every 20 ms), USB serial, and
+the browser's frame time. The pauses at the mode change and at arming (§3) freeze
+the view for up to about 1.5 s and 7 s.
+
 ## 5. Operator procedure
 
 ### Before the demo
@@ -244,8 +285,8 @@ displayed command, a hand pose or a hub value must never move the drone model.
 ### Demo sequence
 
 1. **Laptop first.** Start the demo runner. ArduCopter boots, takes the
-   parameters, reboots and aligns, which is about 25–30 s of simulated time.
-   At the measured speed that is about 1–2 minutes of wall time. The view
+   parameters, reboots and aligns, which is about 22.5 s of simulated time and
+   took about 18 s of wall time in `demo_speed.py`. The view
    shows *disarmed, waiting for hub*.
 2. **Hub.** Plug the hub into the laptop. The runner sees `{"type":"ready"}`
    and starts polling `status`.
@@ -287,7 +328,7 @@ Nothing in this table is tested physically.
 | Hub unplugged or serial error | No lines arrive, and the bridge expiry stops overrides after 5 virtual ticks. The runner must catch the serial exception, show it and keep the session alive. That handling is **not built** | Expiry: PASS in simulation (S3-A, by cutting the hub line) |
 | Hub reset | Hands relink. The command stays invalid until a new ENABLE press, because a reset cannot restore permission | Reboot recovery: PASS in simulation (S2) |
 | Malformed line | `apply_command(None)`, which means failsafe | Implemented, `controller.bridge_hub_line` |
-| Laptop slower than real time | Slow-motion flight. No input backlog (latest command wins). Expiry and failsafe stretch in wall time (§3) | Speed measured only under host load; behaviour reasoned, not tested |
+| Laptop slower than real time | Slow-motion flight, about 1.5× on the measured laptop. No input backlog (latest command wins). Expiry and failsafe stretch in wall time (§3) | Speed measured (§3); behaviour reasoned, not tested |
 | Simulator stalls | No motion and no overrides, and the stalled view must not look live. **Detection not built** | — |
 
 ## 6. Gap list
@@ -298,7 +339,7 @@ Effort is a rough single-person estimate.
 |---|---|---|---|
 | 1 | **Demo runner**: drone-only session; pyserial reader with DTR/RTS handling and error display; pacing; parameter setup including the RC range; operator keys (arm, disarm, mode, stop); stall detection; flight log | 1–2 days | Reuses `build_drone_platform`, `gcs_peer`, `rc_link`, `bridge_hub_line` and `fly.py`'s setup. Add `pyserial` to `.venv-simantic`; it is not installed |
 | 2 | **3D view** (option b) with a status panel | 1–2 days | Standard-library SSE plus a three.js page |
-| 3 | **Speed on the demo laptop**: measure unloaded; try SD logging off (`LOG_BACKEND_TYPE`), IMU noise off, and investigate the stall at arming | 0.5–2 days; outcome uncertain | If it stays slower than real time, show it as slow motion |
+| 3 | **Speed**: drone-only F405 measured at 1.47× in flight (§3). Still to do: the pauses at the mode change and at arming; try SD logging off (`LOG_BACKEND_TYPE`) and IMU noise off; measure on the demo laptop | 0.5–2 days; outcome uncertain | Unless it reaches real time, show it as slow motion |
 | 4 | **Failsafe tuning and test**: lower `RC_OVERRIDE_TIME`; simulate hand loss, ENABLE release and hub loss **in flight**, with limits set before the run | 1 day | In-flight failsafe and landing without a position estimate are unexercised |
 | 5 | **Physical controller**: build both hands and the hub to the [wiring](wiring/README.md); flash; physical calibration; two physical BLE links; hub serial to laptop | Dominated by test plan B1–B6 | Every physical row: **not tested**. The BLE result in simulation is a lossless-medium result with no RF claim |
 | 6 | Ground-station view (option a), optional | 0.5–1 day | UDP tee in `gcs_peer`, or a second UART `hostBridge`, which needs USART3 DMA wiring in the board overlay; unverified |
@@ -307,7 +348,7 @@ Effort is a rough single-person estimate.
 What this plan does **not** establish:
 
 - that the physical hands and hub behave like their simulated firmware;
-- end-to-end latency;
-- that the simulation can run at real time;
+- the physical part of the latency (hands, BLE, hub, USB serial);
+- that the simulation can run at real time. On the measured laptop it does not;
 - any physical-drone flight property. The airframe is a provisional 1 kg
   quad, not a measured vehicle.
