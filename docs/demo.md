@@ -2,7 +2,8 @@
 
 **Status: PLAN, with the drone side built.** The drone runner (`simulation/drone/sitl_live.py`)
 exists and was tested on 2026-11-01 against a scripted hub and against a fake hub on a
-pseudo-terminal. Nothing physical is tested, and the 3D view is not built. The steps are
+pseudo-terminal. The 3D view (`simulation/drone/demo_view.py`) runs live from SITL. Nothing
+physical is tested. The steps are
 Part C of the [test plan](test-plan.md#part-c--physical-controller-simulated-drone).
 It marks no milestone complete.
 
@@ -31,7 +32,7 @@ an emulated MCU between ArduCopter and the motors.
 | Real hub on a serial port → runner | Implemented (`sitl_live.py serial`). Tested only with a fake hub on a pseudo-terminal: valid, invalid, malformed and missing lines, arm refusal, arming, flight, failsafe, recovery. **Not tested with a board or a USB-UART bridge** | `sitl_live.py` |
 | Gesture flight in AltHold | SITL: the scripted flight passes 27/27 checks (§3). Replaying the emulated F405's last gesture flight (real hand and hub firmware) into SITL on the same airframe: in the commanded phases climb and descent agree within 0.03 m/s, roll within about 0.5°, pitch within 0.3° and yaw rate within about 4°/s. In the level phases after a roll or pitch the F405 stays 1.3–2.5° tilted, SITL within 0.7° | `sitl_live.py`, `sitl_reference.py` |
 | Attitude estimate after a manoeuvre | SITL with GPS: the airframe returns to within 0.25° of level after every manoeuvre. Without GPS, two scripted runs stayed 2.1–2.6° off after a roll; a replay without GPS did not (§3). The emulated F405 (no GPS) shows 1–2.5° | §3 |
-| Screen view of the drone | **Does not exist yet** | §4 |
+| Screen view of the drone | Built: `demo_view.py` serves a three.js view of SITL's state at http://localhost:8765, with a scripted virtual pilot or a physical hub (`--hub PORT`). Checked in Chrome on 2026-11-01: 1.00× real time, about 95 frames/s on an M4 | §4 |
 
 Settings every run needs, set by the runner at each start (`-w` wipes SITL's parameters):
 `FRAME_CLASS=1`, `FRAME_TYPE=1`, `FLTMODE_CH=0` (the bridge holds ch5 at 1500 µs),
@@ -96,13 +97,26 @@ flowchart LR
     AP -->|motor outputs| PH[ArduPilot physics<br/>--model x quad]
     PH -->|IMU, baro, GPS, compass| AP
     AP -->|SIM_STATE, ATTITUDE, SERVO_OUTPUT_RAW,<br/>RC_CHANNELS, HEARTBEAT, STATUSTEXT| ST[Runner state]
-    ST --> VIEW[3D view, not built]
+    ST --> VIEW[3D view in the browser<br/>demo_view.py, SSE]
 ```
 
 ```sh
 tmp/ardupilot-venv/bin/python simulation/drone/sitl_live.py scripted          # built-in flight, PASS/FAIL per step
 tmp/ardupilot-venv/bin/python simulation/drone/sitl_live.py serial /dev/cu.usbserial-XXXX
+tmp/ardupilot-venv/bin/python simulation/drone/demo_view.py                  # 3D view, virtual pilot
+tmp/ardupilot-venv/bin/python simulation/drone/demo_view.py --hub /dev/cu.usbserial-XXXX
 ```
+
+`demo_view.py` is the runner with the 3D view (http://localhost:8765). Without `--hub`, a
+scripted virtual pilot flies a three-minute tour (take-off, pirouette, a circuit round a
+tree, a climb, a figure eight, strafes, a fast pass, return, landing) in a 2.5 m/s SITL
+breeze, and repeats it. The pilot chooses stick positions from the drone's true state,
+turns them into two hand poses, and a Python stand-in for the hand and hub mapping turns
+the poses back into hub command lines, with the proposed values from
+[gesture-mapping.md](gesture-mapping.md): 3° deadband, 30° saturation, slew 4.0/s attitude
+and 1.5/s throttle. The stand-in is not `hand_core`/`hub_core`, and the virtual pilot is
+not a person. In the first recorded tour it landed 1.7 m from the pad centre, with at
+most 18.6° of tilt and 6.9 m/s.
 
 One process does the following:
 
@@ -174,7 +188,7 @@ pursued.
 
 | Option | Shows | Needs | Hard rule |
 |---|---|---|---|
-| **(b) 3D view** (recommended) | The airframe's true position, attitude and motor outputs; armed state and mode; ArduCopter's messages; hub command validity as a status line; real-time factor | A small page served from the runner, fed from `Drone.state()` over Server-Sent Events (standard library), three.js from a CDN; a local north-east-up frame with a grid, take-off marker, altitude readout and trail | Complies. The pose is SITL's physics state, driven by ArduCopter's motor outputs |
+| **(b) 3D view** (built) | The airframe's true position, attitude and motor outputs (props spin from `SERVO_OUTPUT_RAW`); armed state and mode; ArduCopter's messages; the hub command and, with the virtual pilot, the two hand poses; an artificial horizon, heading tape and the estimate-minus-truth attitude; real-time factor; cameras: auto, chase, pilot's eye, orbit, top | `demo_view.py` runs SITL, keeps the newest state and serves it over Server-Sent Events (standard library) to `view/page.html` + `view/view.js` (three.js 0.160.0 from jsDelivr). `--record` saves each tour for a replay page | Complies. The pose is SITL's physics state, driven by ArduCopter's motor outputs. The scenery (field, trees, hangar) is decoration with no physics |
 | (a) Ground station (QGroundControl, Mission Planner) | ArduCopter's own estimate: attitude, altitude, mode, messages, and with GPS a map position | A second MAVLink connection to SITL. SITL serves further TCP ports (5762, 5763) for its other serial ports; not tried | Complies |
 | (c) Both | Truth and estimate side by side | Both | Complies |
 
@@ -272,7 +286,7 @@ Effort is a rough single-person estimate.
 | # | Gap | Effort | Notes |
 |---|---|---|---|
 | 1 | **Runner, remaining**: poll the hub's `status` once a second and show it; reopen the port after a serial error; save a flight log in `serial` mode; detect SITL exiting or hanging | 0.5–1 day | The rest of the runner is built (§3) |
-| 2 | **3D view** (option b) with a status panel | 1–2 days | Reads `Drone.state()`; standard-library SSE plus a three.js page |
+| 2 | 3D view: built (`demo_view.py`, `view/`). Remaining: an arm/disarm control on the page for the physical-hub mode (today it is the terminal) | 0.5 day | |
 | 3 | **Physical controller**: build both hands and the hub to the [wiring](wiring/README.md); flash; physical calibration; two physical BLE links; hub serial to laptop | Dominated by test plan B1–B6 | Every physical row: **not tested** |
 | 4 | Ground-station view (option a), optional | 0.5 day | A second MAVLink client on SITL; not tried |
 | 5 | Estimate drift without GPS | Unknown | Seen on the emulated F405 and once in SITL without GPS; not seen in SITL with GPS |

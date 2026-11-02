@@ -49,10 +49,11 @@ def hub(roll=0, pitch=0, yaw=0, throttle=500, valid=1):
                        "throttle": throttle, "valid": valid}, separators=(",", ":"))
 
 
-def start_sitl():
+def start_sitl(extra=""):
+    """`extra`: more parameter lines, e.g. SITL's wind."""
     WORK.mkdir(parents=True, exist_ok=True)
     board = os.environ.get("SITL_SENSORS", "full") == "board"
-    (WORK / "overrides.parm").write_text(OVERRIDES + (BOARD_SENSORS if board else "") + "SIM_RC_FAIL 1\n")
+    (WORK / "overrides.parm").write_text(OVERRIDES + (BOARD_SENSORS if board else "") + "SIM_RC_FAIL 1\n" + extra)
     defaults = f"{ARDUPILOT}/Tools/autotest/default_params/copter.parm,{WORK}/overrides.parm"
     return subprocess.Popen([str(SITL_BIN), "--model", "x", "--speedup", "1", "-w", "-I0",
                              "--defaults", defaults, "--home", ",".join(map(str, (*HOME, 0)))],
@@ -378,7 +379,8 @@ def report(drone, sitl, results, log, latency, wall):
     return passed == len(results)
 
 
-def serial_hub(drone, port):
+def hub_reader(drone, port):
+    """A physical hub's lines into rc_link, on a thread."""
     import serial                                                    # pyserial, only for a physical hub
     link = serial.Serial()
     link.port, link.baudrate, link.timeout = port, 115200, 0.5
@@ -396,12 +398,9 @@ def serial_hub(drone, port):
                 rc_link.apply_line(raw.decode(errors="replace").strip())
     threading.Thread(target=read, daemon=True).start()
 
-    def show_loop():
-        while drone.running:
-            c = rc_link
-            show(drone.state(), f"hub {'invalid' if c.failsafe else 'stale' if c.expired() else 'valid'}")
-            time.sleep(0.5)
-    threading.Thread(target=show_loop, daemon=True).start()
+
+def operator(drone):
+    """Operator words on standard input, until `quit`."""
     for text in sys.stdin:
         word = text.strip()
         if word == "arm":
@@ -415,6 +414,18 @@ def serial_hub(drone, port):
             drone.althold()
         elif word == "quit":
             break
+
+
+def serial_hub(drone, port):
+    hub_reader(drone, port)
+
+    def show_loop():
+        while drone.running:
+            c = rc_link
+            show(drone.state(), f"hub {'invalid' if c.failsafe else 'stale' if c.expired() else 'valid'}")
+            time.sleep(0.5)
+    threading.Thread(target=show_loop, daemon=True).start()
+    operator(drone)
 
 
 def main():

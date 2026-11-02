@@ -38,7 +38,7 @@ The step-by-step order with commands and pass criteria: [Test plan](docs/test-pl
 | Demo drone | ArduCopter SITL, driven by hub command lines through the simulation's bridge (`simulation/drone/sitl_live.py`): real time with 2–7% of a core; scripted flight 27/27 checks (climb, hover, roll, pitch, yaw, full stick, hub glitch, landing, in-flight ENABLE release → failsafe RTL); stick to 90% airframe response 0.4–0.5 s. The emulated F405 alone runs 1.47× slower than real time, so it is not used for the demo. Details in [docs/demo.md](docs/demo.md) |
 | Simulator gaps | Four-machine stall (renode-infrastructure #340) and H7 F-RAM framing (simantic-core #659): both fixed upstream, not in the pinned engine 0.6.6. This repo stops stalled runs with a watchdog and works around the F-RAM framing |
 | Physical controller | Wiring drawn, nothing built or tested |
-| Laptop demo | Drone runner built; its serial input tested only with a fake hub on a pseudo-terminal. The 3D view is not built |
+| Laptop demo | Drone runner and 3D view built (`simulation/drone/demo_view.py`, http://localhost:8765). A scripted virtual pilot flies a 3-minute tour through a Python stand-in for the hand and hub mapping; `--hub PORT` takes a physical hub instead, tested only with a fake hub on a pseudo-terminal |
 
 No milestone is claimed complete. Simulation results are evidence about the
 firmware against Simantic's models, not about hardware.
