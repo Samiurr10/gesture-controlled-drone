@@ -344,7 +344,7 @@ class Screen:
             rtf = (self.boot[-1][1] - self.boot[0][1]) / (self.boot[-1][0] - self.boot[0][0])
         ch = rc_link.channels
         frame = {
-            "t": s["t"], "source": self.mode,
+            "t": s["t"], "ts": s.get("sim_t"), "source": self.mode,
             "pos": [s.get("N", 0), s.get("E", 0), s.get("alt", 0)],
             "vel": [s.get("vN", 0), s.get("vE", 0), s.get("vD", 0)],
             "att": [s.get("roll", 0), s.get("pitch", 0), s.get("yaw", 0)],

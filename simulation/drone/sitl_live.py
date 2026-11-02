@@ -75,6 +75,8 @@ class Drone:
         self.conn.wait_heartbeat(timeout=30)
         self.t0 = time.monotonic()
         self.latest, self.texts = {}, []
+        self.sim_t = None                    # SITL's clock for the newest SIM_STATE
+        self._pending = False
         self.last_override = None            # wall time of the newest override sent
         self.ground = None                   # SITL altitude before take-off
         self.running = True
@@ -109,8 +111,13 @@ class Drone:
             if kind == "HEARTBEAT" and m.get_srcComponent() != 1:
                 continue
             self.latest[kind] = m
-            if kind == "SIM_STATE" and self.ground is None:
-                self.ground = m.alt
+            if kind == "SIM_STATE":
+                self.ground = m.alt if self.ground is None else self.ground
+                self._pending = True
+            elif kind == "ATTITUDE" and self._pending:
+                # SITL sends SIM_STATE then ATTITUDE in the same loop: the attitude's
+                # boot time is when that position was computed.
+                self.sim_t, self._pending = m.time_boot_ms / 1000, False
             if kind == "STATUSTEXT":
                 self.texts.append((round(self.now(), 2), m.text))
                 print(f"      ArduCopter: {m.text}", flush=True)
@@ -138,6 +145,7 @@ class Drone:
         if s and self.ground is not None:
             north = (s.lat_int / 1e7 - HOME[0]) * 111_320.0
             east = (s.lon_int / 1e7 - HOME[1]) * 111_320.0 * math.cos(math.radians(HOME[0]))
+            row["sim_t"] = self.sim_t
             row.update(N=round(north, 3), E=round(east, 3), alt=round(s.alt - self.ground, 3),
                        vN=round(s.vn, 3), vE=round(s.ve, 3), vD=round(s.vd, 3),
                        roll=round(deg(s.roll), 2), pitch=round(deg(s.pitch), 2), yaw=round(deg(s.yaw), 2))

@@ -550,6 +550,9 @@ function buildProps() {
 const MOTORS = [{ bearing: 45, ccw: true }, { bearing: 225, ccw: true }, { bearing: 315, ccw: false }, { bearing: 135, ccw: false }];
 const ARM_R = 0.175;                       // SITL --model x: 0.35 m motor to motor across the diagonal
 const GEAR = 0.092;                        // body origin above the skids
+const PAD_TOP = 0.06, PAD_R = 3.2;
+// Where the skids rest: on the pad's top over the pad, on the ground elsewhere; never inside either.
+const restHeight = (x, z) => PAD_TOP * (1 - smooth(PAD_R - 0.15, PAD_R + 0.1, Math.hypot(x, z)));
 
 function buildDrone() {
   const g = new THREE.Group();
@@ -691,7 +694,8 @@ function clearTrail() { trailN = 0; trailLast.set(1e9, 0, 0); trailGeo.setDrawRa
 // --- data: live or replay, sampled on a smooth clock -----------------------------------------
 const frames = [];
 const tmpE = new THREE.Euler();
-function prepare(f) {                       // a quaternion per frame, for slerp
+function prepare(f) {                       // a quaternion per frame, for slerp; ts: when SITL computed it
+  if (typeof f.ts !== 'number') f.ts = f.t;
   tmpE.set(f.att[1] * DEG, -f.att[2] * DEG, -f.att[0] * DEG, 'YXZ');
   f.q = new THREE.Quaternion().setFromEuler(tmpE);
   return f;
@@ -700,15 +704,15 @@ function prepare(f) {                       // a quaternion per frame, for slerp
 function sample(t) {
   if (!frames.length) return null;
   let lo = 0, hi = frames.length - 1;
-  if (t <= frames[0].t) hi = 0;
-  else if (t >= frames[hi].t) lo = hi;
-  else while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (frames[mid].t <= t) lo = mid; else hi = mid; }
+  if (t <= frames[0].ts) hi = 0;
+  else if (t >= frames[hi].ts) lo = hi;
+  else while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (frames[mid].ts <= t) lo = mid; else hi = mid; }
   const a = frames[lo], b = frames[hi];
   if (lo === hi) {
-    const ext = clamp(t - a.t, 0, 0.12);       // a short extrapolation if the stream hiccups
+    const ext = clamp(t - a.ts, 0, 0.12);       // a short extrapolation if the stream hiccups
     return { f: a, pos: new THREE.Vector3(a.pos[1] + a.vel[1] * ext, a.pos[2] - a.vel[2] * ext, -(a.pos[0] + a.vel[0] * ext)), quat: a.q };
   }
-  const h = b.t - a.t, s = (t - a.t) / h, s2 = s * s, s3 = s2 * s;
+  const h = b.ts - a.ts, s = (t - a.ts) / h, s2 = s * s, s3 = s2 * s;
   const h00 = 2 * s3 - 3 * s2 + 1, h10 = s3 - 2 * s2 + s, h01 = -2 * s3 + 3 * s2, h11 = s3 - s2;
   const herm = (pa, va, pb, vb) => h00 * pa + h10 * h * va + h01 * pb + h11 * h * vb;
   const N = herm(a.pos[0], a.vel[0], b.pos[0], b.vel[0]);
@@ -732,10 +736,11 @@ function connectLive() {
   es.onmessage = (ev) => {
     const f = JSON.parse(ev.data);
     if (f.t === undefined) return;
-    if (frames.length && f.t <= frames[frames.length - 1].t) return;
-    frames.push(prepare(f));
-    while (frames.length > 2 && frames[0].t < f.t - 4) frames.shift();
-    lat.push(performance.now() / 1000 - f.t);
+    prepare(f);
+    if (frames.length && f.ts <= frames[frames.length - 1].ts) return;     // the same SITL sample again
+    frames.push(f);
+    while (frames.length > 2 && frames[0].ts < f.ts - 4) frames.shift();
+    lat.push(performance.now() / 1000 - f.ts);
     if (lat.length > 150) lat.shift();
     $('wait').hidden = true;
   };
@@ -756,11 +761,12 @@ async function loadReplay() {
   const res = await fetch('flight.json');
   const data = await res.json();
   frames.push(...data.map(prepare));
-  playhead = frames[0].t;
+  for (let i = frames.length - 1; i > 0; i--) if (frames[i].ts <= frames[i - 1].ts) frames.splice(i, 1);
+  playhead = frames[0].ts;
   $('wait').hidden = true;
   $('note').textContent = 'Recorded from ArduCopter SITL. The drone moves only from ArduCopter\'s motor outputs through ArduPilot\'s physics; the hands are a scripted virtual pilot.';
   const scrub = $('scrub');
-  scrub.addEventListener('input', () => { playhead = lerp(frames[0].t, frames[frames.length - 1].t, scrub.value / 1000); clearTrail(); });
+  scrub.addEventListener('input', () => { playhead = lerp(frames[0].ts, frames[frames.length - 1].ts, scrub.value / 1000); clearTrail(); });
   $('play').addEventListener('click', () => { playing = !playing; $('play').textContent = playing ? 'Pause' : 'Play'; });
   const speeds = [1, 2, 4, 0.5];
   $('speed').addEventListener('click', () => { speed = speeds[(speeds.indexOf(speed) + 1) % speeds.length]; $('speed').textContent = `${speed}×`; });
@@ -795,7 +801,7 @@ let chaseYaw = 0;
 const shot = { kind: 'chase', until: 0, anchor: new THREE.Vector3(), angle: 0 };
 const SHOTS = ['chase', 'tripod', 'pilot', 'circle', 'chase', 'wide', 'tripod', 'low'];
 let shotIndex = 0;
-const dronePos = new THREE.Vector3(0, GEAR, 0);
+const dronePos = new THREE.Vector3(0, GEAR + PAD_TOP, 0);
 const droneVel = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -1090,6 +1096,7 @@ buildTrees();
 buildClouds();
 const scenery = buildProps();
 const drone = buildDrone();
+drone.group.position.copy(dronePos);           // on the pad until the first sample arrives
 camera.position.set(-5, 2.6, 7);
 look.set(0, 0.6, 0);
 
@@ -1111,18 +1118,18 @@ function frame(nowMs) {
   if (SOURCE === 'live') t = liveTime(now);
   else if (frames.length && playhead !== null) {
     if (playing) playhead += dt * speed;
-    const end = frames[frames.length - 1].t;
-    if (playhead > end) { playhead = frames[0].t; clearTrail(); }
+    const end = frames[frames.length - 1].ts;
+    if (playhead > end) { playhead = frames[0].ts; clearTrail(); }
     t = playhead;
-    $('scrub').value = String(Math.round(1000 * (playhead - frames[0].t) / (end - frames[0].t)));
-    const el = playhead - frames[0].t;
+    $('scrub').value = String(Math.round(1000 * (playhead - frames[0].ts) / (end - frames[0].ts)));
+    const el = playhead - frames[0].ts;
     $('rt').textContent = `${Math.floor(el / 60)}:${String(Math.floor(el % 60)).padStart(2, '0')}`;
   }
   const s = t !== null ? sample(t) : null;
   const f = s ? s.f : null;
   if (s) {
     dronePos.copy(s.pos);
-    dronePos.y += GEAR;
+    dronePos.y = Math.max(s.pos.y, 0) + GEAR + restHeight(s.pos.x, s.pos.z);
     droneVel.set(f.vel[1], -f.vel[2], -f.vel[0]);
     drone.group.position.copy(dronePos);
     drone.group.quaternion.copy(s.quat);
