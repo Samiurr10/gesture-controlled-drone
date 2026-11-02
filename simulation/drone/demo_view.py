@@ -10,8 +10,10 @@ a pirouette, a circuit, a figure eight, strafes, a fast pass, return and landing
 again. The poses go through a Python stand-in for the hand and hub mapping
 (gesture-mapping.md: 3 deg deadband, 30 deg saturation, slew 4.0/s attitude and 1.5/s
 throttle), then as hub command lines through rc_link, as a physical hub's would. It is
-not the firmware. With --hub the physical hub's lines are used, and the operator types
-arm, disarm, althold or quit in the terminal.
+not the firmware. "Fly it yourself" on the page hands the two virtual hands to the
+keyboard instead; handing them back makes the virtual pilot land before the next tour.
+With --hub the physical hub's lines are used, and the operator types arm, disarm,
+althold or quit in the terminal.
 
 Either way the drone moves only from ArduCopter's motor outputs through SITL's physics.
 `--record` saves each tour's states for the replay page (tmp/palmpilot/demo-view/).
@@ -67,6 +69,7 @@ class Hands:
     hub's command."""
 
     def __init__(self):
+        self.lag = HAND_LAG_S                       # 0 when the keys are the hands
         self.left = {"curl": 0.0, "roll": 0.0}      # four-finger curl 0..1, hand roll deg (yaw)
         self.right = {"roll": 0.0, "pitch": 0.0}    # hand roll and pitch deg
         self.target = {"curl": 0.0, "lroll": 0.0, "rroll": 0.0, "rpitch": 0.0}
@@ -78,7 +81,7 @@ class Hands:
                        "lroll": cmd_to_tilt(yaw), "rroll": cmd_to_tilt(roll), "rpitch": cmd_to_tilt(pitch)}
 
     def step(self, dt):
-        k = min(1.0, dt / HAND_LAG_S)
+        k = 1.0 if self.lag <= 0 else min(1.0, dt / self.lag)
         t = self.target
         self.left["curl"] += (t["curl"] - self.left["curl"]) * k
         self.left["roll"] += (t["lroll"] - self.left["roll"]) * k
@@ -199,6 +202,22 @@ class Pilot:
             calm = calm + 1 if self.s["alt"] < 0.12 and abs(self.s["vD"]) < 0.1 else 0
             yield
 
+    def take_back(self):
+        """After a person has flown: bring the drone home before the next tour."""
+        self.hands.enable = True
+        if self.s.get("armed") and self.s.get("alt", 0.0) > 0.3:
+            self.say("The virtual pilot has the hands back: returning to the pad")
+            self.drone.althold()
+            alt = clamp(self.s["alt"], 4.0, 15.0)
+            yield from self.fly([(0.0, 0.0, alt)], 5.0)
+            yield from self.hover(2.0, alt)
+            self.say("Landing")
+            yield from self.land()
+        yield from self.wait(1.5, throttle=0)
+        self.drone.arm(False)
+        self.hands.enable = False
+        yield from self.wait(3.0, throttle=0)
+
     def tour(self):
         """One flight, the same every time; the breeze makes each one differ a little."""
         self.say("Pre-flight: left hand open, ENABLE held")
@@ -259,20 +278,57 @@ class Screen:
         self.pilot = Pilot(drone, self.hands)
         self.snapshot, self.frames, self.tours = "{}", [], 0
         self.boot = []                      # (wall, SITL boot s) for the real-time factor
+        self.mode = "virtual" if virtual else "hub"
+        self.tour = None
+        self.manual = {"curl": 0.0, "lroll": 0.0, "rroll": 0.0, "rpitch": 0.0, "enable": False}
+        self.manual_at = 0.0                # when the page last sent the person's hands
+        self.notice = (0.0, "")             # (time, text): a refusal to show for a few seconds
+
+    def take(self, manual):
+        """The person takes the hands, or gives them back to the virtual pilot."""
+        if self.mode == "hub" or manual == (self.mode == "manual"):
+            return
+        self.mode = "manual" if manual else "virtual"
+        self.hands.lag = 0.0 if manual else HAND_LAG_S
+        print(f"  {self.drone.now():6.1f}s  {'a person has the hands' if manual else 'the hands go back to the virtual pilot'}", flush=True)
+        self.tour = None if manual else self.pilot.take_back()
+        if manual:
+            self.manual = {"curl": self.hands.left["curl"], "lroll": 0.0, "rroll": 0.0, "rpitch": 0.0,
+                           "enable": self.hands.enable}
+            self.frames = []
+
+    def say(self, text):
+        self.notice = (time.monotonic(), text)
+
+    def arm(self, on):
+        if on and (rc_link.failsafe or rc_link.expired() or rc_link.channels[2] > 1100):
+            self.say("Arming refused: hold ENABLE with the left hand open (throttle low)")
+            return
+        self.drone.arm(on)
 
     def run(self):
-        tour, due = None, time.monotonic()
+        due = time.monotonic()
         while self.drone.running:
             s = self.drone.state()
-            if self.virtual and "N" in s:
+            if self.mode == "virtual" and "N" in s:
                 self.pilot.s = s
-                if tour is None:
-                    tour = self.pilot.tour()
+                if self.tour is None:
+                    self.tour = self.pilot.tour()
                 try:
-                    next(tour)
+                    next(self.tour)
                 except StopIteration:
                     self.save()
-                    tour = None
+                    self.tour = None
+                self.hands.step(TICK)
+                rc_link.apply_line(self.hands.line())
+            elif self.mode == "manual" and time.monotonic() - self.manual_at < 0.3:
+                # A page that stops sending is a hub that stops: no lines, the bridge expires.
+                m = self.manual
+                self.hands.target = {k: m[k] for k in ("curl", "lroll", "rroll", "rpitch")}
+                if m["enable"] and not self.hands.enable and self.hands.cmd["throttle"] > 0.05:
+                    self.say("ENABLE refused: open the left hand first (throttle below 5%)")
+                else:
+                    self.hands.enable = m["enable"]
                 self.hands.step(TICK)
                 rc_link.apply_line(self.hands.line())
             self.publish(s)
@@ -288,7 +344,7 @@ class Screen:
             rtf = (self.boot[-1][1] - self.boot[0][1]) / (self.boot[-1][0] - self.boot[0][0])
         ch = rc_link.channels
         frame = {
-            "t": s["t"], "source": "virtual" if self.virtual else "hub",
+            "t": s["t"], "source": self.mode,
             "pos": [s.get("N", 0), s.get("E", 0), s.get("alt", 0)],
             "vel": [s.get("vN", 0), s.get("vE", 0), s.get("vD", 0)],
             "att": [s.get("roll", 0), s.get("pitch", 0), s.get("yaw", 0)],
@@ -298,14 +354,15 @@ class Screen:
             "cmd": {"valid": not rc_link.failsafe and not rc_link.expired(),
                     "roll": (ch[0] - 1500) / 500, "pitch": -(ch[1] - 1500) / 500,
                     "throttle": (ch[2] - 1000) / 1000, "yaw": (ch[3] - 1500) / 500},
-            "caption": self.pilot.caption if self.virtual else "Physical hub",
+            "caption": {"virtual": self.pilot.caption, "manual": "You are flying", "hub": "Physical hub"}[self.mode],
+            "notice": self.notice[1] if time.monotonic() - self.notice[0] < 4 else "",
             "texts": self.drone.texts[-4:], "rtf": rtf, "wind": WIND,
         }
-        if self.virtual:
+        if self.mode != "hub":
             frame["hands"] = {"left": dict(self.hands.left), "right": dict(self.hands.right),
                               "enable": self.hands.enable}
         self.snapshot = json.dumps(frame, separators=(",", ":"))
-        if self.record and self.virtual and (not self.frames or s["t"] - self.frames[-1]["t"] >= 0.05):
+        if self.record and self.mode == "virtual" and (not self.frames or s["t"] - self.frames[-1]["t"] >= 0.05):
             self.frames.append(json.loads(self.snapshot, parse_float=lambda x: round(float(x), 3)))
 
     def save(self):
@@ -344,11 +401,28 @@ def handler(screen):
                     while screen.drone.running:
                         self.wfile.write(f"data: {screen.snapshot}\n\n".encode())
                         self.wfile.flush()
-                        time.sleep(1 / 30)
+                        time.sleep(1 / 50)
                 except (BrokenPipeError, ConnectionResetError):
                     pass
                 return
             self.send_error(404)
+
+        def do_POST(self):
+            body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+            if self.path == "/control":
+                screen.take(bool(body.get("manual")))
+            elif self.path == "/hands" and screen.mode == "manual":
+                screen.manual = {"curl": clamp(float(body.get("curl", 0)), 0.0, 1.0),
+                                 **{k: clamp(float(body.get(k, 0)), -TILT_SAT, TILT_SAT) for k in ("lroll", "rroll", "rpitch")},
+                                 "enable": bool(body.get("enable"))}
+                screen.manual_at = time.monotonic()
+            elif self.path == "/arm" and screen.mode == "manual":
+                screen.arm(bool(body.get("on")))
+            elif self.path == "/althold" and screen.mode == "manual":
+                screen.drone.althold()
+            else:
+                return self.send_error(404)
+            self.send(b'{"ok":true}', "application/json")
 
         def send(self, body, kind):
             self.send_response(200)
