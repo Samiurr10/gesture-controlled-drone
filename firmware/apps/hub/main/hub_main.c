@@ -161,12 +161,40 @@ static void emit_status(void)
     console_unlock();
 }
 
+// The latest packet each hand delivered over BLE, as decoded: lets the host see
+// a hand through the link even while the combined command is invalid.
+static void emit_hands(void)
+{
+    const int64_t now = esp_timer_get_time();
+    console_lock();
+    printf("{\"type\":\"hands\",\"t_us\":%" PRId64 ",\"hands\":[", now);
+    for (int side = 0; side < 2; ++side) {
+        xSemaphoreTake(s_hub_lock, portMAX_DELAY);
+        const struct hub_hand hand = s_hub.hand[side];
+        xSemaphoreGive(s_hub_lock);
+        const struct hand_packet_source *p = &hand.packet;
+        printf("%s{\"side\":\"%s\",\"have\":%d,\"age_us\":%" PRId64 ",\"seq\":%" PRIu32
+               ",\"acq\":%" PRIu32 ",\"state\":%u,\"fault\":%u,\"flags\":%u,\"curl\":[%d,%d,%d,%d,%d]"
+               ",\"accel\":[%d,%d,%d],\"gyro\":[%d,%d,%d],\"roll\":%d,\"pitch\":%d,\"throttle\":%d}",
+               side ? "," : "", side ? "right" : "left", hand.have_packet ? 1 : 0,
+               hand.have_packet ? now - hand.received_us : (int64_t)-1, p->sequence,
+               p->acquisition, p->state, p->fault, p->flags,
+               p->curl_milli[0], p->curl_milli[1], p->curl_milli[2], p->curl_milli[3], p->curl_milli[4],
+               p->accel[0], p->accel[1], p->accel[2], p->gyro[0], p->gyro[1], p->gyro[2],
+               p->roll_milli, p->pitch_milli, p->throttle_milli);
+    }
+    printf("]}\n");
+    console_unlock();
+}
+
 static void handle_command(const char *line)
 {
     if (!strcmp(line, "status")) {
         emit_status();
+    } else if (!strcmp(line, "hands")) {
+        emit_hands();
     } else {
-        console_printf("{\"type\":\"error\",\"op\":\"command\",\"help\":\"status\"}\n");
+        console_printf("{\"type\":\"error\",\"op\":\"command\",\"help\":\"status | hands\"}\n");
     }
 }
 
