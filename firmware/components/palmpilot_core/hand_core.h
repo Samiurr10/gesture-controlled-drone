@@ -202,12 +202,30 @@ int hand_curl_milli(const struct hand_calibration *c, int index, int raw);
 // Gesture mapping and control state (FW-05, docs/gesture-mapping.md)
 //
 // Left hand: index+middle+ring+little mean curl = throttle; thumb = PRECISION.
-// Right hand: all five curled = HOLD.
+// Right hand: all five curled = HOLD. (Bench profile: no thumb gestures.)
 // All values are milli-units. No floating point - see the 2026-09-18 FPU record.
 // ---------------------------------------------------------------------------
 
+// Bench profile (CONFIG_PALMPILOT_BENCH, built as hand:left_bench, hand:right_bench
+// and hub:bench): settings the first physical flights on 2026-11-17 used. The
+// default build keeps the designed behaviour, which the simulation suites test;
+// docs/bench-bringup.md records why each bench setting exists.
+#ifndef PALMPILOT_BENCH
+#define PALMPILOT_BENCH 0
+#endif
+
 // PROVISIONAL thresholds; CTRL-051 must measure these on a real hand.
+#if PALMPILOT_BENCH
+// The open left hand read up to ~17% curl on its saved calibration.
+#define HAND_ARM_THROTTLE_MAX_MILLI 200   // enable refused above 20% throttle
+#else
 #define HAND_ARM_THROTTLE_MAX_MILLI 50    // enable refused above 5% throttle
+#endif
+// 1: ENABLE toggles (press on, press again off) instead of a held deadman.
+// Losing a hand, a fault or a reset still ends permission.
+#define HAND_ENABLE_LATCH PALMPILOT_BENCH
+// 1: no thumb gestures. HOLD is index..little; PRECISION is never raised.
+#define HAND_NO_THUMB_GESTURES PALMPILOT_BENCH
 #define HAND_HOLD_CURL_MILLI 800          // all five fingers -> HOLD
 #define HAND_PRECISION_CURL_MILLI 600     // left thumb -> PRECISION
 

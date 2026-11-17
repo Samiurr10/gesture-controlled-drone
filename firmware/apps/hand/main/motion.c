@@ -2,7 +2,11 @@
 #include "motion.h"
 
 #include "board.h"
+#include "driver/gpio.h"
 #include "driver/i2c_master.h"
+#include <stdio.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #define REG_WHO_AM_I 0x0F
 #define LSM_CTRL1_XL 0x10
@@ -81,8 +85,16 @@ esp_err_t motion_init(void)
 
     // Identity first. An address that merely acknowledges is not the sensor we
     // designed for; a successful scan is insufficient (FW-02).
-    if (read_registers(s_accel_gyro, REG_WHO_AM_I, &s_accel_gyro_identity, 1) == ESP_OK
-        && s_accel_gyro_identity == LSM6DS3TRC_WHO_AM_I_VALUE) {
+    if (read_registers(s_accel_gyro, REG_WHO_AM_I, &s_accel_gyro_identity, 1) != ESP_OK
+        || s_accel_gyro_identity != LSM6DS3TRC_WHO_AM_I_VALUE) {
+        // Seen on the bench (2026-11-17): after a supply glitch the chip still
+        // acknowledged but read WHO_AM_I as 0x00 until a software reset. An ESP32
+        // reboot does not power-cycle the breakout, so reset it here and retry once.
+        write_register(s_accel_gyro, LSM_CTRL3_C, 0x01);
+        vTaskDelay(pdMS_TO_TICKS(50));
+        read_registers(s_accel_gyro, REG_WHO_AM_I, &s_accel_gyro_identity, 1);
+    }
+    if (s_accel_gyro_identity == LSM6DS3TRC_WHO_AM_I_VALUE) {
         // BDU so a burst read cannot mix halves of two samples; IF_INC for the
         // auto-incrementing burst below.
         if (write_register(s_accel_gyro, LSM_CTRL3_C, 0x44) == ESP_OK
@@ -102,6 +114,55 @@ esp_err_t motion_init(void)
     // A missing sensor is reported through motion_read, not by failing init:
     // the acquisition loop must keep running and mark the fault.
     return ESP_OK;
+}
+
+// Bench diagnosis: idle line levels, every address that acknowledges, and the
+// WHO_AM_I read (status and value) at both LSM6DS3TR-C addresses (SDO low/high).
+void motion_scan(void)
+{
+    printf("{\"type\":\"i2c\",\"sda_idle\":%d,\"scl_idle\":%d,\"found\":[",
+           gpio_get_level(HAND_I2C_SDA_GPIO), gpio_get_level(HAND_I2C_SCL_GPIO));
+    if (!s_bus) { printf("],\"error\":\"no bus\"}\n"); return; }
+    bool first = true;
+    for (uint16_t a = 0x08; a <= 0x77; ++a) {
+        if (i2c_master_probe(s_bus, a, MOTION_TIMEOUT_MS) == ESP_OK) {
+            printf("%s\"0x%02X\"", first ? "" : ",", a);
+            first = false;
+        }
+    }
+    printf("]");
+    const uint16_t lsm[2] = {0x6A, 0x6B};
+    for (int i = 0; i < 2; ++i) {
+        i2c_device_config_t cfg = {.dev_addr_length = I2C_ADDR_BIT_LEN_7,
+                                   .device_address = lsm[i], .scl_speed_hz = MOTION_BUS_HZ};
+        i2c_master_dev_handle_t dev;
+        uint8_t id = 0;
+        esp_err_t st = i2c_master_bus_add_device(s_bus, &cfg, &dev);
+        if (st == ESP_OK) {
+            st = read_registers(dev, REG_WHO_AM_I, &id, 1);
+            i2c_master_bus_rm_device(dev);
+        }
+        printf(",\"who_0x%02X\":{\"err\":\"%s\",\"id\":\"0x%02X\"}", lsm[i], esp_err_to_name(st), id);
+    }
+    printf("}\n");
+}
+
+// Bench recovery: a WHO_AM_I of 0x00 that still acknowledges looks like the
+// LSM6DS3TR-C left in its embedded-function register bank (FUNC_CFG_ACCESS,
+// 0x01, bit 7). Select the main bank, then software-reset (CTRL3_C bit 0).
+void motion_recover(void)
+{
+    uint8_t bank = 0xFF, id_before = 0, id_bank = 0, id_reset = 0;
+    const esp_err_t r0 = read_registers(s_accel_gyro, 0x01, &bank, 1);
+    read_registers(s_accel_gyro, REG_WHO_AM_I, &id_before, 1);
+    const esp_err_t w1 = write_register(s_accel_gyro, 0x01, 0x00);
+    read_registers(s_accel_gyro, REG_WHO_AM_I, &id_bank, 1);
+    const esp_err_t w2 = write_register(s_accel_gyro, LSM_CTRL3_C, 0x01);
+    vTaskDelay(pdMS_TO_TICKS(50));
+    read_registers(s_accel_gyro, REG_WHO_AM_I, &id_reset, 1);
+    printf("{\"type\":\"i2c_recover\",\"func_cfg\":\"0x%02X\",\"read\":\"%s\",\"id_before\":\"0x%02X\","
+           "\"bank_write\":\"%s\",\"id_after_bank\":\"0x%02X\",\"reset_write\":\"%s\",\"id_after_reset\":\"0x%02X\"}\n",
+           bank, esp_err_to_name(r0), id_before, esp_err_to_name(w1), id_bank, esp_err_to_name(w2), id_reset);
 }
 
 uint8_t motion_accel_gyro_identity(void) { return s_accel_gyro_identity; }

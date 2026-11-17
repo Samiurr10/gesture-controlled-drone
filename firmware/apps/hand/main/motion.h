@@ -45,5 +45,7 @@ esp_err_t motion_init(void);
 bool motion_read(struct motion_sample *out);
 
 // Identity values observed at init, for diagnostics.
+void motion_scan(void);
+void motion_recover(void);           // bench: main bank + soft reset of the LSM6DS3TR-C              // bench: prints one {"type":"i2c"} line
 uint8_t motion_accel_gyro_identity(void);
 uint8_t motion_mag_identity(void);

@@ -609,6 +609,10 @@ static void handle_command_locked(const char *line)
             s_calibration.valid = false;
             printf("{\"type\":\"capture\",\"end\":\"set\",\"result\":0,\"reason\":\"ok\"}\n");
         }
+    } else if (!strcmp(line, "i2c")) {
+        motion_scan();
+    } else if (!strcmp(line, "i2c recover")) {
+        motion_recover();
     } else if (!strcmp(line, "cal reset")) {
         s_capture_active = false;
         hand_calibration_reset(&s_calibration, HAND_SIDE);

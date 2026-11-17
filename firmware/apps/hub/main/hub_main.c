@@ -32,6 +32,10 @@
 
 // PROVISIONAL: 20 ms, as the hands; CTRL-030 must measure it.
 #define CALIBRATE_DEBOUNCE_SAMPLES 1
+// Bench profile (hand_core.h): the bench hub has no CALIBRATE button, and its
+// floating GPIO7 read low, holding every command invalid. The bench build ignores
+// the pin; neutral is captured over each hand's USB (`cal neutral`).
+#define HUB_CALIBRATE_INPUT (!PALMPILOT_BENCH)
 
 static struct hub s_hub;
 static SemaphoreHandle_t s_hub_lock;
@@ -93,8 +97,8 @@ static void control_task(void *argument)
     for (;;) {
         if (xSemaphoreTake(s_control_tick, portMAX_DELAY) != pdTRUE) continue;
         const bool was_calibrating = s_calibrate.level;
-        const bool calibrating = debounce_update(&s_calibrate,
-                                                 gpio_get_level(HAND_ENABLE_GPIO) == 0);
+        const bool calibrating = HUB_CALIBRATE_INPUT
+            && debounce_update(&s_calibrate, gpio_get_level(HAND_ENABLE_GPIO) == 0);
         if (calibrating && !was_calibrating) {
             const esp_err_t left = hub_link_send(HAND_SIDE_LEFT, LINK_COMMAND_CAPTURE_NEUTRAL);
             const esp_err_t right = hub_link_send(HAND_SIDE_RIGHT, LINK_COMMAND_CAPTURE_NEUTRAL);
