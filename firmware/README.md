@@ -109,15 +109,27 @@ open/short faults, calibrates, normalises curl and tilt, runs the per-hand state
 machine, and notifies one packet per 20 ms to the hub over BLE.
 
 UART commands: `info`, `sample`, `stats`, `control`, `motion`, `packet`, `link`,
-`stream N`, `stall SWEEPS`, `profile`, `reboot`, and `cal extended | curled |
-neutral | finish | reset | save | load | erase | corrupt`.
+`stream N`, `stall SWEEPS`, `profile`, `reboot`, `cal extended | curled |
+neutral | finish | reset | save | load | erase | corrupt`, `cal set E*5 C*5`
+(re-enter both ends from an earlier capture; Finish still validates them), and
+the bench diagnostics `i2c` (line levels, bus scan, WHO_AM_I at 0x6A/0x6B) and
+`i2c recover` (software-reset the accelerometer). At boot, an accelerometer that
+answers with the wrong identity is software-reset and read once more.
 
 `apps/hub` connects both hands and applies the mapping and interlocks from
 [`gesture-mapping.md`](../docs/gesture-mapping.md) in
 `components/palmpilot_core/hub_core.c`. It prints one `command` line per 20 ms
 on UART0 (`valid`, `reason`, `roll`, `pitch`, `yaw`, `throttle`, `hold`,
-`precision`), and answers `status`. GPIO7 is CALIBRATE: it captures neutral on
-both hands and inhibits output while held.
+`precision`), and answers `status` and `hands` (each hand's newest packet as
+received). GPIO7 is CALIBRATE: it captures neutral on both hands and inhibits
+output while held.
+
+Bench profile: `hand:left_bench`, `hand:right_bench` and `hub:bench` build with
+`CONFIG_PALMPILOT_BENCH`, the settings used for the first physical flights
+(ENABLE toggles, 20% ENABLE limit, no thumb gestures, CALIBRATE ignored, right
+pitch inverted, softer yaw). The suites test the default build. Details:
+[docs/bench-bringup.md](../docs/bench-bringup.md). Bench tools are in
+`tools/bench/`.
 
 ```sh
 sh firmware/tests/run_all.sh                                    # every suite

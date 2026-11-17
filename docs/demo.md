@@ -2,8 +2,9 @@
 
 **Status: PLAN, with the drone side built.** The drone runner (`simulation/drone/sitl_live.py`)
 exists and was tested on 2026-11-01 against a scripted hub and against a fake hub on a
-pseudo-terminal. The 3D view (`simulation/drone/demo_view.py`) runs live from SITL. Nothing
-physical is tested. The steps are
+pseudo-terminal. The 3D view (`simulation/drone/demo_view.py`) runs live from SITL. On
+2026-11-17 the physical hub and hands flew it on a breadboard bench
+([bench-bringup.md](bench-bringup.md)); that is an observation, not a pass of Part C. The steps are
 Part C of the [test plan](test-plan.md#part-c--physical-controller-simulated-drone).
 It marks no milestone complete.
 
@@ -27,9 +28,9 @@ an emulated MCU between ArduCopter and the motors.
 
 | Link in the chain | Evidence status | Where |
 |---|---|---|
-| Two hands → BLE → hub → command line on UART0 | PASS in simulation (S2-A, S2-B). **Not tested physically** | `firmware/tests/s2*.py` |
+| Two hands → BLE → hub → command line on UART0 | PASS in simulation (S2-A, S2-B). Physically observed on breadboards 2026-11-11 and -17: 50 packets/s per hand, 0 rejected; one open fault, a hand that stops sending while linked ([bench-bringup.md](bench-bringup.md)) | `firmware/tests/s2*.py` |
 | Hub line → RC channels → MAVLink `RC_CHANNELS_OVERRIDE` | PASS in Simantic (S3-A 18/18, S3-B 38/38). The demo runner uses the same `rc_link` code with a wall-clock 20 ms sender and the same 100 ms expiry: overrides stopped 0.061–0.064 s after the last line and resumed within 5 ms (scripted runs) | `rc_link.py`, `gcs_peer.py`, `sitl_live.py` |
-| Real hub on a serial port → runner | Implemented (`sitl_live.py serial`). Tested only with a fake hub on a pseudo-terminal: valid, invalid, malformed and missing lines, arm refusal, arming, flight, failsafe, recovery. **Not tested with a board or a USB-UART bridge** | `sitl_live.py` |
+| Real hub on a serial port → runner | Implemented (`sitl_live.py serial`, `demo_view.py --hub`). Tested with a fake hub on a pseudo-terminal (valid, invalid, malformed and missing lines, arm refusal, arming, flight, failsafe, recovery), and on 2026-11-17 with the physical hub over its CP2102N USB-UART: take-off, flight in ALT HOLD, and a failsafe RTL when a hand went stale. Not measured: latency through the physical chain. The runner does not reopen a port that disappears | `sitl_live.py`, `demo_view.py` |
 | Gesture flight in AltHold | SITL: the scripted flight passes 27/27 checks (§3). Replaying the emulated F405's last gesture flight (real hand and hub firmware) into SITL on the same airframe: in the commanded phases climb and descent agree within 0.03 m/s, roll within about 0.5°, pitch within 0.3° and yaw rate within about 4°/s. In the level phases after a roll or pitch the F405 stays 1.3–2.5° tilted, SITL within 0.7° | `sitl_live.py`, `sitl_reference.py` |
 | Attitude estimate after a manoeuvre | SITL with GPS: the airframe returns to within 0.25° of level after every manoeuvre. Without GPS, two scripted runs stayed 2.1–2.6° off after a roll; a replay without GPS did not (§3). The emulated F405 (no GPS) shows 1–2.5° | §3 |
 | Screen view of the drone | Built: `demo_view.py` serves a three.js view of SITL's state at http://localhost:8765, with a scripted virtual pilot or a physical hub (`--hub PORT`). Checked in Chrome on 2026-11-01: 1.00× real time; about 120 frames/s on an M4 at 1.5× resolution, worst frame 16.6 ms | §4 |
@@ -221,6 +222,20 @@ the 50 Hz report rate. The second is ArduCopter and the airframe responding, as 
 quad would, and it is shown in real time. Not included and not measured: the physical
 hands, BLE and hub (a packet and a command every 20 ms), the USB serial link, and the
 browser's frame time.
+
+### The view's modes (2026-11-17)
+
+| Option | What it does |
+|---|---|
+| (none) | A scripted virtual pilot flies a tour; "Take the hands" gives the keyboard the virtual hands |
+| `--manual` | Keyboard only from the start, no virtual pilot (`E` ENABLE, `R` arm, `W/S` throttle, arrows tilt, `A/D` yaw, `F` disarm) |
+| `--hub PORT` | The physical hub's command lines fly the drone. The runner also asks the hub for `hands` (10 Hz) and `status` (1 Hz) and draws both hands' curl, tilt, per-finger bend, link, IMU and calibration state in the side panel; that telemetry never moves the drone. Arm/Disarm buttons (and `R`/`F`); arming selects ALT HOLD. The reason a command is invalid is shown under them |
+| `--drone f405` | The emulated F405 and `quad_plant` instead of SITL ([simantic.md §6](simantic.md#6-the-live-3d-view-on-the-emulated-f405)); runs slower than real time |
+
+The default camera ("Fixed", key 6) stands behind the drone and keeps the heading the
+drone had when the page loaded, so stick right is screen right until the drone yaws.
+`simulation/drone/compare.py` shows a SITL view and an F405 view side by side, sends the
+same keys to both and times each one's response.
 
 ## 5. Operator procedure
 
