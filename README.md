@@ -1,5 +1,3 @@
-> **[Simantic](https://simantic.com)** ran this controller's firmware on simulated hardware before any board was wired. Try it at [simantic.com](https://simantic.com).
-
 # PalmPilot — gesture-controlled drone
 
 Two wearable hand controllers, each an ESP32-S3 with five flex sensors and a
