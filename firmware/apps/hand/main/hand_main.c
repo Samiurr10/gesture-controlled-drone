@@ -590,6 +590,29 @@ static void handle_command_locked(const char *line)
         printf("{\"type\":\"calibration\",\"result\":%d,\"reason\":\"%s\","
                "\"valid\":%d}\n", (int)result, calibration_reason(result),
                s_calibration.valid ? 1 : 0);
+    } else if (!strncmp(line, "cal set ", 8)) {
+        // Bench convenience: re-enter both ends from an earlier capture's means
+        // (extended x5, then curled x5). Finish still validates them.
+        int e[HAND_FLEX_COUNT], c[HAND_FLEX_COUNT];
+        const int n = sscanf(line + 8, "%d %d %d %d %d %d %d %d %d %d",
+                             &e[0], &e[1], &e[2], &e[3], &e[4], &c[0], &c[1], &c[2], &c[3], &c[4]);
+        if (n != 2 * HAND_FLEX_COUNT || s_capture_active
+                || s_control.state == HAND_STATE_PERMITTED) {
+            printf("{\"type\":\"error\",\"op\":\"cal set\",\"reason\":\"%s\"}\n",
+                   n != 2 * HAND_FLEX_COUNT ? "needs 10 values" : "busy");
+        } else {
+            for (int i = 0; i < HAND_FLEX_COUNT; ++i) {
+                s_calibration.flex[i].extended_raw = e[i];
+                s_calibration.flex[i].curled_raw = c[i];
+            }
+            s_calibration.extended_captured = s_calibration.curled_captured = true;
+            s_calibration.valid = false;
+            printf("{\"type\":\"capture\",\"end\":\"set\",\"result\":0,\"reason\":\"ok\"}\n");
+        }
+    } else if (!strcmp(line, "i2c")) {
+        motion_scan();
+    } else if (!strcmp(line, "i2c recover")) {
+        motion_recover();
     } else if (!strcmp(line, "cal reset")) {
         s_capture_active = false;
         hand_calibration_reset(&s_calibration, HAND_SIDE);
@@ -616,7 +639,7 @@ static void handle_command_locked(const char *line)
     } else {
         printf("{\"type\":\"error\",\"op\":\"command\","
                "\"help\":\"info | sample | stats | control | stream N | stall MS | "
-               "cal extended | cal curled | cal neutral | cal finish | cal reset | "
+               "cal extended | cal curled | cal set E*5 C*5 | cal neutral | cal finish | cal reset | "
                "cal save | cal load | cal erase | cal corrupt | profile | "
                "link | reboot\"}\n");
     }

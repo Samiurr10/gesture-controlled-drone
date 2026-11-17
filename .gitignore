@@ -20,3 +20,8 @@ __pycache__/
 .venv/
 .venv-schematics/
 .venv-simantic/
+
+# Local, not part of the project.
+/outputs/
+.chart-data-*/
+.claude/

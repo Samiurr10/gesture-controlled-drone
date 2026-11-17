@@ -96,6 +96,24 @@ static int slew(int current, int target, int step, int low)
     return clamp(hand_slew(current, target, step), low, HAND_MILLI);
 }
 
+// Bench profile only (hand_core.h). On the physical RIGHT glove, leaning forward
+// flew the drone backward: that breakout's x axis points the other way.
+#define HUB_RIGHT_PITCH_SIGN (PALMPILOT_BENCH ? -1 : 1)
+// Bench profile only: yaw was too eager. A wider deadband on the left hand's
+// roll, then at most half authority.
+#define HUB_YAW_DEADBAND_MILLI 200
+#define HUB_YAW_MAX_MILLI 500
+
+static int yaw_shape(int roll_milli)
+{
+    if (!PALMPILOT_BENCH) return roll_milli;
+    const int magnitude = roll_milli < 0 ? -roll_milli : roll_milli;
+    if (magnitude <= HUB_YAW_DEADBAND_MILLI) return 0;
+    const int yaw = (int)((long)(magnitude - HUB_YAW_DEADBAND_MILLI) * HUB_YAW_MAX_MILLI
+                          / (HAND_MILLI - HUB_YAW_DEADBAND_MILLI));
+    return roll_milli < 0 ? -yaw : yaw;
+}
+
 void hub_update(struct hub *hub, bool calibrating, int64_t now_us,
                 struct hub_command *out)
 {
@@ -129,7 +147,7 @@ void hub_update(struct hub *hub, bool calibrating, int64_t now_us,
     const bool hold = r->flags & HAND_FLAG_HOLD;
     const bool precision = l->flags & HAND_FLAG_PRECISION;
 
-    int roll = r->roll_milli, pitch = r->pitch_milli, yaw = l->roll_milli;
+    int roll = r->roll_milli, pitch = HUB_RIGHT_PITCH_SIGN * r->pitch_milli, yaw = yaw_shape(l->roll_milli);
     int throttle = clamp(l->throttle_milli, 0, HAND_MILLI);
     if (hold) {
         if (!hub->was_holding) hub->hold_throttle = command->throttle_milli;

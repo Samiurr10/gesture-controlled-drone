@@ -135,8 +135,8 @@ hands stay on USB.
 ## Part C — physical controller, simulated drone
 
 The physical hub replaces the simulated controller. Its serial lines feed the same
-bridge, and only the drone runs in Simantic. A 3D view shows the airframe's true
-state. The bring-up, the operator steps and what is still to build are in the
+bridge code (`rc_link`), and the drone runs as ArduCopter SITL in real time
+(`simulation/drone/sitl_live.py`). A 3D view shows the airframe's true state. The bring-up, the operator steps and what is still to build are in the
 [demo plan](demo.md).
 
 | Step | Check |

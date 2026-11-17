@@ -21,7 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "firmware/tools"))
 from controller import Console                                   # noqa: E402
-from harness import build_platform                               # noqa: E402
+from harness import accept_repl_files, build_platform                               # noqa: E402
 
 faulthandler.register(signal.SIGUSR1, all_threads=True)
 SECONDS = float(sys.argv[1]) if len(sys.argv) > 1 else 4.0
@@ -56,7 +56,7 @@ for s in range(1, SETS + 1):
     for role, n in (("left", 1), ("right", 2), ("hub", 3)):
         name = f"{role}{s}"
         mac = f"02:50:5{s}:00:00:{n}0"
-        machines[name] = {"repl": str(build_platform(platform, out, name=f"{name}.repl", mac=mac)),
+        machines[name] = {"mcu": str(build_platform(platform, out, name=f"{name}.repl", mac=mac)),
                           "elf": str(ELF[role])}
         names.append(name)
     media.append({"type": "ble", "connect": [f"{n}.radio" for n in names]})
@@ -66,10 +66,11 @@ for s in range(1, SETS + 1):
 for k in range(1, int(os.environ.get("STRESS_EXTRA", "0")) + 1):
     role = "hub" if k % 2 else "left"
     name = f"x{role}{k}"
-    machines[name] = {"repl": str(build_platform(platform, out, name=f"{name}.repl", mac=f"02:50:6{k % 10}:00:00:{k:02d}")),
+    machines[name] = {"mcu": str(build_platform(platform, out, name=f"{name}.repl", mac=f"02:50:6{k % 10}:00:00:{k:02d}")),
                       "elf": str(ELF[role])}
 
 t0 = time.monotonic()
+accept_repl_files()
 with Sim(scenario={"machines": machines, "media": media}, machine="hub1", uart="uart0") as sim:
     print(f"STRESS started {SETS} sets, {len(machines)} machines in {time.monotonic() - t0:.1f}s", flush=True)
     emulation = EmulationManager.Instance.CurrentEmulation

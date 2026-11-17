@@ -7,8 +7,9 @@ goes through the modeled drivers only: flex voltages through the ADC model,
 ENABLE and CALIBRATE through GPIO, motion through each hand's own I2C fixtures.
 The hands reach the hub only over the simulated radio.
 
-With `drone=True` a fourth machine runs stock ArduCopter on an STM32F405
-(Matek F405-Wing board model). The computer bridge between them lives in the
+With `drone=True` a fourth machine runs stock ArduCopter 4.7.1 on the flight
+controller PALMPILOT_DRONE names: `h7`, a Pixhawk 6X (STM32H753), or `f405`, a Matek
+F405-Wing. The computer bridge between them lives in the
 simulation: each hub command line becomes RC channels (simulation/drone/
 rc_link.py), sent to ArduCopter's telemetry port as MAVLink by gcs_peer.py.
 
@@ -21,10 +22,11 @@ import contextlib
 import json
 import os
 import re
+import shutil
 import sys
 from pathlib import Path
 
-from harness import ENABLE_GPIO, FLEX, ExternalInputs, build_platform, load_overlay
+from harness import ENABLE_GPIO, FLEX, ExternalInputs, accept_repl_files, build_platform, load_overlay
 
 FIXTURES_DIR = Path(__file__).resolve().parents[1] / "tests" / "fixtures"
 MOTION_FIXTURES = {
@@ -88,27 +90,57 @@ class Console:
         return out
 
 
+DRONE = os.environ.get("PALMPILOT_DRONE", "f405")
+# The flight controller's telemetry port (ArduCopter SERIAL1), where the bridge connects.
+DRONE_UART = {"h7": "uart7", "f405": "usart1"}[DRONE]
+
+
 def build_drone_platform(out: Path, plant: bool = False) -> Path:
-    """STM32F405RG + the Matek F405-Wing board, with the S.Bus receiver replaced by
-    the computer's MAVLink link (gcs_peer) and the STM32 UART candidate if set.
-    With `plant`, the IMU and barometer report quad_plant's motion."""
+    """The flight controller with the computer's MAVLink link (gcs_peer) on its telemetry port.
+    With `plant`, the IMUs and barometer report quad_plant's motion."""
     text = Path(os.environ["PALMPILOT_DRONE_PLATFORM"]).read_text()
-    overlay = os.environ.get("PALMPILOT_STM32_UART_OVERLAY")
-    if overlay:
-        load_overlay(overlay, "STM32 UART")
-        text = text.replace("UART.STM32_UART", "UartFixed.STM32_UART")
     board_dir = Path(os.environ["PALMPILOT_DRONE_BOARD"])
+    out.mkdir(parents=True, exist_ok=True)
+    if DRONE == "h7":
+        board = _pixhawk6x_board(board_dir, out, plant)
+    else:
+        board = _matek_board(board_dir, plant)
+        overlay = os.environ.get("PALMPILOT_STM32_UART_OVERLAY")
+        if overlay:
+            load_overlay(overlay, "STM32 UART")
+            text = text.replace("UART.STM32_UART", "UartFixed.STM32_UART")
+    path = out / "platform-drone.repl"
+    path.write_text(text + "\n" + board)
+    return path
+
+
+def _pixhawk6x_board(board_dir: Path, out: Path, plant: bool) -> str:
+    """Pixhawk 6X (STM32H753) Simantic board files: three ICM-45686, FRAM, SD on SDMMC2.
+    Its ground-station peer becomes gcs_peer at ArduCopter's default SERIAL1 baud."""
+    board = (board_dir / "pixhawk6x.board").read_text()
+    if plant:
+        for slot in (1, 2, 3):
+            board = re.sub(rf"(imu{slot}: SPI\.ScriptedSpiSlave @ spi{slot}\n)    [^\n]*\n",
+                           rf"""\1    script: "exec(open('{DRONE_DIR / 'imu45686_plant.py'}').read()); SLOT = {slot}"\n""",
+                           board)
+    board = board.replace("{TEST_DIR}/peers/fm25v02a.py", str(DRONE_DIR / "fram_peer.py"))
+    card = out / "card.img"                 # the card is written to; keep the fixture's image clean
+    shutil.copyfile(board_dir / "card.img", card)
+    board = board.replace("{TEST_DIR}/card.img", str(card))
+    board = board.replace("{TEST_DIR}/peers/gcs.py", str(DRONE_DIR / "gcs_peer.py"))
+    board = board.replace("baudRate: 460800", "baudRate: 57600")
+    return board.replace("{TEST_DIR}", str(board_dir))
+
+
+def _matek_board(board_dir: Path, plant: bool) -> str:
+    """Matek F405-Wing board, with the S.Bus receiver replaced by gcs_peer."""
     board = (board_dir / "f405-wing-v2.board").read_text().replace("{TEST_DIR}", str(board_dir))
     board = re.sub(r"rx: UART\.ScriptedUartPeer[^\n]*\n[^\n]*\n", "", board)
     if plant:
         board = board.replace(f"{board_dir}/peers/icm42688.py", str(DRONE_DIR / "imu_plant.py"))
         board = board.replace(f"{board_dir}/peers/dps310.py", str(DRONE_DIR / "baro_plant.py"))
         board = board.replace(f"{board_dir}/peers/sd_spi.py", str(DRONE_DIR / "sd_card.py"))
-    board += f'\ngcs: UART.ScriptedUartPeer @ sysbus 0x60200000\n    file: "{DRONE_DIR / "gcs_peer.py"}"\n'
-    out.mkdir(parents=True, exist_ok=True)
-    path = out / "platform-drone.repl"
-    path.write_text(text + "\n" + board)
-    return path
+    return board + f'\ngcs: UART.ScriptedUartPeer @ sysbus 0x60200000\n    file: "{DRONE_DIR / "gcs_peer.py"}"\n'
 
 
 @contextlib.contextmanager
@@ -142,20 +174,15 @@ def _serial_execution(enabled: bool):
 
 def bridge_hub_line(line: str) -> None:
     """The computer bridge: every hub command line updates the drone's RC channels."""
-    if line.startswith('{"type":"command"'):
-        try:
-            rc_link.apply_command(json.loads(line))
-        except json.JSONDecodeError:
-            rc_link.apply_command(None)
+    rc_link.apply_line(line)
 
 
 class ControllerSim:
-    def __init__(self, out=None, show_logs=False, quantum=None, drone=False, plant=False, serial=None):
-        self.elf = {
-            "left": Path(os.environ["PALMPILOT_LEFT_ELF"]),
-            "right": Path(os.environ["PALMPILOT_RIGHT_ELF"]),
-            "hub": Path(os.environ["PALMPILOT_HUB_ELF"]),
-        }
+    def __init__(self, out=None, show_logs=False, quantum=None, drone=False, plant=False, serial=None,
+                 hands=True):
+        # hands=False: the drone alone, as in the laptop demo where the hands and hub are physical.
+        self.names = MACHINES if hands else ()
+        self.elf = {name: Path(os.environ[f"PALMPILOT_{name.upper()}_ELF"]) for name in self.names}
         self.out = Path(out or os.environ.get("PALMPILOT_OUT", "."))
         self.platform = Path(os.environ["PALMPILOT_PLATFORM"])
         self.show_logs, self.quantum, self.drone, self.plant = show_logs, quantum, drone, plant
@@ -163,7 +190,7 @@ class ControllerSim:
         # races or lock-order deadlocks between cores, at the cost of speed.
         self.serial = os.environ.get("PALMPILOT_SERIAL") == "1" if serial is None else serial
         self.console = {name: Console(name, bridge_hub_line if drone and name == "hub" else None)
-                        for name in MACHINES}
+                        for name in self.names}
         self.sim = None
         self._hooks = []
 
@@ -182,26 +209,30 @@ class ControllerSim:
         machines = {}
         # Per process: simulations run side by side must not read each other's half-written files.
         platforms = self.out / "platforms" / str(os.getpid())
-        for name in MACHINES:
+        for name in self.names:
             i2c = MOTION_FIXTURES if name != "hub" else None
             platform = build_platform(self.platform, platforms, i2c=i2c,
                                       hand=name if i2c else None,
                                       name=f"platform-{name}.repl",
                                       mac=FACTORY_MAC[name])
-            machines[name] = {"repl": str(platform), "elf": str(self.elf[name])}
+            machines[name] = {"mcu": str(platform), "elf": str(self.elf[name])}
         scenario = {
             "machines": machines,
-            "media": [{"type": "ble", "connect": [f"{n}.radio" for n in MACHINES]}],
+            "media": [{"type": "ble", "connect": [f"{n}.radio" for n in self.names]}] if self.names else [],
         }
         if self.drone:
             quad_plant.PLANT.reset()
-            machines["drone"] = {"repl": str(build_drone_platform(platforms, self.plant)),
+            quad_plant.BARO_SET = None
+            machines["drone"] = {"mcu": str(build_drone_platform(platforms, self.plant)),
                                  "elf": os.environ["PALMPILOT_DRONE_ELF"]}
-            scenario["media"].append({"type": "uart", "connect": ["drone.usart1", "drone.gcs"]})
+            scenario["media"].append({"type": "uart", "connect": [f"drone.{DRONE_UART}", "drone.gcs"]})
         if self.quantum is not None:
             scenario["quantum"] = self.quantum
+        accept_repl_files()
         with _serial_execution(self.serial):
-            self.sim = Sim(scenario=scenario, machine="hub", uart="uart0",
+            # Drone alone: the SDK's console goes on a UART ArduCopter leaves unused.
+            self.sim = Sim(scenario=scenario, machine="hub" if self.names else "drone",
+                           uart="uart0" if self.names else "usart6",
                            show_logs=self.show_logs).__enter__()
 
         emulation = EmulationManager.Instance.CurrentEmulation
@@ -213,8 +244,16 @@ class ControllerSim:
             elif found and name == "drone":
                 self.drone_machine = machine
                 quad_plant.BUS_READ = lambda address, _size, bus=machine.SystemBus: int(bus.ReadDoubleWord(address))
+                if DRONE == "h7" and self.plant:
+                    from System import Decimal
+                    # The engine wraps bus slaves for frame capture: "baro" is the wrapper and
+                    # the BMP388 itself is "baro_device". Its Pressure (hPa) is set through
+                    # reflection, as machine[...] hands back an IPeripheral.
+                    baro = machine["sysbus.i2c2.baro.baro_device"]
+                    pressure = baro.GetType().GetProperty("Pressure")
+                    quad_plant.BARO_SET = lambda pa, b=baro, prop=pressure: prop.SetValue(b, Decimal(pa / 100.0))
         self.inputs = {name: ExternalInputs(m) for name, m in self.machine.items()}
-        missing = set(MACHINES) - set(self.machine)
+        missing = set(self.names) - set(self.machine)
         if missing:
             raise RuntimeError(f"scenario machines not found: {sorted(missing)}")
         for name, machine in self.machine.items():
@@ -336,6 +375,36 @@ class ControllerSim:
     def latest_command(self, since: int = 0) -> dict | None:
         rows = self.commands(since)
         return rows[-1] if rows else None
+
+    # -- drone ----------------------------------------------------------------
+    def drone_standby(self, limit: float = 40.0) -> None:
+        """Run until ArduCopter's heartbeat reports standby or active."""
+        rc_link.heartbeat = None
+        start = self.time()
+        while not (rc_link.heartbeat and rc_link.heartbeat["system_status"] in (3, 4)) and self.time() - start < limit:
+            self.run_for(0.5)
+
+    def setup_drone(self, extra=()) -> None:
+        """First-time setup a real bench does over MAVLink, then a reboot: quad X, arming checks
+        skipped (no compass or accelerometer calibration here), no RC mode switch (the bridge
+        holds ch5 at 1500 us), the bridge's 1000-2000 us stick range, and on the Pixhawk 6X the
+        FMU's own PWM outputs (no IOMCU), the safety switch off at boot and no battery monitor.
+        `extra` is (name, value) pairs."""
+        from pymavlink.dialects.v20 import ardupilotmega as mavlink
+        params = [("FRAME_CLASS", 1), ("FRAME_TYPE", 1), ("ARMING_SKIPCHK", 0xFFFFE), ("FLTMODE_CH", 0)]
+        params += [(f"RC{ch}_{end}", us) for ch in (1, 2, 3, 4) for end, us in (("MIN", 1000), ("MAX", 2000))]
+        if DRONE == "h7":
+            # No IOMCU, safety button or power module on this bench (no battery is modelled).
+            params += [("BRD_IO_ENABLE", 0), ("BRD_SAFETY_DEFLT", 0), ("BATT_MONITOR", 0)]
+        self.drone_standby()
+        for name, value in [*params, *extra]:
+            rc_link.outbox.append(lambda m, n=name, v=value: m.param_set_encode(
+                1, 1, n.encode(), v, mavlink.MAV_PARAM_TYPE_REAL32))
+        self.run_for(1.0)
+        rc_link.outbox.append(lambda m: m.command_long_encode(
+            1, 1, mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN, 0, 1, 0, 0, 0, 0, 0, 0))
+        self.run_for(1.0)
+        self.drone_standby()
 
     def save(self, name: str, payload) -> Path:
         self.out.mkdir(parents=True, exist_ok=True)

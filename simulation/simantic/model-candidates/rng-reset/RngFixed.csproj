@@ -6,7 +6,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <Nullable>disable</Nullable>
     <RepoRoot>$(MSBuildThisFileDirectory)../../../../</RepoRoot>
-    <EngineDir>$(RepoRoot)tmp/simantic/runtime/engine/0.6.3/</EngineDir>
+    <EngineDir>$(RepoRoot)tmp/simantic/runtime/engine/0.6.6/</EngineDir>
     <BaseOutputPath>$(RepoRoot)tmp/simantic/upstream-candidates/rng-reset/bin/</BaseOutputPath>
     <BaseIntermediateOutputPath>$(RepoRoot)tmp/simantic/upstream-candidates/rng-reset/obj/</BaseIntermediateOutputPath>
   </PropertyGroup>

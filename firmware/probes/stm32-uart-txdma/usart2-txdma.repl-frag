@@ -1,4 +1,0 @@
-
-// USART2_TX request -> DMA1 stream 6 channel 4 (input 8 + 8*4 + 6).
-usart2:
-    DMATransmitRequest -> dma1@46

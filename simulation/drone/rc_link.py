@@ -17,6 +17,7 @@ EXPIRY_TICKS peer ticks (100 ms): the expiry is the receiver's own, so a hub
 that freezes without a final invalid message cannot hold the sticks. ArduCopter's
 RC failsafe then takes over.
 """
+import json
 
 CENTRE_US, MIN_US, MAX_US = 1500, 1000, 2000
 CHANNELS = 8
@@ -74,3 +75,13 @@ def apply_command(command: dict | None) -> None:
     channels[2] = MIN_US + command["throttle"] * (MAX_US - MIN_US) // 1000
     channels[3] = _axis(command["yaw"])
     channels[4] = CENTRE_US
+
+
+def apply_line(line: str) -> None:
+    """One line from the hub's UART: command records update the channels, other records
+    (boot, ready, status) are ignored, and a malformed command is a failsafe."""
+    if line.startswith('{"type":"command"'):
+        try:
+            apply_command(json.loads(line))
+        except json.JSONDecodeError:
+            apply_command(None)

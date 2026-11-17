@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Simantic
 //
 // This file is licensed under the MIT License.
-// Full license text is available in 'licenses/MIT.txt'.
+// Full license text: LICENSE at the root of this repository (see NOTICE).
 //
 using Antmicro.Renode.Core;
 using Antmicro.Renode.Peripherals.Bus;

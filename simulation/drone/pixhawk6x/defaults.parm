@@ -1,0 +1,3 @@
+# Built into the Pixhawk 6X ArduCopter as defaults (waf --default-parameters):
+# the IOMCU co-processor is not modelled, so use the FMU PWM outputs directly.
+BRD_IO_ENABLE 0
