@@ -20,11 +20,12 @@ RIGHT hand ESP32-S3 ─┤ BLE (one simulated medium)
                      bridge: rc_link.py + gcs_peer.py (host side, Python)
                            │ MAVLink RC_CHANNELS_OVERRIDE every 20 ms, SERIAL1
                            v
-                     ArduCopter 4.7.1, MatekF405-Wing build, emulated STM32F405
-                           │ motor PWM read from TIM3 / TIM4 compare registers
+                     ArduCopter 4.7.1 on an emulated flight controller:
+                     Matek F405-Wing (STM32F405, default) or Pixhawk 6X (STM32H753)
+                           │ motor PWM read from the timer compare registers
                            v
                      quad_plant.py: rigid-body quad X
-                           │ ICM-42688-P (IMU), DPS310 (baro), SD card
+                           │ IMUs, barometer (and on the F405 the SD card)
                            └─> back into ArduCopter
 ```
 
@@ -32,18 +33,24 @@ RIGHT hand ESP32-S3 ─┤ BLE (one simulated medium)
 |---|---|---|
 | Hand, hub | The same bootloader, partition table and application binaries that will be flashed on the boards. Only the mask-ROM wrapper differs | `firmware/apps/hand`, `firmware/apps/hub` |
 | Stand-in hand | A hand's BLE peripheral that sends packets a test script supplies, for exact hub inputs | `firmware/apps/replay` |
-| ESP32-S3 model | Stock engine 0.6.3 platform plus two model candidates: BLE radio (renode-infrastructure #270, so the hub can hold two links) and RNG (#271, so a reset gives new session ids) | `simulation/simantic/model-candidates/` |
-| Drone firmware | Stock ArduCopter 4.7.1 for the Matek F405-Wing, unmodified | `simulation/drone/fetch_arducopter.sh` |
-| Drone board | STM32F405 platform with the sim-fixtures Matek board model. The STM32 UART TX DMA candidate (#325, merged, not released yet) is needed, or no telemetry leaves ArduCopter | private sim-fixtures checkout in `tmp/` |
+| ESP32-S3 model | Stock engine 0.6.6 platform plus one model candidate: RNG (renode-infrastructure #271, so a reset gives new session ids) | `simulation/simantic/model-candidates/` |
+| Drone firmware | ArduCopter 4.7.1. Pixhawk 6X: built from the release commit with `BRD_IO_ENABLE 0` as its only built-in default, because no IOMCU is modelled and the stock release stops at boot without one. F405: the stock release, unmodified | `simulation/drone/pixhawk6x/build.sh`, `fetch_arducopter.sh` |
+| Drone board | `PALMPILOT_DRONE=f405` (default): STM32F405 with Simantic's Matek F405-Wing board files. `h7`: mcu-lib Pixhawk6X with Simantic's Pixhawk 6X board files (three ICM-45686, BMP388, F-RAM, SD) | Simantic board files in `tmp/simantic/boards/`, not published here |
 | Bridge | Turns the newest hub command into RC channels and sends them as a ground station would. Stops sending on an invalid command or when no fresh command has arrived for 100 ms, using its own clock | `simulation/drone/rc_link.py`, `gcs_peer.py` |
-| Physics and sensors | Integrates the airframe from the four motor pulses and answers the flight controller's sensor bus reads | `simulation/drone/quad_plant.py`, `imu_plant.py`, `baro_plant.py`, `sd_card.py` |
+| Physics and sensors | Integrates the airframe from the four motor pulses and answers the flight controller's sensor bus reads | `simulation/drone/quad_plant.py`; H7 `imu45686_plant.py`, `fram_peer.py`; F405 `imu_plant.py`, `baro_plant.py`, `sd_card.py` |
 
 `python3 firmware/tools/palmpilot.py system <script>` builds and starts all four
-machines. `firmware/tools/controller.py` (`ControllerSim`) is the test-facing API.
+machines. `python3 firmware/tools/palmpilot.py drone <script>` starts the flight
+controller alone, as in the laptop demo (`ControllerSim(hands=False)`).
+`firmware/tools/controller.py` (`ControllerSim`) is the test-facing API.
 
-The drone target is the **STM32F405 / Matek F405-Wing**. The earlier STM32H743 /
-KakuteH7 candidate is dropped: the F405 path boots, flies and has the DMA fix it
-needed.
+The drone target is the **Matek F405-Wing (STM32F405)**, chosen for speed; the
+Pixhawk 6X (STM32H753) stays selectable with `PALMPILOT_DRONE=h7`. On engine 0.6.6
+both fly the same gesture flight and land, with the same estimate error (mean
+0.95–1.07°, worst 2.6–3.0°; for each airframe the H7 and F405 means are within
+0.01°). The four-machine system runs about 3.7× slower than real time with the F405
+and about 11× with the H7. `ControllerSim.setup_drone` does each board's bench setup
+over MAVLink.
 
 ## What a test controls
 
@@ -109,18 +116,29 @@ The order of execution, the commands and the pass criteria are in the
   0 of 204 with the fix. Until it ships, long or repeated four-machine runs need
   the locally built fixed engine, or serial execution (`PALMPILOT_SERIAL=1`), which
   is much slower.
-- **Attitude estimate drift.** After a manoeuvre, ArduCopter's estimate on the
-  emulated F405 is off by 1–2.5° and the vehicle drifts slowly. Native SITL does
-  not show this. Ruled out so far: physics, sensor signs, scale and rate, dropped
-  samples, noise, parameters, and the CPU/FPU (ArduPilot's Replay tool reproduces
-  the estimate exactly from the log). Still open.
+- **Attitude estimate drift.** After a manoeuvre, ArduCopter's estimate is off by
+  1–3° and the vehicle drifts slowly, by the same amount on the emulated F405 and
+  H7. Native SITL with GPS does not show it; without GPS (the board's sensor set)
+  two scripted SITL runs stayed 2.1–2.6° off after a roll, while a replay of the
+  F405 flight stayed within 0.7° ([demo.md §3](demo.md#3-laptop-data-path)). Ruled out so far: physics, sensor signs, scale
+  and rate, dropped samples, noise, parameters, the CPU/FPU (ArduPilot's Replay tool
+  reproduces the estimate exactly from the log) and, now, the flight-controller
+  model. Still open.
+- **H7 F-RAM framing.** The engine ends a scripted SPI device's transaction at every
+  STM32H7 SPI end of transfer, so ArduPilot's parameter writes were lost on reboot
+  (simantic-core#658, fix PR #659). `simulation/drone/fram_peer.py` keeps the F-RAM
+  framed until the fix ships.
+- **Runs are time-limited.** `palmpilot.py` stops a run that idles below 5% of a core
+  for 120 s (the deadlock above) or that passes 60 minutes.
 - **S2-B reset-to-invalid.** The time from a hand reset to an invalid command is
   bimodal, 120 or 160 ms, on both the stock and the fixed engine. The provisional
   limit is 150 ms. Whether to raise it is open.
-- **Speed.** The four-machine system runs about 3.4× slower than real time on an
-  M4 laptop. The drone alone runs at roughly 0.5–3 s of wall time per simulated
-  second, measured under load. That gives a slow-motion demo unless it is made
-  faster.
+- **Speed.** On an M4 laptop, fly.py's four machines run about 3.7× slower than real
+  time with the F405 and about 11× with the H7. The demo simulates only the flight
+  controller: the F405 alone runs flight at 1.47 s of wall time per simulated second
+  (`demo_speed.py`, two runs, 2026-11-01), so the demo drone moves about 1.5× slower
+  than real time. The demo therefore runs ArduCopter as native SITL in real time
+  instead ([demo.md](demo.md)).
 - **One BLE medium per simulation.** Scenarios with several separate BLE media did
   not link. This is not investigated, and nothing in the plan needs more than one.
 - **Not modelled:** RF range or interference (the BLE medium is lossless), ADC noise,

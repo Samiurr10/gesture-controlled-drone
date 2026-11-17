@@ -1,6 +1,7 @@
 #!/bin/sh
-# Downloads the drone firmware: stock ArduCopter 4.7.1 for the Matek F405-Wing,
+# Downloads the F405 drone firmware: stock ArduCopter 4.7.1 for the Matek F405-Wing,
 # unmodified, from firmware.ardupilot.org (GPLv3), and checks its hash.
+# The Pixhawk 6X firmware is built instead: simulation/drone/pixhawk6x/build.sh.
 # Usage: sh simulation/drone/fetch_arducopter.sh   (from the repository root)
 set -eu
 URL=https://firmware.ardupilot.org/Copter/stable-4.7.1/MatekF405-Wing/arducopter.elf

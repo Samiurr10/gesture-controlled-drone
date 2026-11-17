@@ -32,6 +32,10 @@
 
 // PROVISIONAL: 20 ms, as the hands; CTRL-030 must measure it.
 #define CALIBRATE_DEBOUNCE_SAMPLES 1
+// Bench profile (hand_core.h): the bench hub has no CALIBRATE button, and its
+// floating GPIO7 read low, holding every command invalid. The bench build ignores
+// the pin; neutral is captured over each hand's USB (`cal neutral`).
+#define HUB_CALIBRATE_INPUT (!PALMPILOT_BENCH)
 
 static struct hub s_hub;
 static SemaphoreHandle_t s_hub_lock;
@@ -93,8 +97,8 @@ static void control_task(void *argument)
     for (;;) {
         if (xSemaphoreTake(s_control_tick, portMAX_DELAY) != pdTRUE) continue;
         const bool was_calibrating = s_calibrate.level;
-        const bool calibrating = debounce_update(&s_calibrate,
-                                                 gpio_get_level(HAND_ENABLE_GPIO) == 0);
+        const bool calibrating = HUB_CALIBRATE_INPUT
+            && debounce_update(&s_calibrate, gpio_get_level(HAND_ENABLE_GPIO) == 0);
         if (calibrating && !was_calibrating) {
             const esp_err_t left = hub_link_send(HAND_SIDE_LEFT, LINK_COMMAND_CAPTURE_NEUTRAL);
             const esp_err_t right = hub_link_send(HAND_SIDE_RIGHT, LINK_COMMAND_CAPTURE_NEUTRAL);
@@ -161,12 +165,40 @@ static void emit_status(void)
     console_unlock();
 }
 
+// The latest packet each hand delivered over BLE, as decoded: lets the host see
+// a hand through the link even while the combined command is invalid.
+static void emit_hands(void)
+{
+    const int64_t now = esp_timer_get_time();
+    console_lock();
+    printf("{\"type\":\"hands\",\"t_us\":%" PRId64 ",\"hands\":[", now);
+    for (int side = 0; side < 2; ++side) {
+        xSemaphoreTake(s_hub_lock, portMAX_DELAY);
+        const struct hub_hand hand = s_hub.hand[side];
+        xSemaphoreGive(s_hub_lock);
+        const struct hand_packet_source *p = &hand.packet;
+        printf("%s{\"side\":\"%s\",\"have\":%d,\"age_us\":%" PRId64 ",\"seq\":%" PRIu32
+               ",\"acq\":%" PRIu32 ",\"state\":%u,\"fault\":%u,\"flags\":%u,\"curl\":[%d,%d,%d,%d,%d]"
+               ",\"accel\":[%d,%d,%d],\"gyro\":[%d,%d,%d],\"roll\":%d,\"pitch\":%d,\"throttle\":%d}",
+               side ? "," : "", side ? "right" : "left", hand.have_packet ? 1 : 0,
+               hand.have_packet ? now - hand.received_us : (int64_t)-1, p->sequence,
+               p->acquisition, p->state, p->fault, p->flags,
+               p->curl_milli[0], p->curl_milli[1], p->curl_milli[2], p->curl_milli[3], p->curl_milli[4],
+               p->accel[0], p->accel[1], p->accel[2], p->gyro[0], p->gyro[1], p->gyro[2],
+               p->roll_milli, p->pitch_milli, p->throttle_milli);
+    }
+    printf("]}\n");
+    console_unlock();
+}
+
 static void handle_command(const char *line)
 {
     if (!strcmp(line, "status")) {
         emit_status();
+    } else if (!strcmp(line, "hands")) {
+        emit_hands();
     } else {
-        console_printf("{\"type\":\"error\",\"op\":\"command\",\"help\":\"status\"}\n");
+        console_printf("{\"type\":\"error\",\"op\":\"command\",\"help\":\"status | hands\"}\n");
     }
 }
 

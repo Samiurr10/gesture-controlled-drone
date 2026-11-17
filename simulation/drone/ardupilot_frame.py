@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """ArduPilot SITL's default multicopter, frame "x", for quad_plant.
 
 A Python port of ArduPilot Copter-4.7.1 libraries/SITL/SIM_Frame.cpp (Frame::init,

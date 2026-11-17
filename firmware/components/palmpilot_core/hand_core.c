@@ -162,7 +162,7 @@ int hand_throttle_milli(const int *curl_milli)
 
 bool hand_hold_gesture(const int *curl_milli)
 {
-    for (int i = 0; i < HAND_FLEX_COUNT; ++i) {
+    for (int i = HAND_NO_THUMB_GESTURES ? FINGER_INDEX : 0; i < HAND_FLEX_COUNT; ++i) {
         if (curl_milli[i] < HAND_HOLD_CURL_MILLI) return false;
     }
     return true;
@@ -170,6 +170,7 @@ bool hand_hold_gesture(const int *curl_milli)
 
 bool hand_precision_gesture(const int *curl_milli)
 {
+    if (HAND_NO_THUMB_GESTURES) return false;
     return curl_milli[FINGER_THUMB] >= HAND_PRECISION_CURL_MILLI;
 }
 
@@ -261,8 +262,12 @@ void hand_control_update(struct hand_control *c, const struct hand_inputs *in)
     c->fault = HAND_FAULT_NONE;
 
     if (c->state == HAND_STATE_PERMITTED) {
-        if (!in->enable) {
-            c->state = HAND_STATE_WAITING;     // release always ends permission
+#if HAND_ENABLE_LATCH
+        if (rising) {                          // a second press ends permission
+#else
+        if (!in->enable) {                     // release always ends permission
+#endif
+            c->state = HAND_STATE_WAITING;
             c->inhibit = HAND_INHIBIT_NO_PRESS;
             return;
         }

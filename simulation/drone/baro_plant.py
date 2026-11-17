@@ -3,10 +3,10 @@
 # never changes as a stuck sensor.
 import math
 
-import _matek_peers
+import _board_peers
 import quad_plant
 
-_base = _matek_peers.load("dps310")
+_base = _board_peers.load("dps310")
 JITTER_PA = 2.0
 
 

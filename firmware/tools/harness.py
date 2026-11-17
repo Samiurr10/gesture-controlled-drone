@@ -75,6 +75,24 @@ TYPE_SWAPS = [
     ("PALMPILOT_RNG_OVERLAY", "Miscellaneous.ESP32C3_Rng", "RngFixed.ESP32C3_Rng"),
 ]
 
+def accept_repl_files() -> None:
+    """SDK 0.4 names a platform by model (mcu=) plus a fragment; this harness generates whole
+    .repl files. A machine whose mcu is a path ending in .repl goes to the engine as that file."""
+    from simantic import session
+    add = session._RenodeBackend._add_machine
+    if getattr(add, "palmpilot", False):
+        return
+
+    def _add_machine(self, spec, name, mcu, fragment, elf, symbols_elf):
+        if not str(mcu).endswith(".repl"):
+            return add(self, spec, name, mcu, fragment, elf, symbols_elf)
+        sm = spec.AddMachine(name, str(mcu), str(self._base / elf))
+        if symbols_elf:
+            sm.SymbolsElfPath = str(self._base / symbols_elf)
+    _add_machine.palmpilot = True
+    session._RenodeBackend._add_machine = _add_machine
+
+
 _loaded_overlays: set[str] = set()
 
 
@@ -262,8 +280,11 @@ class PalmPilotSim:
         from simantic import Sim
 
         platform = build_platform(self.platform, self.out, i2c=self.i2c, timg=self.timg)
-        self.sim = Sim(repl=platform, elf=self.sim_elf, uart=self.uart_name,
-                       show_logs=self.show_logs, scenario=self.scenario).__enter__()
+        accept_repl_files()
+        scenario = dict(self.scenario or {})
+        scenario["machines"] = {"machine": {"mcu": str(platform), "elf": str(self.sim_elf)}}
+        self.sim = Sim(scenario=scenario, machine="machine", uart=self.uart_name,
+                       show_logs=self.show_logs).__enter__()
         self.machine = list(EmulationManager.Instance.CurrentEmulation.Machines)[0]
         self.inputs = ExternalInputs(self.machine)
 

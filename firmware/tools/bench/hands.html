@@ -1,0 +1,307 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PalmPilot Left Hand</title>
+<style>
+:root{--bg:#0d1014;--panel:#151a20;--line:#252c35;--text:#e7eaee;--dim:#8b95a1;
+--ok:#3ecf8e;--bad:#ff5d5d;--warn:#f5b942;--thr:#f0a63a;--yaw:#3cc2b8;--att:#6b9cf0;--hold:#f06a62;--en:#55c47a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);
+font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:18px 16px 40px}
+h1{font-size:19px;margin:0}.sub{color:var(--dim);margin:4px 0 14px}
+.hands{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:1500px}@media(max-width:900px){.hands{grid-template-columns:1fr}}
+@media(max-width:900px){.hands{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;min-width:0}
+.head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;gap:8px;flex-wrap:wrap}
+.head b{font-size:16px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:11px;padding:2px 8px;border-radius:99px;font-weight:600;border:1px solid var(--line);color:var(--dim)}
+.chip.ok{background:#3ecf8e1f;color:var(--ok);border-color:transparent}
+.chip.bad{background:#ff5d5d1f;color:var(--bad);border-color:transparent}
+.chip.warn{background:#f5b9421f;color:var(--warn);border-color:transparent}
+.view{position:relative;aspect-ratio:16/10;background:radial-gradient(120% 90% at 50% 20%,#1d2530,#0b0e12)}
+.view canvas{width:100%!important;height:100%!important;display:block}
+.tilt{position:absolute;left:12px;bottom:10px;font:12px ui-monospace,Menlo,monospace;color:var(--dim);
+background:#0b0e12cc;padding:6px 8px;border-radius:8px}
+.tilt b{color:var(--text)}
+.fingers{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:12px 14px}
+.f{display:flex;flex-direction:column;gap:4px;font-size:12px}
+.f .n{color:var(--dim)}.f .v{font-variant-numeric:tabular-nums}
+.f .bar{height:6px;border-radius:3px;background:#0b0e12;overflow:hidden}.f .bar i{display:block;height:100%;width:0}
+.cal{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px 14px;align-items:center}
+button{background:#232a33;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font:inherit;font-size:12px;cursor:pointer}
+button:hover{background:#2c3540}button.on{background:#2f6fd6;border-color:#2f6fd6}button:focus-visible{outline:2px solid var(--att);outline-offset:2px}
+.cal .note{color:var(--dim);font-size:12px}
+.hub{margin-top:14px;max-width:1400px;display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:14px}
+@media(max-width:900px){.hub{grid-template-columns:1fr}}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
+.box h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin:0 0 10px}
+.row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line);gap:10px}
+.row:last-child{border:0}.row span:last-child{font-variant-numeric:tabular-nums;text-align:right}
+.cmd{display:grid;grid-template-columns:64px 1fr 48px;gap:8px;align-items:center;margin:5px 0;font-size:12px}
+.cmd .bar{position:relative;height:10px;border-radius:5px;background:#0b0e12;border:1px solid var(--line);overflow:hidden}
+.cmd .bar i{position:absolute;top:0;bottom:0}.cmd .bar.c::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--dim)}
+.cmd output{text-align:right;font-variant-numeric:tabular-nums}
+.big{font-size:20px;font-weight:700;margin-bottom:6px}
+.assume{color:var(--dim);font-size:12px;max-width:1000px;margin-top:12px}
+.mt{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+.mt th,.mt td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right}.mt th:first-child,.mt td:first-child{text-align:left}
+.mt th{color:var(--dim);font-weight:500}.pass{color:var(--ok)}.fail{color:var(--bad)}.dim{color:var(--dim)}
+.steps{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 4px}.steps span{border:1px solid var(--line);border-radius:999px;padding:3px 9px;font-size:12px}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+</head><body>
+<h1>PalmPilot hands, live</h1>
+<div class="src" style="display:flex;gap:6px;margin:8px 0 4px"><button id="srcBle" class="on">Bluetooth via hub</button><button id="srcUsb">USB direct</button><span id="srcNote" style="color:var(--dim);align-self:center;margin-left:6px"></span></div>
+<p class="sub" id="sub">The five flex sensors bend the fingers and the IMU tilts the hand, LEFT hand → Bluetooth → hub → USB → this page.</p>
+<div class="hands">
+ <div class="card" id="card-left"></div>
+ <div class="card" id="card-right"></div>
+</div>
+<div class="hub" hidden>
+ <div class="box"><h2>Bluetooth links (hub)</h2><div id="links">–</div></div>
+ <div class="box"><h2>Hub command</h2><div class="big" id="valid">–</div><div id="reason" style="color:var(--dim)"></div></div>
+ <div class="box"><h2>What the hub sends</h2>
+  <div class="cmd"><span>throttle</span><div class="bar"><i id="bthr" style="background:var(--thr)"></i></div><output id="vthr"></output></div>
+  <div class="cmd"><span>yaw</span><div class="bar c"><i id="byaw" style="background:var(--yaw)"></i></div><output id="vyaw"></output></div>
+  <div class="cmd"><span>pitch</span><div class="bar c"><i id="bpitch" style="background:var(--att)"></i></div><output id="vpitch"></output></div>
+  <div class="cmd"><span>roll</span><div class="bar c"><i id="broll" style="background:var(--att)"></i></div><output id="vroll"></output></div>
+ </div>
+</div>
+<p class="assume">Assumed IMU mounting: breakout flat on the back of the hand, its x axis toward the fingers and z out of the back
+(the firmware takes roll from y, which becomes yaw on this hand). Heading cannot be seen from gravity, so the hands never turn left or right
+here. Before calibration, bend is estimated from the straightest reading seen so far and about 700 counts of travel.</p>
+
+<script type="module">
+import * as THREE from "three";
+const NAMES=["thumb","index","middle","ring","little"];
+const G=16384;
+
+function card(side){
+ const el=document.getElementById("card-"+side);
+ el.innerHTML=`<div class="head"><b>${side==="left"?"Left":"Right"} hand</b><div class="chips" id="${side}-chips"></div></div>
+ <div class="view" id="${side}-view"><div class="tilt" id="${side}-tilt">–</div></div>
+ <div class="fingers">${NAMES.map((n,i)=>`<div class="f"><span class="n">${n}</span><div class="bar"><i id="${side}-b${i}"></i></div><span class="v" id="${side}-v${i}">–</span></div>`).join("")}</div>
+ <div class="cal"><button data-c="cal extended">1 Straight</button><button data-c="cal curled">2 Fist</button>
+ <button data-c="cal neutral">3 Level</button><button data-c="cal finish">4 Finish</button><button data-c="cal save">5 Save</button>
+ <button data-c="reboot">Reboot</button><span class="note" id="${side}-log"></span></div>
+ <div id="${side}-metrics" style="padding:0 14px 14px"></div>`;
+ el.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>fetch("/",{method:"POST",body:side+":"+b.dataset.c}));
+}
+card("left");card("right");
+
+// ---- 3D hand -------------------------------------------------------------
+const skin=new THREE.MeshPhysicalMaterial({color:0xd9a98c,roughness:.55,sheen:.6,sheenColor:new THREE.Color(0xffd2bf),clearcoat:.05});
+const flexMat=()=>new THREE.MeshStandardMaterial({color:0x2a2d33,roughness:.35,metalness:.2,emissive:0x000000});
+const pcbBlue=new THREE.MeshStandardMaterial({color:0x1d4fa8,roughness:.45,metalness:.1});
+const pcbBlack=new THREE.MeshStandardMaterial({color:0x15171a,roughness:.5});
+const gold=new THREE.MeshStandardMaterial({color:0xd8b25a,roughness:.3,metalness:.9});
+const strapMat=new THREE.MeshStandardMaterial({color:0x30343b,roughness:.9});
+function capsule(r,len,mat){const m=new THREE.Mesh(new THREE.CapsuleGeometry(r,len,6,16),mat);m.rotation.x=Math.PI/2;m.position.z=len/2;m.castShadow=true;return m}
+
+function buildHand(scene,side){
+ const thumbSide=side==="left"?-1:1;          // fingers along +z, back of hand +y: screen right is -x, where a left thumb sits
+ const root=new THREE.Group();scene.add(root);
+ const hand=new THREE.Group();root.add(hand);
+ const W=.084,L=.092,T=.026;
+ const palm=new THREE.Mesh(new THREE.BoxGeometry(W,T,L,1,1,1),skin);palm.castShadow=true;
+ const pg=new THREE.CapsuleGeometry(T/2,L-T,6,16);
+ // rounded palm from a few capsules side by side
+ for(let i=0;i<4;i++){const c=new THREE.Mesh(pg,skin);c.rotation.x=Math.PI/2;c.position.x=-W/2+T/2+i*(W-T)/3;c.castShadow=true;hand.add(c)}
+ palm.scale.set(.9,.95,.92);hand.add(palm);
+ // wrist / forearm
+ const arm=new THREE.Mesh(new THREE.CapsuleGeometry(.027,.05,8,20),skin);arm.rotation.x=Math.PI/2;arm.scale.set(1.25,.85,1);arm.position.set(0,-.002,-L/2-.035);arm.castShadow=true;hand.add(arm);
+ // DevKit on a strap at the wrist
+ const strap=new THREE.Mesh(new THREE.CylinderGeometry(.036,.036,.03,32,1,true),strapMat);strap.rotation.x=Math.PI/2;strap.scale.set(1.25,.9,1);strap.position.set(0,0,-L/2-.035);hand.add(strap);
+ const dk=new THREE.Mesh(new THREE.BoxGeometry(.026,.004,.063),pcbBlack);dk.position.set(0,.031,-L/2-.035);dk.castShadow=true;hand.add(dk);
+ const mod=new THREE.Mesh(new THREE.BoxGeometry(.018,.003,.02),new THREE.MeshStandardMaterial({color:0xb9bec6,metalness:.8,roughness:.3}));mod.position.set(0,.0345,-L/2-.02);hand.add(mod);
+ // IMU breakout on the back of the hand
+ const imu=new THREE.Group();imu.position.set(0,T/2+.002,-.008);hand.add(imu);
+ const ib=new THREE.Mesh(new THREE.BoxGeometry(.0254,.0016,.0178),pcbBlue);ib.castShadow=true;imu.add(ib);
+ const chip=new THREE.Mesh(new THREE.BoxGeometry(.004,.001,.004),pcbBlack);chip.position.set(.004,.0012,0);imu.add(chip);
+ [-.0105,.0105].forEach(x=>[-.0075,.0075].forEach(z=>{const h=new THREE.Mesh(new THREE.CylinderGeometry(.0013,.0013,.0018,16),gold);h.position.set(x,0,z);imu.add(h)}));
+ // fingers: knuckle x, length of three segments, radius
+ const spec={index:[.028,[.040,.024,.019],.0088],middle:[.009,[.044,.027,.020],.009],ring:[-.010,[.041,.025,.019],.0085],little:[-.028,[.032,.019,.017],.0075]};
+ const fingers=[],strips=[];
+ ["index","middle","ring","little"].forEach(n=>{
+  const [x,segs,r]=spec[n];const mat=flexMat();strips.push(mat);
+  let parent=hand;const joints=[];
+  segs.forEach((len,k)=>{const j=new THREE.Group();j.position.set(k?0:x*thumbSide,k?0:0,k?segs[k-1]:L/2-.004);parent.add(j);
+   j.add(capsule(r*(1-k*.08),len,skin));
+   const s=new THREE.Mesh(new THREE.BoxGeometry(.0065,.0012,len*.98),mat);s.position.set(0,r*(1-k*.08)+.0004,len/2);j.add(s);
+   joints.push(j);parent=j});
+  // the flex lead running back over the hand to the wrist board
+  const lead=new THREE.Mesh(new THREE.BoxGeometry(.004,.001,L*.9),mat);lead.position.set(x*thumbSide*.8,T/2+.0006,0);hand.add(lead);
+  fingers.push(joints);
+ });
+ // thumb
+ const tb=new THREE.Group();tb.position.set(thumbSide*.036,-.004,-.018);tb.rotation.set(0,thumbSide*.85,thumbSide*-.5);hand.add(tb);
+ const tmat=flexMat();strips.unshift(tmat);const tj=[];let tp=tb;
+ [.034,.030,.024].forEach((len,k)=>{const j=new THREE.Group();j.position.z=k?[.034,.030][k-1]:0;tp.add(j);j.add(capsule(.011-k*.0008,len,skin));
+  if(k){const s=new THREE.Mesh(new THREE.BoxGeometry(.0065,.0012,len*.95),tmat);s.position.set(0,.011,len/2);j.add(s)}
+  tj.push(j);tp=j});
+ fingers.unshift(tj);
+ // ENABLE button on the side of the index finger, under the thumb (left only)
+ let btn=null;
+ if(side==="left"){btn=new THREE.Mesh(new THREE.CylinderGeometry(.0055,.0055,.004,24),new THREE.MeshStandardMaterial({color:0x2e9a4f,roughness:.4,emissive:0x000000}));
+  btn.rotation.z=Math.PI/2;btn.position.set(.009*thumbSide,-.001,.013);fingers[1][0].add(btn)}
+ return {root,hand,fingers,strips,btn,thumbSide};
+}
+
+function makeView(side){
+ const host=document.getElementById(side+"-view");
+ const r=new THREE.WebGLRenderer({antialias:true,alpha:true});r.setPixelRatio(Math.min(2,devicePixelRatio));
+ r.shadowMap.enabled=true;r.shadowMap.type=THREE.PCFSoftShadowMap;r.toneMapping=THREE.ACESFilmicToneMapping;r.toneMappingExposure=1.05;
+ r.outputColorSpace=THREE.SRGBColorSpace;host.prepend(r.domElement);
+ const scene=new THREE.Scene();
+ const cam=new THREE.PerspectiveCamera(32,4/3,.01,5);cam.position.set(0,.2,-.2);cam.lookAt(0,-.01,.045);   // the wearer's own view: from behind the wrist, fingers away
+ scene.add(new THREE.HemisphereLight(0xdfe8ff,0x2a2520,.9));
+ const key=new THREE.DirectionalLight(0xfff3e6,2.4);key.position.set(-.25,.6,-.3);key.castShadow=true;key.shadow.mapSize.set(1024,1024);
+ Object.assign(key.shadow.camera,{left:-.25,right:.25,top:.25,bottom:-.25,near:.1,far:2});key.shadow.bias=-.0005;scene.add(key);
+ const rim=new THREE.DirectionalLight(0x9fc4ff,1.0);rim.position.set(-.4,.3,.5);scene.add(rim);
+ const ground=new THREE.Mesh(new THREE.CircleGeometry(.35,64),new THREE.ShadowMaterial({opacity:.35}));ground.rotation.x=-Math.PI/2;ground.position.y=-.07;ground.receiveShadow=true;scene.add(ground);
+ const h=buildHand(scene,side);
+ function size(){const w=host.clientWidth,hh=host.clientHeight;r.setSize(w,hh,false);cam.aspect=w/hh;cam.updateProjectionMatrix()}
+ new ResizeObserver(size).observe(host);size();
+ return {r,scene,cam,h,curl:[0,0,0,0,0],q:new THREE.Quaternion(),target:{curl:[0,0,0,0,0],q:new THREE.Quaternion(),fault:[0,0,0,0,0],en:0}};
+}
+const views={left:makeView("left"),right:makeView("right")};
+
+// joint angles at full curl (MCP, PIP, DIP) and for the thumb
+const FULL=[[.55,.75,.6],[1.35,1.6,1.15],[1.4,1.65,1.2],[1.4,1.65,1.2],[1.35,1.6,1.15]];
+const UP=new THREE.Vector3(0,1,0),tmpV=new THREE.Vector3(),tmpQ=new THREE.Quaternion();
+let last=performance.now();
+function frame(t){
+ const dt=Math.min(.05,(t-last)/1000);last=t;const a=1-Math.exp(-dt*14),aq=1-Math.exp(-dt*10);
+ for(const v of Object.values(views)){
+  const {h,target}=v;
+  for(let i=0;i<5;i++){v.curl[i]+=(target.curl[i]-v.curl[i])*a;
+   h.fingers[i].forEach((j,k)=>j.rotation.x=FULL[i][k]*v.curl[i]);
+   h.strips[i].color.set(target.fault[i]?0xc0392b:0x2a2d33);h.strips[i].emissive.set(target.fault[i]?0x5a0d0d:0x000000)}
+  if(h.btn)h.btn.material.emissive.set(target.en?0x1d7a3a:0x000000);
+  v.q.slerp(target.q,aq);h.root.quaternion.copy(v.q);
+  v.r.render(v.scene,v.cam);
+ }
+ requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ---- live data -----------------------------------------------------------
+const hi={left:[],right:[]};
+const $=id=>document.getElementById(id);
+const chip=(t,c)=>`<span class="chip ${c}">${t}</span>`;
+const STAT=["IMU OK","IMU bus error","IMU wrong identity","IMU no data"];
+function updHand(side,st){
+ const v=views[side],s=st.sample,m=st.motion,now=Date.now()/1000;
+ const live=s&&now-s.at<1;
+ let chips=chip(st.serial==="open"?(live?"USB live":"USB stale"):"USB "+st.serial,st.serial==="open"&&live?"ok":"bad");
+ if(s){
+  chips+=chip(s.calibrated?"calibrated":"not calibrated",s.calibrated?"ok":"warn");
+  if(side==="left")chips+=chip(s.enable?"ENABLE pressed":"ENABLE released",s.enable?"ok":"");
+  const faults=s.status.filter(x=>x).length;if(faults)chips+=chip(faults+" flex fault"+(faults>1?"s":""),"bad");
+  s.raw.forEach((raw,i)=>{
+   const fault=s.status[i]!==0;v.target.fault[i]=fault?1:0;
+   if(!fault)hi[side][i]=Math.max(hi[side][i]??raw,raw);
+   let c,src;
+   if(s.curl_milli[i]>=0){c=s.curl_milli[i]/1000;src=""}else{c=fault?0:Math.min(1,Math.max(0,(hi[side][i]-raw)/700));src="~"}
+   v.target.curl[i]=c;
+   const b=$(`${side}-b${i}`);b.style.width=(c*100)+"%";b.style.background=fault?"var(--bad)":i?"var(--thr)":"#a986ef";
+   $(`${side}-v${i}`).textContent=fault?(["","OPEN","SHORT"][s.status[i]]+" "+s.mv[i]+"mV"):`${src}${Math.round(c*100)}% · ${s.mv[i]}mV`;
+  });
+  v.target.en=s.enable;
+ }
+ if(m){
+  const ok=m.accel_gyro===0;chips+=chip(STAT[m.accel_gyro]||"IMU ?",ok?"ok":"bad");
+  if(ok){
+   const [ax,ay,az]=m.accel.map(x=>x/G),n=Math.hypot(ax,ay,az)||1;
+   tmpV.set(ay/n,az/n,ax/n);                        // sensor (x,y,z) -> hand (z,x,y)
+   v.target.q.setFromUnitVectors(tmpV,UP);
+   const roll=Math.asin(Math.max(-1,Math.min(1,ay/n)))*180/Math.PI,pitch=Math.asin(Math.max(-1,Math.min(1,ax/n)))*180/Math.PI;
+   $(side+"-tilt").innerHTML=`roll <b>${roll.toFixed(1)}°</b> · pitch <b>${pitch.toFixed(1)}°</b> · |g| ${n.toFixed(2)}`;
+  }else $(side+"-tilt").textContent="IMU not answering: tilt frozen";
+ }
+ $(side+"-chips").innerHTML=chips;
+ const lg=(st.log||[]).filter(l=>/capture|calibration|neutral|storage/.test(l)).slice(-1)[0];
+ if(lg){try{const j=JSON.parse(lg);$(side+"-log").textContent=`${j.type} ${j.end||j.op||""}: ${j.reason||(j.status===0?"ok":"status "+j.status)}`}catch{}}
+}
+const bar=(id,v,signed)=>{const b=$(id);if(signed){const w=Math.abs(v)*50;b.style.left=(v>=0?50:50-w)+"%";b.style.width=w+"%"}else{b.style.left=0;b.style.width=v*100+"%"}};
+const rate={};
+let source=new URLSearchParams(location.search).get("src")==="usb"?"usb":"ble";
+const setSrc=k=>{source=k;$("srcBle").className=k==="ble"?"on":"";$("srcUsb").className=k==="usb"?"on":"";
+ $("sub").textContent=k==="ble"?"Each hand → Bluetooth → hub → USB → this page.":"Each hand → its own USB → this page (no Bluetooth).";};
+$("srcBle").onclick=()=>setSrc("ble");setTimeout(()=>setSrc(source));$("srcUsb").onclick=()=>setSrc("usb");
+const seqRate={};
+function updBle(S){updBleSide(S,"left",0);updBleSide(S,"right",1)}
+function updBleSide(S,side,ix){
+ const SIDE=side.toUpperCase(),v=views[side],hb=S.hub,h=hb.hands&&hb.hands.hands&&hb.hands.hands[ix],now=Date.now()/1000;
+ const live=h&&h.have&&now-hb.hands.at<1;
+ let chips=chip(hb.serial==="open"?(live?"hub USB live":"hub USB stale"):"hub "+hb.serial,hb.serial==="open"&&live?"ok":"bad");
+ if(!live){$(side+"-chips").innerHTML=chips+chip("no packet from "+SIDE+" over Bluetooth","bad");$("srcNote").textContent="";return}
+ const sr=seqRate[side];if(!sr||h.seq!==sr.seq){if(sr&&hb.hands.t_us>sr.t)seqRate[side]={seq:h.seq,t:hb.hands.t_us,hz:(h.seq-sr.seq)/((hb.hands.t_us-sr.t)/1e6)};else if(!sr)seqRate[side]={seq:h.seq,t:hb.hands.t_us,hz:0}}
+ const hz=seqRate[side].hz,age=Math.max(0,h.age_us/1000);
+ chips+=chip(`Bluetooth ${hz?hz.toFixed(0)+" packets/s · ":""}${age.toFixed(0)} ms old`,age<100?"ok":"bad");
+ const cal=!!(h.flags&4),en=!!(h.flags&2),mot=!!(h.flags&32);
+ chips+=chip(cal?"calibrated":"not calibrated",cal?"ok":"warn")+(side==="left"?chip(en?"ENABLE pressed":"ENABLE released",en?"ok":""):"")+chip(mot?"IMU OK":"IMU fault",mot?"ok":"bad");
+ $(side+"-chips").innerHTML=chips;
+ h.curl.forEach((c,i)=>{const ok=c>=0;v.target.curl[i]=ok?c/1000:0;v.target.fault[i]=0;
+  const b=$(side+"-b"+i);b.style.width=(ok?c/10:0)+"%";b.style.background=i?"var(--thr)":"#a986ef";
+  $(side+"-v"+i).textContent=ok?Math.round(c/10)+"%":"calibrate first"});
+ v.target.en=en?1:0;
+ if(mot){const [ax,ay,az]=h.accel.map(x=>x/G),n=Math.hypot(ax,ay,az)||1;tmpV.set(ay/n,az/n,ax/n);v.target.q.setFromUnitVectors(tmpV,UP);
+  const roll=Math.asin(Math.max(-1,Math.min(1,ay/n)))*180/Math.PI,pitch=Math.asin(Math.max(-1,Math.min(1,ax/n)))*180/Math.PI;
+  $(side+"-tilt").innerHTML=`over Bluetooth · roll <b>${roll.toFixed(1)}°</b> · pitch <b>${pitch.toFixed(1)}°</b> · throttle <b>${(h.throttle/1000).toFixed(2)}</b>`}
+ $("srcNote").textContent=cal?"":"Finger bend travels over Bluetooth only once the hand is calibrated (buttons below use USB).";
+}
+// ---- calibration metrics -------------------------------------------------
+const LIM={travel:200,spread:120,gtol:200};
+const histRaw={left:[[],[],[],[],[]],right:[[],[],[],[],[]]},lastAcq={};
+const pf=(ok,txt)=>`<span class="${ok?"pass":"fail"}">${txt}</span>`;
+function updMetrics(side,st){
+ const el=$(side+"-metrics");if(!el)return;
+ const s=st.sample,m=st.motion,pr=st.profile,ce=st.capture_extended,cc=st.capture_curled,ne=st.neutral,ca=st.calibration;
+ const hr=histRaw[side];if(s&&s.acq!==lastAcq[side]){lastAcq[side]=s.acq;s.raw.forEach((r,i)=>{hr[i].push(r);if(hr[i].length>20)hr[i].shift()})}
+ const noise=i=>{const h=hr[i];if(h.length<5)return null;const mu=h.reduce((a,b)=>a+b,0)/h.length;return Math.sqrt(h.reduce((a,b)=>a+(b-mu)**2,0)/h.length)};
+ const ext=ce&&ce.mean?ce.mean:(pr&&pr.extended),cur=cc&&cc.mean?cc.mean:(pr&&pr.curled);
+ let rows="";
+ NAMES.forEach((n,i)=>{
+  const raw=s?s.raw[i]:null,stat=s?s.status[i]:0,nz=noise(i);
+  const e=ext?ext[i]:null,c=cur?cur[i]:null,tr=(e!=null&&c!=null&&e>0&&c>0)?e-c:null;
+  const pos=(tr&&raw!=null)?Math.round(100*(e-raw)/tr):null;
+  rows+=`<tr><td>${n}</td><td>${raw??"–"}</td><td>${s?s.mv[i]:"–"}</td>
+  <td>${stat?pf(false,["","OPEN","SHORT"][stat]):pf(true,"ok")}</td>
+  <td>${nz==null?"–":pf(nz<LIM.spread/4,nz.toFixed(1))}</td>
+  <td>${e>0?e:"–"}${ce&&ce.spread?` <span class="dim">±${ce.spread[i]}</span>`:""}</td>
+  <td>${c>0?c:"–"}${cc&&cc.spread?` <span class="dim">±${cc.spread[i]}</span>`:""}</td>
+  <td>${tr==null?"–":pf(tr>=LIM.travel,tr)}</td><td>${pos==null?"–":pos+"%"}</td></tr>`});
+ let tilt="–";
+ if(m&&m.accel_gyro===0){const [ax,ay,az]=m.accel.map(x=>x/G),n=Math.hypot(ax,ay,az);
+  tilt=`roll ${(Math.asin(ay/n)*180/Math.PI).toFixed(1)}° · pitch ${(Math.asin(ax/n)*180/Math.PI).toFixed(1)}° · |g| ${pf(Math.abs(n-1)<=LIM.gtol/1000,n.toFixed(2))}`}
+ else if(m)tilt=pf(false,"IMU not producing data: press Reboot");
+ const neu=ne?(ne.result===0?pf(true,`captured, ratio [${ne.ratio.join(", ")}]`):pf(false,ne.reason.replaceAll("_"," "))):(pr&&pr.motion_captured?`from profile [${pr.neutral.join(", ")}]`:"not captured");
+ const step=(ok,txt)=>`<span class="${ok?"pass":""}">${ok?"✓ ":""}${txt}</span>`;
+ const valid=pr&&pr.valid,saved=st.storage&&st.storage.op==="save"&&st.storage.status===0;
+ el.innerHTML=`<h2 style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin:0 0 8px">Calibration metrics (${side} hand, USB)</h2>
+ <div class="steps">${step(ce&&ce.result===0,"1 Straight")}${step(cc&&cc.result===0,"2 Fist")}${step(ne&&ne.result===0||(pr&&pr.motion_captured),"3 Level")}${step(valid,"4 Finish")}${step(saved,"5 Save")}</div>
+ <table class="mt"><tr><th>finger</th><th>raw now</th><th>mV</th><th>wiring</th><th>noise (sd, 1 s)</th><th>straight</th><th>fist</th><th>travel ≥${LIM.travel}</th><th>bend now</th></tr>${rows}</table>
+ <p style="font-size:12px;margin:10px 0 4px">Tilt now: ${tilt}</p>
+ <p style="font-size:12px;margin:4px 0">Level capture: ${neu}</p>
+ <p style="font-size:12px;margin:4px 0">Last result: ${[ce&&`straight ${ce.reason}`,cc&&`fist ${cc.reason}`,ca&&`finish ${ca.reason}${ca.valid?" (valid)":""}`,st.storage&&`storage ${st.storage.op} status ${st.storage.status}`].filter(Boolean).join(" · ")||"none yet"}</p>
+ <p class="dim" style="font-size:12px;margin:4px 0;display:${side==="right"?"block":"none"}">Limits from the firmware: capture spread ≤ ${LIM.spread} counts, travel ≥ ${LIM.travel} counts, |g| within ±20% for Level. Noise is this page's estimate from 20 samples, not a firmware check. Hold still for each capture; straight = hand open and flat, fist = all five fingers curled, level = hand flat and still.</p>`;
+}
+new EventSource("/state").onmessage=e=>{
+ const S=JSON.parse(e.data);if(source==="ble")updBle(S);else{updHand("left",S.left);updHand("right",S.right)}updMetrics("left",S.left);updMetrics("right",S.right);document.querySelector(".hub").hidden=S.hub.serial==="off";if(document.querySelector(".hub").hidden)return;
+ const hub=S.hub,st=hub.status,c=hub.command,now=Date.now()/1000;
+ if(st&&now-st.at<3){
+  $("links").innerHTML=st.hands.map(h=>{
+   const k=h.side,prev=rate[k];let hz="";if(prev&&st.t_us>prev.t){hz=((h.accepted-prev.a)/((st.t_us-prev.t)/1e6)).toFixed(0)+"/s"}
+   if(!prev||st.t_us!==prev.t)rate[k]={a:h.accepted,t:st.t_us,hz};hz=rate[k].hz||hz;
+   return `<div class="row"><span>${k}</span><span>${chip(h.connected?(h.ready?"connected":"connecting"):"not connected",h.connected&&h.ready?"ok":"bad")}
+   ${hz?hz+" · ":""}${h.accepted} ok · ${Object.values(h.rejected).reduce((a,b)=>a+b,0)} rejected · ${h.drops} drops</span></div>`}).join("");
+ }else $("links").innerHTML=`<div class="row"><span>hub</span><span>${chip("USB "+hub.serial,"bad")}</span></div>`;
+ if(c&&now-c.at<1){
+  $("valid").innerHTML=c.valid?`<span style="color:var(--ok)">VALID</span>`:`<span style="color:var(--bad)">INVALID</span>`;
+  $("reason").textContent=c.valid?(c.hold?"HOLD":"")+(c.precision?" PRECISION":""):"reason: "+c.reason.replaceAll("_"," ");
+  bar("bthr",c.throttle/1000,false);bar("byaw",c.yaw/1000,true);bar("bpitch",c.pitch/1000,true);bar("broll",c.roll/1000,true);
+  $("vthr").textContent=(c.throttle/1000).toFixed(2);$("vyaw").textContent=(c.yaw/1000).toFixed(2);
+  $("vpitch").textContent=(c.pitch/1000).toFixed(2);$("vroll").textContent=(c.roll/1000).toFixed(2);
+ }else{$("valid").textContent="no command stream";$("reason").textContent=""}
+};
+</script></body></html>

@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PalmPilot Drone Compare</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Two flight views side by side; this page owns the keyboard and sends each key to both.
+   Same dark cockpit look as page.html. */
+:root {
+  --glass: rgba(10, 14, 20, 0.72);
+  --rule: rgba(255, 255, 255, 0.12);
+  --fg: #eef2f6;
+  --muted: #9aa8b6;
+  --amber: #ffb547;
+  --ok: #5fe39a;
+  --bad: #ff6b5e;
+  --label: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --num: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: #0b0f14; color: var(--fg); font-family: var(--label); display: grid; grid-template-rows: auto 1fr; overflow: hidden; }
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--rule); }
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand b { font-weight: 700; letter-spacing: 0.16em; font-size: 15px; }
+.brand span { color: var(--muted); font-size: 13px; letter-spacing: 0.04em; }
+button { font: 600 12px var(--label); letter-spacing: 0.1em; text-transform: uppercase; color: #11161c; background: var(--amber); border: 0; border-radius: 6px; padding: 8px 12px; cursor: pointer; }
+button.quiet { background: rgba(255,255,255,0.12); color: var(--fg); }
+button:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.you { display: flex; gap: 6px; flex-wrap: wrap; }
+.tag { font: 600 11px var(--label); letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 8px; border-radius: 5px; background: rgba(255,255,255,0.08); color: var(--muted); }
+.tag.on { background: rgba(95,227,154,0.18); color: var(--ok); }
+.tag.bad { background: rgba(255,107,94,0.2); color: var(--bad); }
+.keys { color: var(--muted); font-size: 13px; margin-left: auto; }
+.keys kbd { font: 600 12px var(--num); color: var(--fg); }
+
+main { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--rule); min-height: 0; }
+.pane { display: grid; grid-template-rows: 1fr auto; min-height: 0; background: #0b0f14; }
+.pane iframe { width: 100%; height: 100%; border: 0; display: block; min-height: 0; }
+.info { padding: 10px 14px 12px; display: grid; gap: 8px; border-top: 1px solid var(--rule); }
+.info h2 { margin: 0; font: 600 12px var(--label); letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; gap: 10px; }
+.info h2 em { font: 600 13px var(--num); letter-spacing: 0; color: var(--fg); font-style: normal; }
+.info h2 em.warn { color: var(--amber); }
+.state { display: flex; gap: 6px; flex-wrap: wrap; }
+.notice { font: 400 12px var(--num); color: var(--amber); min-height: 1.2em; }
+table { width: 100%; border-collapse: collapse; font: 400 12px var(--num); font-variant-numeric: tabular-nums; }
+th { font: 600 11px var(--label); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); text-align: right; padding: 3px 6px; border-bottom: 1px solid var(--rule); }
+td { text-align: right; padding: 3px 6px; }
+th:first-child, td:first-child { text-align: left; }
+tr.median td { border-top: 1px solid var(--rule); font-weight: 600; color: var(--amber); }
+td.none { color: var(--muted); }
+.how { font-size: 12px; color: var(--muted); line-height: 1.4; margin: 0; }
+
+@media (max-width: 900px) {
+  body { overflow: auto; }
+  main { grid-template-columns: 1fr; }
+  .pane { grid-template-rows: 60vh auto; }
+  .keys { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><b>PALMPILOT</b><span>same keys, two drones</span></div>
+  <button type="button" id="take">Take the hands</button>
+  <div class="you" id="you"></div>
+  <div class="keys"><kbd>E</kbd> enable · <kbd>R</kbd>/<kbd>F</kbd> arm/disarm · <kbd>W</kbd>/<kbd>S</kbd> throttle · <kbd>Q</kbd> hold height · <kbd>A</kbd>/<kbd>D</kbd> yaw · arrows tilt (<kbd>Shift</kbd> full) · <kbd>H</kbd> ALT HOLD · <kbd>1</kbd>–<kbd>5</kbd> cameras</div>
+</header>
+<main id="panes"></main>
+
+<template id="pane">
+  <section class="pane">
+    <iframe title="Flight view"></iframe>
+    <div class="info">
+      <h2><span class="name"></span><em class="rtf">—</em></h2>
+      <div class="state"></div>
+      <div class="notice"></div>
+      <table>
+        <thead><tr><th>Key</th><th>RC change</th><th>5° attitude</th><th>5° in sim</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="how">Wall time from the key press on this page to the first /state frame showing the drone's reported RC channel 10 µs off, and its roll or pitch 5° off, their values at the press. Resolution about 20–35 ms (33 ms send tick, 50 Hz /state). "In sim" is the 5° interval in the drone's own clock, from the newest frame at the press, so it reads up to a frame high.</p>
+    </div>
+  </section>
+</template>
+
+<script>
+// Keyboard → hands payload exactly as view.js's "Fly it yourself" computes it, posted to
+// every pane's server in the same 33 ms tick.
+const PANES = /*PANES*/null || [{ url: 'http://localhost:8765', label: 'ArduCopter SITL' }, { url: 'http://localhost:8766', label: 'Emulated STM32F405' }];
+const FLY_KEYS = ['KeyW', 'KeyS', 'KeyA', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyE', 'KeyR', 'KeyF', 'KeyH', 'KeyQ'];
+const ARROWS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
+const CAMS = { 1: 'cine', 2: 'chase', 3: 'pilot', 4: 'orbit', 5: 'top' };
+const RC_STEP = 10;          // µs: a reported channel this far from its value at the key press has changed
+const ATT_STEP = 5;          // degrees of roll (← →) or pitch (↑ ↓) away from the value at the key press
+const TRIAL_MAX = 5000;      // ms: give up on a trial
+const ROWS = 6;
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const $ = (id) => document.getElementById(id);
+
+const you = { curl: 0, lroll: 0, rroll: 0, rpitch: 0, enable: false };
+const held = new Set();
+let flying = false;
+
+const sides = PANES.map((p) => {
+  const el = $('pane').content.firstElementChild.cloneNode(true);
+  el.querySelector('iframe').src = `${p.url}/?follow=1`;
+  el.querySelector('iframe').title = `${p.label} flight view`;
+  el.querySelector('.name').textContent = `${p.label} · ${p.url.replace(/^https?:\/\//, '')}`;
+  $('panes').append(el);
+  const side = { ...p, el, f: null, open: null, done: [], es: null, seen: 0 };
+  connect(side);
+  return side;
+});
+
+function connect(side) {
+  side.es = new EventSource(`${side.url}/state`);
+  side.es.onmessage = (ev) => {
+    const f = JSON.parse(ev.data);
+    if (f.t === undefined) return;
+    side.f = f;
+    side.seen = performance.now();
+    if (side.open) check(side, f);
+  };
+}
+
+const postAll = (path, body) => sides.forEach((s) => fetch(s.url + path, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}),
+}).catch(() => {}));
+
+// --- lag trials: one per stick key press, timed on this page's clock -------------------------
+function startTrial(code) {
+  const axis = code === 'ArrowLeft' || code === 'ArrowRight' ? 0 : 1;
+  const t0 = performance.now();
+  for (const s of sides) {
+    if (s.open) finish(s);
+    if (!s.f) continue;
+    s.open = { t0, key: { ArrowLeft: '← roll', ArrowRight: '→ roll', ArrowUp: '↑ pitch', ArrowDown: '↓ pitch' }[code], axis,
+      rc0: s.f.rc ? s.f.rc[axis] : null, att0: s.f.att[axis], ts0: s.f.ts, rcMs: null, attMs: null, attSim: null };
+  }
+}
+function check(s, f) {
+  const o = s.open, dt = performance.now() - o.t0;
+  if (o.rcMs === null && o.rc0 !== null && f.rc && Math.abs(f.rc[o.axis] - o.rc0) >= RC_STEP) o.rcMs = dt;
+  if (o.attMs === null && Math.abs(f.att[o.axis] - o.att0) >= ATT_STEP) {
+    o.attMs = dt;
+    if (f.ts != null && o.ts0 != null) o.attSim = (f.ts - o.ts0) * 1000;
+  }
+  if ((o.rcMs !== null && o.attMs !== null) || dt > TRIAL_MAX) finish(s);
+}
+function finish(s) {
+  s.done.unshift(s.open);
+  s.done.length = Math.min(s.done.length, ROWS);
+  s.open = null;
+  drawTable(s);
+}
+const ms = (v) => (v === null ? '<td class="none">—</td>' : `<td>${Math.round(v)} ms</td>`);
+function median(list) {
+  const v = list.filter((x) => x !== null).sort((a, b) => a - b);
+  return v.length ? v[Math.floor(v.length / 2)] : null;
+}
+function drawTable(s) {
+  const rows = s.done.map((o) => `<tr><td>${o.key}</td>${ms(o.rcMs)}${ms(o.attMs)}${ms(o.attSim)}</tr>`);
+  if (s.done.length > 1) rows.push(`<tr class="median"><td>median</td>${['rcMs', 'attMs', 'attSim'].map((k) => ms(median(s.done.map((o) => o[k])))).join('')}</tr>`);
+  s.el.querySelector('tbody').innerHTML = rows.join('') || '<tr><td colspan="4" class="none">Tap an arrow key while flying in ALT HOLD to time one.</td></tr>';
+}
+sides.forEach(drawTable);
+
+// --- keys: from this page, or forwarded by a pane that has focus ----------------------------
+function key(type, code, keyName, repeat) {
+  if (type === 'keyup') { held.delete(code); return false; }
+  const cam = CAMS[keyName];
+  if (cam) sides.forEach((s) => s.el.querySelector('iframe').contentWindow.postMessage({ palmpilotCam: cam }, '*'));
+  if (keyName === 'Shift') held.add(code);
+  if (!flying || !FLY_KEYS.includes(code)) return false;
+  const stickBusy = ARROWS.some((c) => held.has(c));
+  held.add(code);
+  if (repeat) return true;
+  if (code === 'KeyE') you.enable = !you.enable;
+  if (code === 'KeyR') postAll('/arm', { on: true });
+  if (code === 'KeyF') postAll('/arm', { on: false });
+  if (code === 'KeyH') postAll('/althold');
+  if (code === 'KeyQ') you.curl = 0.52;
+  if (ARROWS.includes(code) && !stickBusy) startTrial(code);
+  return true;
+}
+for (const type of ['keydown', 'keyup']) window.addEventListener(type, (e) => { if (key(type, e.code, e.key, e.repeat)) e.preventDefault(); });
+window.addEventListener('message', (e) => {
+  const k = e.data && e.data.palmpilotKey;
+  if (k && sides.some((s) => e.source === s.el.querySelector('iframe').contentWindow)) key(k.type, k.code, k.key, k.repeat);
+});
+window.addEventListener('blur', () => held.clear());
+
+$('take').addEventListener('click', (e) => {
+  flying = !flying;
+  if (flying) {
+    const hands = sides.map((s) => s.f && s.f.hands).filter(Boolean);
+    you.curl = Math.max(0, ...hands.map((h) => h.left.curl));
+    you.enable = hands.length > 0 && hands.every((h) => h.enable);
+  }
+  postAll('/control', { manual: flying });
+  e.currentTarget.textContent = flying ? 'Give back' : 'Take the hands';
+  e.currentTarget.className = flying ? 'quiet' : '';
+  e.currentTarget.blur();
+});
+
+let lastSend = performance.now();
+setInterval(() => {
+  const now = performance.now(), dt = (now - lastSend) / 1000;
+  lastSend = now;
+  if (!flying) return;
+  const k = (c) => (held.has(c) ? 1 : 0);
+  const tilt = held.has('ShiftLeft') || held.has('ShiftRight') ? 30 : 17;
+  you.curl = clamp(you.curl + (k('KeyW') - k('KeyS')) * 0.22 * dt, 0, 1);
+  you.lroll = (k('KeyD') - k('KeyA')) * (tilt + 4);
+  you.rroll = (k('ArrowRight') - k('ArrowLeft')) * tilt;
+  you.rpitch = (k('ArrowUp') - k('ArrowDown')) * tilt;
+  postAll('/hands', you);
+}, 33);
+
+// --- status, a few times a second -------------------------------------------------------------
+const tag = (text, cls = '') => `<span class="tag ${cls}">${text}</span>`;
+setInterval(() => {
+  $('you').innerHTML = flying ? tag(`Enable ${you.enable ? 'on' : 'off'}`, you.enable ? 'on' : 'bad') + tag(`Throttle ${Math.round(you.curl * 100)}%`)
+    : tag('Keys not sent');
+  const now = performance.now();
+  for (const s of sides) {
+    const f = s.f, stale = !f || now - s.seen > 1000;
+    const rtf = s.el.querySelector('.rtf');
+    rtf.textContent = stale ? 'no data' : f.rtf ? `${f.rtf.toFixed(2)}× real time` : 'real time —';
+    rtf.className = `rtf${stale || !f.rtf || Math.abs(f.rtf - 1) >= 0.03 ? ' warn' : ''}`;
+    if (stale) { s.el.querySelector('.state').innerHTML = tag('Not connected', 'bad'); continue; }
+    const en = f.hands ? f.hands.enable : f.cmd && f.cmd.valid;
+    s.el.querySelector('.state').innerHTML = [
+      tag(f.source === 'manual' ? 'Your keys' : f.source === 'virtual' ? 'Virtual pilot' : f.source, f.source === 'manual' ? 'on' : flying ? 'bad' : ''),
+      tag(`Enable ${en ? 'on' : 'off'}`, en ? 'on' : ''), tag(f.armed ? 'Armed' : 'Disarmed', f.armed ? 'on' : ''),
+      tag(f.mode, f.mode === 'ALT HOLD' ? 'on' : ''), tag(`Alt ${f.pos[2].toFixed(1)} m`),
+      tag(`Roll ${f.att[0].toFixed(0)}° · pitch ${f.att[1].toFixed(0)}°`),
+    ].join('');
+    s.el.querySelector('.notice').textContent = f.notice || '';
+  }
+}, 200);
+</script>
+</body>
+</html>

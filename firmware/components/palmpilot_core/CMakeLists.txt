@@ -3,3 +3,7 @@
 idf_component_register(
     SRCS "hand_core.c" "packet.c" "hub_core.c"
     INCLUDE_DIRS ".")
+
+if(CONFIG_PALMPILOT_BENCH)
+    target_compile_definitions(${COMPONENT_LIB} PUBLIC PALMPILOT_BENCH=1)
+endif()

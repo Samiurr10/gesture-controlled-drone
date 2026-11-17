@@ -78,14 +78,19 @@ failure.
 
 The wrapper encodes these findings so they are not rediscovered:
 
-- **Three simulator model candidates load by default** (`env.sh`), from
-  `simulation/simantic/model-candidates/`: BLE radio (renode-infrastructure #270),
-  RNG (#271) and STM32 UART TX DMA (#325). Set `PALMPILOT_BLE_RADIO_OVERLAY=`,
-  `PALMPILOT_RNG_OVERLAY=` or `PALMPILOT_STM32_UART_OVERLAY=` (empty) to run the
-  engine's own model.
+- **One simulator model candidate loads by default** (`env.sh`): RNG
+  (renode-infrastructure #271), from `simulation/simantic/model-candidates/`. Set
+  `PALMPILOT_RNG_OVERLAY=` (empty) to run the engine's own model.
+- **Runs are time-limited.** `palmpilot.py` stops a simulation that stays under 5% of a
+  core for `PALMPILOT_STALL_S` (120 s), saving the engine's stacks to
+  `stall-stacks.txt`, or that passes `PALMPILOT_MAX_WALL_S` (3600 s).
+- **The drone board** is `PALMPILOT_DRONE=f405` (Matek F405-Wing, default) or `h7`
+  (Pixhawk 6X, about 3× slower to simulate).
+- **`palmpilot.py drone <script>`** runs the flight controller without the three
+  ESP32-S3 machines (`ControllerSim(hands=False)`), as the laptop demo will.
 - **ADC1 is upstream since engine 0.5.14** (PR #168), in its calibrated-state
   mode: raw counts are die-specific, so tests assert calibrated millivolts.
-- **`Sim.read_uart` is unreliable** with SDK 0.3.1 — it duplicates
+- **`Sim.read_uart` is unreliable** with the SDK — it duplicates
   and interleaves fragments. The harness captures the Renode `CharReceived`
   event instead. Assert against `sim.records()`, never `read_uart`.
 - **ADC injection is not in the SDK.** `set_flex_uv` / `set_channel_uv` go
@@ -104,15 +109,27 @@ open/short faults, calibrates, normalises curl and tilt, runs the per-hand state
 machine, and notifies one packet per 20 ms to the hub over BLE.
 
 UART commands: `info`, `sample`, `stats`, `control`, `motion`, `packet`, `link`,
-`stream N`, `stall SWEEPS`, `profile`, `reboot`, and `cal extended | curled |
-neutral | finish | reset | save | load | erase | corrupt`.
+`stream N`, `stall SWEEPS`, `profile`, `reboot`, `cal extended | curled |
+neutral | finish | reset | save | load | erase | corrupt`, `cal set E*5 C*5`
+(re-enter both ends from an earlier capture; Finish still validates them), and
+the bench diagnostics `i2c` (line levels, bus scan, WHO_AM_I at 0x6A/0x6B) and
+`i2c recover` (software-reset the accelerometer). At boot, an accelerometer that
+answers with the wrong identity is software-reset and read once more.
 
 `apps/hub` connects both hands and applies the mapping and interlocks from
 [`gesture-mapping.md`](../docs/gesture-mapping.md) in
 `components/palmpilot_core/hub_core.c`. It prints one `command` line per 20 ms
 on UART0 (`valid`, `reason`, `roll`, `pitch`, `yaw`, `throttle`, `hold`,
-`precision`), and answers `status`. GPIO7 is CALIBRATE: it captures neutral on
-both hands and inhibits output while held.
+`precision`), and answers `status` and `hands` (each hand's newest packet as
+received). GPIO7 is CALIBRATE: it captures neutral on both hands and inhibits
+output while held.
+
+Bench profile: `hand:left_bench`, `hand:right_bench` and `hub:bench` build with
+`CONFIG_PALMPILOT_BENCH`, the settings used for the first physical flights
+(ENABLE toggles, 20% ENABLE limit, no thumb gestures, CALIBRATE ignored, right
+pitch inverted, softer yaw). The suites test the default build. Details:
+[docs/bench-bringup.md](../docs/bench-bringup.md). Bench tools are in
+`tools/bench/`.
 
 ```sh
 sh firmware/tests/run_all.sh                                    # every suite
@@ -147,9 +164,7 @@ defects fixed in the pinned engine were removed; they are in git history.
 
 | Probe | Finding |
 |---|---|
-| `probes/ble2link` | one central, two peripherals: second link and cross-link packets, fixed by the #270 candidate (`run.py`; `PALMPILOT_BLE_RADIO_OVERLAY=` for stock) |
 | `probes/rngreset` | RNG replays after `esp_restart()`, fixed by the #271 candidate (`run.py`; `PALMPILOT_RNG_OVERLAY=` for stock) |
-| `probes/stm32-uart-txdma` | STM32F4 USART TX DMA never starts on stock, fixed by #325 |
 | `probes/drone-outputs` | ArduCopter motor outputs observed at the timer registers |
 | `probes/drone-flight` | `fly.py` gesture flight; `shake`/`tilt`/`spin` single-axis checks; `soak`/`stress` long runs; `loop_rate`, `params_dump` |
 
@@ -160,7 +175,7 @@ for the FW-04 stalled-acquisition case, not production behavior.
 
 - **Fixed-point control path.** All control arithmetic is in milli-units. The FPU
   gap that forced this (the first Xtensa FPU instruction aborted engine 0.5.7) no
-  longer reproduces on engine 0.6.3, so this is now a design choice, not a
+  longer reproduces on engine 0.6.3 and later, so this is now a design choice, not a
   simulator limitation.
 - **Pace periodic work with `esp_timer`, not `vTaskDelay`.**
 - **Never write flash from the live control path.** A real flash write suspends

@@ -112,20 +112,22 @@ reports both hands linked and delivering. Use the engine with the stall fix
 
 ## Part B — physical controller, on the bench
 
-Wiring for every step is in [docs/wiring](wiring/README.md). USB power only. Each
+Wiring for every step is in [docs/wiring](wiring/README.md). The step-by-step bench procedures
+(firmware to flash, console commands, expected replies, a drawing per stage) are in
+[docs/bench](bench/README.md); the last column links them. Nothing physical has been tested yet. USB power only. Each
 board gets its own cable, and no wire joins two boards. Never connect 5 V or a
 battery to an ADC pin. GPIO10 stays unconnected.
 
-| Step | Build | Measure / check | Mirrors |
-|---|---|---|---|
-| **B0 — Board check** | One bare DevKit | Record module marking, PCB revision, flash/PSRAM and which USB port is the UART bridge. Check the header map against the [pin table](wiring/README.md#pins); a Freenove board needs its own map. Flash `simulation/simantic/hardware-validation/esp32s3-adc` and compare with its committed physical captures | A0 |
-| **B1 — One flex** | LEFT thumb on GPIO1: flex, 47 kΩ, 100 nF | Unpowered: continuity and resistance. Powered: 3V3 and node voltage on a meter, calibrated mV from `sample` against the meter, straight and bent readings. Unplug the flex and short it: both must read as faults, never as full travel | S1-A |
-| **B2 — Full LEFT hand** | Five flex channels and the #5543 breakout ([one-hand-s1](wiring/README.md#one-hand-on-the-bench-s1-a-and-s1-b)) | Each finger lands on its own channel. Alternate high/low channels to look for coupling. `motion`: IMU identity at 0x6A/0x1C and the mounting axes. `cal extended / curled / neutral / finish / save`, then a reboot restores the profile | S1-A, S1-B, S1-D, S1-E, S1-F |
-| **B3 — ENABLE** | Button circuit on GPIO7 | Reads high when released and low when pressed. Debounce. Held at boot has no effect until it is released and pressed again. A new press is refused unless throttle is low | S1-C |
-| **B4 — RIGHT hand** | Same as B2, no button | Repeat B1–B2. Its own side identity and calibration | S1 |
-| **B5 — Hub and BLE** | Hub with the CALIBRATE button | `status` shows both hands `ready=1` with a rising `accepted` count. Remove one hand's USB: the command goes invalid within the limit set beforehand and stays latched until ENABLE is pressed again. Press CALIBRATE: neutral is captured and output is inhibited while held | S2-A, S2-B |
-| **B6 — Hub to laptop** | Hub UART USB port to the laptop | Decode the command lines on the laptop at 115200 baud. Opening the port must not reset the hub (DTR/RTS). Unplugging the hub must expire commands on the laptop side | S3-A expiry |
-| **B7 — Controller acceptance** | Everything | Run all three boards for a duration set beforehand, with the fault cases from B5–B6. Save logs, binaries, calibration and the wiring revision | — |
+| Step | Build | Measure / check | Mirrors | Bench procedures |
+|---|---|---|---|---|
+| **B0 — Board check** | One bare DevKit | Record module marking, PCB revision, flash/PSRAM and which USB port is the UART bridge. Check the header map against the [pin table](wiring/README.md#pins); a Freenove board needs its own map. Flash `simulation/simantic/hardware-validation/esp32s3-adc` and compare with its committed physical captures | A0 | [00](bench/00-board-check/README.md) |
+| **B1 — One flex** | LEFT thumb on GPIO1: flex, 47 kΩ, 100 nF | Unpowered: continuity and resistance. Powered: 3V3 and node voltage on a meter, calibrated mV from `sample` against the meter, straight and bent readings. Unplug the flex and short it: both must read as faults, never as full travel | S1-A | [01](bench/01-s1a-one-flex/README.md) |
+| **B2 — Full LEFT hand** | Five flex channels and the #5543 breakout ([bench 03](bench/03-s1d-motion/wiring.png)) | Each finger lands on its own channel. Alternate high/low channels to look for coupling. `motion`: IMU identity at 0x6A/0x1C and the mounting axes. `cal extended / curled / neutral / finish / save`, then a reboot restores the profile | S1-A, S1-B, S1-D, S1-E, S1-F | [02](bench/02-s1a-five-flex/README.md), [03](bench/03-s1d-motion/README.md), [04](bench/04-s1b-calibration/README.md); S1-E, S1-F and the watchdog run in 06–09, after B3, because they need ENABLE |
+| **B3 — ENABLE** | Button circuit on GPIO7 | Reads high when released and low when pressed. Debounce. Held at boot has no effect until it is released and pressed again. A new press is refused unless throttle is low | S1-C | [05](bench/05-s1c-enable-control/README.md), then on the finished LEFT hand [06](bench/06-s1e-attitude/README.md), [07](bench/07-s1f-persistence/README.md), [08](bench/08-s1g-packet/README.md), [09](bench/09-s1h-watchdog/README.md) |
+| **B4 — RIGHT hand** | Same as B2, no button | Repeat B1–B2. Its own side identity and calibration | S1 | [10](bench/10-right-hand/README.md) |
+| **B5 — Hub and BLE** | Hub with the CALIBRATE button | `status` shows both hands `ready=1` with a rising `accepted` count. Remove one hand's USB: the command goes invalid within the limit set beforehand and stays latched until ENABLE is pressed again. Press CALIBRATE: neutral is captured and output is inhibited while held | S2-A, S2-B | [11](bench/11-s2a-link/README.md), [12](bench/12-s2b-controller/README.md) |
+| **B6 — Hub to laptop** | Hub UART USB port to the laptop | Decode the command lines on the laptop at 115200 baud. Opening the port must not reset the hub (DTR/RTS). Unplugging the hub must expire commands on the laptop side | S3-A expiry | [13](bench/13-s3-host/README.md) (laptop decoder not built yet) |
+| **B7 — Controller acceptance** | Everything | Run all three boards for a duration set beforehand, with the fault cases from B5–B6. Save logs, binaries, calibration and the wiring revision | — | — |
 
 Wearable battery power is out of scope until a reviewed power design exists. The
 hands stay on USB.
@@ -133,8 +135,8 @@ hands stay on USB.
 ## Part C — physical controller, simulated drone
 
 The physical hub replaces the simulated controller. Its serial lines feed the same
-bridge, and only the drone runs in Simantic. A 3D view shows the airframe's true
-state. The bring-up, the operator steps and what is still to build are in the
+bridge code (`rc_link`), and the drone runs as ArduCopter SITL in real time
+(`simulation/drone/sitl_live.py`). A 3D view shows the airframe's true state. The bring-up, the operator steps and what is still to build are in the
 [demo plan](demo.md).
 
 | Step | Check |

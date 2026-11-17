@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "title": "Bench 00 / board check: bare DevKit, GPIO1 to GND for the ADC ground check",
+  "notes": "One DevKit, nothing else connected. The single jumper is only for the ADC reference app's ground check (simulation/simantic/hardware-validation/esp32s3-adc); remove it before bench 01. GPIO1 is an ADC input there and is never driven, so tying it to GND is safe.",
+  "parts": [
+    {
+      "id": "esp",
+      "board": "esp32-s3-devkitc-1",
+      "x": 0,
+      "y": 0,
+      "label": "ESP32-S3-DevKitC-1 (record its markings)"
+    }
+  ],
+  "connections": [
+    {
+      "from": "esp:GPIO1",
+      "to": "esp:J3-1",
+      "color": "black",
+      "label": "GPIO1 -> GND, ADC ground check only"
+    }
+  ]
+}

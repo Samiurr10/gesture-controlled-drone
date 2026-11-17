@@ -11,7 +11,6 @@ from pymavlink.dialects.v20 import ardupilotmega as mavlink
 
 LEFT, RIGHT, WAITING, PERMITTED = 0, 1, 2, 3
 VALID, ENABLE, HEALTHY = 1, 2, 4 | 32
-SKIP_ALL = 0xFFFFE                    # ARMING_SKIPCHK bits 1-19: no compass, accel cal or GPS on this bench
 PLANT = quad_plant.PLANT
 
 
@@ -34,13 +33,6 @@ def mav(fn):
     rc_link.outbox.append(fn)
 
 
-def standby(sim, limit=25):
-    rc_link.heartbeat = None
-    start = sim.time()
-    while not (rc_link.heartbeat and rc_link.heartbeat["system_status"] in (3, 4)) and sim.time() - start < limit:
-        sim.run_for(0.5)
-
-
 def texts(since):
     for t, _, x in rc_link.statustext[since:]:
         print(f"    [{t:6.2f}] ArduCopter: {x}", flush=True)
@@ -61,14 +53,7 @@ with ControllerSim(drone=True, plant=True) as sim:
         sim.wait_for_type(hand, "ready", timeout=3.0)
     hands(sim, enable=False)
     sim.wait_linked(timeout=5.0)
-    standby(sim)
-    for name, value, kind in ((b"FRAME_CLASS", 1, mavlink.MAV_PARAM_TYPE_INT8), (b"FRAME_TYPE", 1, mavlink.MAV_PARAM_TYPE_INT8),
-                              (b"ARMING_SKIPCHK", SKIP_ALL, mavlink.MAV_PARAM_TYPE_INT32)):
-        mav(lambda m, n=name, v=value, k=kind: m.param_set_encode(1, 1, n, v, k))
-    sim.run_for(1.0)
-    mav(lambda m: m.command_long_encode(1, 1, mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN, 0, 1, 0, 0, 0, 0, 0, 0))
-    sim.run_for(1.0)
-    standby(sim)
+    sim.setup_drone()
     sim.run_for(6.0)                  # EKF alignment
     for msg, hz in ((mavlink.MAVLINK_MSG_ID_SERVO_OUTPUT_RAW, 20), (mavlink.MAVLINK_MSG_ID_RC_CHANNELS, 10)):
         mav(lambda m, i=msg, h=hz: m.command_long_encode(1, 1, mavlink.MAV_CMD_SET_MESSAGE_INTERVAL, 0, i, 1_000_000 // h, 0, 0, 0, 0, 0))

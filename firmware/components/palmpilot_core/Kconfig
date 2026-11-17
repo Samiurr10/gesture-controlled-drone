@@ -1,0 +1,11 @@
+menu "PalmPilot"
+    config PALMPILOT_BENCH
+        bool "Bench profile for the first physical flights"
+        default n
+        help
+            Builds the settings used on the physical bench on 2026-11-17 (see
+            docs/bench-bringup.md): ENABLE toggles instead of being held, ENABLE
+            and arming accept up to 20% throttle, no thumb gestures, the hub
+            ignores CALIBRATE, right-hand pitch is inverted and yaw is softened.
+            The simulation suites test the default (n).
+endmenu
