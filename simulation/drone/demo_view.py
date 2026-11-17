@@ -17,6 +17,12 @@ althold or quit in the terminal.
 
 Either way the drone moves only from ArduCopter's motor outputs through SITL's physics.
 `--record` saves each tour's states for the replay page (tmp/palmpilot/demo-view/).
+
+`--drone f405` flies ArduCopter on the emulated Matek F405-Wing instead (f405_live.py:
+Simantic, quad_plant, no wind), slower than real time, to see what the emulated flight
+controller adds in delay. It needs the Simantic environment, so from the repository root:
+
+    sh -c '. firmware/tools/env.sh && exec "$PALMPILOT_SIM_PYTHON" simulation/drone/demo_view.py --drone f405 --port 8766'
 """
 import argparse
 import json
@@ -30,7 +36,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import rc_link                                                        # noqa: E402
-from sitl_live import ROOT, Drone, hub, hub_reader, operator, start_sitl  # noqa: E402
+from sitl_live import ROOT, Drone, hub, operator, start_sitl  # noqa: E402
 
 VIEW = HERE / "view"
 OUT = ROOT / "tmp/palmpilot/demo-view"
@@ -272,21 +278,25 @@ class Pilot:
 class Screen:
     """Runs the hands or the physical hub at 50 Hz and keeps the newest snapshot for the page."""
 
-    def __init__(self, drone, virtual, record):
+    def __init__(self, drone, virtual, record, manual_only=False):
         self.drone, self.virtual, self.record = drone, virtual, record
         self.hands = Hands()
         self.pilot = Pilot(drone, self.hands)
         self.snapshot, self.frames, self.tours = "{}", [], 0
         self.boot = []                      # (wall, SITL boot s) for the real-time factor
-        self.mode = "virtual" if virtual else "hub"
+        self.mode = "manual" if manual_only else "virtual" if virtual else "hub"
+        self.manual_only = manual_only
+        if manual_only:
+            self.hands.lag = 0.0
         self.tour = None
         self.manual = {"curl": 0.0, "lroll": 0.0, "rroll": 0.0, "rpitch": 0.0, "enable": False}
         self.manual_at = 0.0                # when the page last sent the person's hands
         self.notice = (0.0, "")             # (time, text): a refusal to show for a few seconds
+        self.hub_hands, self.hub_status, self.hub_reason = None, None, ""   # the physical hub's `hands` and `status` replies
 
     def take(self, manual):
         """The person takes the hands, or gives them back to the virtual pilot."""
-        if self.mode == "hub" or manual == (self.mode == "manual"):
+        if self.mode == "hub" or self.manual_only or manual == (self.mode == "manual"):
             return
         self.mode = "manual" if manual else "virtual"
         self.hands.lag = 0.0 if manual else HAND_LAG_S
@@ -301,9 +311,11 @@ class Screen:
         self.notice = (time.monotonic(), text)
 
     def arm(self, on):
-        if on and (rc_link.failsafe or rc_link.expired() or rc_link.channels[2] > 1100):
-            self.say("Arming refused: hold ENABLE with the left hand open (throttle low)")
+        if on and (rc_link.failsafe or rc_link.expired() or rc_link.channels[2] > 1250):
+            self.say("Arming refused: press ENABLE once with the left hand open (throttle low)")
             return
+        if on:
+            self.drone.althold()            # arm straight into ALT HOLD: no separate key needed
         self.drone.arm(on)
 
     def run(self):
@@ -344,7 +356,7 @@ class Screen:
             rtf = (self.boot[-1][1] - self.boot[0][1]) / (self.boot[-1][0] - self.boot[0][0])
         ch = rc_link.channels
         frame = {
-            "t": s["t"], "ts": s.get("sim_t"), "source": self.mode,
+            "t": s["t"], "ts": s.get("sim_t"), "source": self.mode, "manual_only": self.manual_only,
             "pos": [s.get("N", 0), s.get("E", 0), s.get("alt", 0)],
             "vel": [s.get("vN", 0), s.get("vE", 0), s.get("vD", 0)],
             "att": [s.get("roll", 0), s.get("pitch", 0), s.get("yaw", 0)],
@@ -353,12 +365,18 @@ class Screen:
             "sending": s.get("sending", False),
             "cmd": {"valid": not rc_link.failsafe and not rc_link.expired(),
                     "roll": (ch[0] - 1500) / 500, "pitch": -(ch[1] - 1500) / 500,
-                    "throttle": (ch[2] - 1000) / 1000, "yaw": (ch[3] - 1500) / 500},
+                    "throttle": (ch[2] - 1000) / 1000, "yaw": (ch[3] - 1500) / 500,
+                    "reason": self.hub_reason if self.mode == "hub" else ""},
             "caption": {"virtual": self.pilot.caption, "manual": "You are flying", "hub": "Physical hub"}[self.mode],
             "notice": self.notice[1] if time.monotonic() - self.notice[0] < 4 else "",
             "texts": self.drone.texts[-4:], "rtf": rtf, "wind": WIND,
         }
-        if self.mode != "hub":
+        if self.mode == "hub":
+            if self.hub_hands and time.monotonic() - self.hub_hands["at"] < 1.0:
+                frame["hands"] = hub_hand_poses(self.hub_hands, self.hub_status)
+            if self.hub_status:
+                frame["hub_status"] = self.hub_status
+        else:
             frame["hands"] = {"left": dict(self.hands.left), "right": dict(self.hands.right),
                               "enable": self.hands.enable}
         self.snapshot = json.dumps(frame, separators=(",", ":"))
@@ -375,6 +393,73 @@ class Screen:
         self.frames = []
 
 
+FLAG_ENABLE, FLAG_CALIBRATED, FLAG_MOTION_OK = 2, 4, 32
+
+
+def hub_hand_poses(reply, status):
+    """The hub's latest packet from each hand (its `hands` reply), as the panel's hand poses.
+    Telemetry only: the drone still flies from the hub's command lines."""
+    out, links = {}, {h["side"]: h for h in (status or {}).get("hands", [])}
+    for h in reply["hands"]:
+        ax, ay, az = h["accel"]
+        g = math.sqrt(ax * ax + ay * ay + az * az) or 1.0
+        roll = math.degrees(math.asin(clamp(ay / g, -1.0, 1.0)))      # firmware tilt axes: roll y, pitch x
+        pitch = math.degrees(math.asin(clamp(ax / g, -1.0, 1.0)))
+        fingers = [c / 1000 if c >= 0 else None for c in h["curl"]]
+        four = [c for c in fingers[1:] if c is not None]
+        link = links.get(h["side"], {})
+        out[h["side"]] = {"curl": sum(four) / len(four) if four else 0.0, "roll": roll, "pitch": pitch,
+                          "fingers": fingers, "have": bool(h["have"]), "age_ms": round(h["age_us"] / 1000),
+                          "calibrated": bool(h["flags"] & FLAG_CALIBRATED), "imu": bool(h["flags"] & FLAG_MOTION_OK),
+                          "fault": h["fault"], "g": round(g / 16384, 2), "connected": bool(link.get("connected")),
+                          "accepted": link.get("accepted"), "drops": link.get("drops")}
+    left = out.get("left", {})
+    out["enable"] = bool(left and [h for h in reply["hands"] if h["side"] == "left"][0]["flags"] & FLAG_ENABLE)
+    out["physical"] = True
+    return out
+
+
+def hub_link(screen, port):
+    """The physical hub on its USB serial port: command lines into rc_link, as sitl_live's
+    hub_reader does, plus `hands` (10 Hz) and `status` (1 Hz) for the panel."""
+    import serial                                                    # pyserial, only for a physical hub
+    link = serial.Serial()
+    link.port, link.baudrate, link.timeout = port, 115200, 0.02
+    link.dtr = link.rts = False                     # on DevKits these drive EN/IO0: do not reset the hub
+    link.open()
+
+    def loop():
+        due, buf = {"hands": 0.0, "status": 0.0}, b""
+        while screen.drone.running:
+            now = time.monotonic()
+            try:
+                for cmd, period in (("hands", 0.1), ("status", 1.0)):
+                    if now >= due[cmd]:
+                        link.write(cmd.encode() + b"\n")
+                        due[cmd] = now + period
+                buf += link.read(4096)
+            except serial.SerialException as error:
+                print(f"hub serial error: {error}", flush=True)
+                return
+            *lines, buf = buf.split(b"\n")
+            for raw in lines:
+                line = raw.decode(errors="replace").strip()
+                if '"type":"command"' in line:
+                    rc_link.apply_line(line)
+                    screen.hub_reason = line.split('"reason":"', 1)[1].split('"', 1)[0] if '"reason":"' in line else ""
+                elif '"type":"hands"' in line or '"type":"status"' in line:
+                    try:
+                        msg = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    msg["at"] = time.monotonic()
+                    if msg["type"] == "hands":
+                        screen.hub_hands = msg
+                    else:
+                        screen.hub_status = msg
+    threading.Thread(target=loop, daemon=True).start()
+
+
 def page():
     head = ('<!doctype html><html lang="en"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
@@ -387,8 +472,21 @@ def handler(screen):
         def log_message(self, *_):
             pass
 
+        def end_headers(self):
+            # Any origin: compare.py's page reads /state and posts the same keys to two servers.
+            self.send_header("Access-Control-Allow-Origin", "*")
+            super().end_headers()
+
+        def do_OPTIONS(self):
+            self.send_response(204)
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.send_header("Access-Control-Max-Age", "600")
+            self.end_headers()
+
         def do_GET(self):
-            if self.path in ("/", "/index.html"):
+            path = self.path.split("?")[0]           # the view takes ?follow=1 in compare.py's panes
+            if path in ("/", "/index.html"):
                 return self.send(page(), "text/html; charset=utf-8")
             if self.path == "/view.js":
                 return self.send((VIEW / "view.js").read_bytes(), "text/javascript; charset=utf-8")
@@ -416,9 +514,9 @@ def handler(screen):
                                  **{k: clamp(float(body.get(k, 0)), -TILT_SAT, TILT_SAT) for k in ("lroll", "rroll", "rpitch")},
                                  "enable": bool(body.get("enable"))}
                 screen.manual_at = time.monotonic()
-            elif self.path == "/arm" and screen.mode == "manual":
+            elif self.path == "/arm" and screen.mode in ("manual", "hub"):
                 screen.arm(bool(body.get("on")))
-            elif self.path == "/althold" and screen.mode == "manual":
+            elif self.path == "/althold" and screen.mode in ("manual", "hub"):
                 screen.drone.althold()
             else:
                 return self.send_error(404)
@@ -436,26 +534,40 @@ def handler(screen):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--manual", action="store_true", help="keyboard only from the start: no virtual pilot")
     ap.add_argument("--hub", help="a physical hub's serial port; default: the virtual pilot")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--record", action="store_true", help="save each tour's states for the replay page")
     ap.add_argument("--tours", type=int, default=0, help="stop after this many tours (0: run until Ctrl-C)")
+    ap.add_argument("--drone", choices=("sitl", "f405"), default="sitl",
+                    help="sitl: ArduCopter SITL (default); f405: ArduCopter on the emulated F405 (f405_live)")
     a = ap.parse_args()
 
-    sitl = start_sitl(f"SIM_WIND_SPD {WIND[0]}\nSIM_WIND_DIR {WIND[1]}\nSIM_WIND_TURB 0.4\n")
+    sitl = None
+    if a.drone == "f405":
+        from f405_live import Drone as F405Drone
+        make = F405Drone
+    else:
+        sitl = start_sitl(f"SIM_WIND_SPD {WIND[0]}\nSIM_WIND_DIR {WIND[1]}\nSIM_WIND_TURB 0.4\n"
+                         "PILOT_Y_RATE 90\n")      # full yaw stick: 90 deg/s (default 202.5)
+        make = Drone
     drone = None
     try:
-        drone = Drone()
-        screen = Screen(drone, virtual=a.hub is None, record=a.record)
+        drone = make()
+        screen = Screen(drone, virtual=a.hub is None, record=a.record, manual_only=a.manual and a.hub is None)
         server = ThreadingHTTPServer(("127.0.0.1", a.port), handler(screen))
         threading.Thread(target=server.serve_forever, daemon=True).start()
-        print(f"view: http://localhost:{a.port}  (waiting for SITL's EKF ...)", flush=True)
+        print(f"view: http://localhost:{a.port}  (waiting for the {a.drone} drone's EKF ...)", flush=True)
         drone.wait_ready()
         print(f"ready after {drone.now():.1f} s", flush=True)
         threading.Thread(target=screen.run, daemon=True).start()
         if a.hub:
-            hub_reader(drone, a.hub)
-            operator(drone)
+            hub_link(screen, a.hub)
+            if sys.stdin.isatty():
+                operator(drone)
+            else:
+                while drone.running:
+                    time.sleep(0.5)
         else:
             while not a.tours or screen.tours < a.tours:
                 time.sleep(0.5)
@@ -464,7 +576,8 @@ def main():
     finally:
         if drone:
             drone.close()
-        sitl.terminate()
+        if sitl:
+            sitl.terminate()
 
 
 if __name__ == "__main__":

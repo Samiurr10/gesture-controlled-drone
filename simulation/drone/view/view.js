@@ -8,6 +8,8 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const SOURCE = window.PALMPILOT_SOURCE || 'replay';
+// ?follow=1: a pane of compare.py's page, which owns the keyboard. Draw only; send nothing.
+const FOLLOW = new URLSearchParams(location.search).has('follow');
 const OAK = { N: 35, E: 25 };            // demo_view.py's circuit centre
 const PILOT_SPOT = { N: -14, E: -8 };
 const WIND_FROM = 250;                   // demo_view.py WIND
@@ -794,7 +796,8 @@ controls.enableDamping = true;
 controls.minDistance = 0.6;
 controls.maxDistance = 150;
 controls.maxPolarAngle = Math.PI * 0.495;
-let camMode = 'cine';
+let camMode = SOURCE === 'live' ? 'fixed' : 'cine';
+let fixedYaw = null;                    // the fixed camera's heading: the drone's on the pad, never changed
 const look = new THREE.Vector3(0, 0.5, 0), lookVel = new THREE.Vector3(), camVel = new THREE.Vector3();
 const camYaw = { v: 0 };
 let chaseYaw = 0;
@@ -815,8 +818,9 @@ function setCam(mode) {
   camVel.set(0, 0, 0);
 }
 document.querySelectorAll('.cams button').forEach((b) => b.addEventListener('click', () => { setCam(b.dataset.cam); b.blur(); }));
+setCam(camMode);
 window.addEventListener('keydown', (e) => {
-  const m = { 1: 'cine', 2: 'chase', 3: 'pilot', 4: 'orbit', 5: 'top' }[e.key];
+  const m = { 1: 'cine', 2: 'chase', 3: 'pilot', 4: 'orbit', 5: 'top', 6: 'fixed' }[e.key];
   if (m) setCam(m);
   if (e.key === ' ' && SOURCE === 'replay') { e.preventDefault(); $('play').click(); }
 });
@@ -824,6 +828,7 @@ function behind(dist, up, yawDeg) {
   return new THREE.Vector3(0, up, dist).applyAxisAngle(UP, -yawDeg * DEG).add(dronePos);
 }
 
+function lead0() { return dronePos.clone().add(new THREE.Vector3(0, 0.3, 0)); }
 function updateCamera(dt, now, f) {
   const yaw = f ? f.att[2] : 0;
   const speedH = Math.hypot(droneVel.x, droneVel.z);
@@ -831,6 +836,17 @@ function updateCamera(dt, now, f) {
   const track = Math.atan2(droneVel.x, -droneVel.z) / DEG;
   chaseYaw = dampAngle(chaseYaw, speedH > 2.5 ? track : yaw, camYaw, 0.9, dt);
   let kind = camMode, fov = 50;
+  // Fixed: a pilot standing behind the take-off pad, always looking the same way
+  // (the drone's heading when the page first saw it). The camera follows the
+  // drone's position but never turns, even when the drone yaws.
+  if (fixedYaw === null && f) fixedYaw = yaw;
+  if (kind === 'fixed') {
+    const want = behind(6, 2.4, fixedYaw || 0);
+    want.y = Math.max(want.y, 1.2);
+    damp(camera.position, want, camVel, 0.25, dt);
+    damp(look, lead0(), lookVel, 0.1, dt);
+    fov = 55;
+  }
   if (camMode === 'cine') {
     if (now > shot.until) {
       shot.kind = SHOTS[shotIndex++ % SHOTS.length];
@@ -1000,9 +1016,16 @@ function updateHud(f) {
   if (f.hands) {
     const { left, right } = f.hands;
     $('hand-left').innerHTML = glove(left.curl, left.roll, 0, true);
-    $('hand-right').innerHTML = glove(0.12, right.roll, right.pitch, false);
-    $('v-left').innerHTML = `curl ${(left.curl * 100).toFixed(0)}% → throttle<br>roll ${left.roll >= 0 ? '+' : ''}${left.roll.toFixed(0)}° → yaw`;
-    $('v-right').innerHTML = `roll ${right.roll >= 0 ? '+' : ''}${right.roll.toFixed(0)}° → roll<br>pitch ${right.pitch >= 0 ? '+' : ''}${right.pitch.toFixed(0)}° → pitch`;
+    $('hand-right').innerHTML = glove(right.curl ?? 0.12, right.roll, right.pitch, false);
+    const sg = (v) => `${v >= 0 ? '+' : ''}${v.toFixed(0)}`;
+    const tele = (h) => {
+      if (!h.fingers) return '';
+      const fing = h.fingers.slice(1).map((c, i) => `<span title="${['index', 'middle', 'ring', 'little'][i]}">${'IMRL'[i]} ${c == null ? '–' : Math.round(c * 100)}</span>`).join(' ');   // thumbs drive nothing
+      const bad = (ok, t) => `<span style="color:${ok ? '#7fd49b' : '#ff8a80'}">${t}</span>`;
+      return `<br><small>${fing}</small><br><small>${bad(h.connected, h.connected ? 'BLE' : 'BLE lost')} · ${bad(h.imu, h.imu ? 'IMU' : 'IMU fault')} · ${bad(h.calibrated, h.calibrated ? 'cal' : 'not cal')} · ${h.age_ms} ms${h.drops ? ` · ${h.drops} drops` : ''}</small>`;
+    };
+    $('v-left').innerHTML = `curl ${(left.curl * 100).toFixed(0)}% → throttle<br>roll ${sg(left.roll)}° → yaw` + tele(left);
+    $('v-right').innerHTML = `roll ${sg(right.roll)}° → roll<br>pitch ${sg(right.pitch)}° → pitch` + tele(right);
   } else {
     $('hands-row').innerHTML = '<div class="pipe" style="grid-column:1/-1">A physical hub sends commands, not hand poses. The sticks below are its command.</div>';
   }
@@ -1010,7 +1033,7 @@ function updateHud(f) {
     const dot = (id, x, y) => { const b = $(id).querySelector('b'); b.style.left = `${50 + x * 42}%`; b.style.top = `${50 - y * 42}%`; };
     dot('stick-left', f.cmd.yaw, f.cmd.throttle * 2 - 1);
     dot('stick-right', f.cmd.roll, f.cmd.pitch);
-    $('cmd-valid').textContent = valid ? `thr ${(f.cmd.throttle * 100).toFixed(0)}%` : 'invalid';
+    $('cmd-valid').textContent = valid ? `thr ${(f.cmd.throttle * 100).toFixed(0)}%` : `invalid${f.cmd.reason ? ': ' + f.cmd.reason.replaceAll('_', ' ') : ''}`;
   }
 }
 
@@ -1018,7 +1041,7 @@ function updateHud(f) {
 const you = { curl: 0, lroll: 0, rroll: 0, rpitch: 0, enable: false };
 const held = new Set();
 let flying = false, newest = null;
-const post = (path, body) => fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) }).catch(() => {});
+const post = (path, body) => FOLLOW ? undefined : fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) }).catch(() => {});
 
 function showFlying(on) {
   flying = on;
@@ -1027,12 +1050,37 @@ function showFlying(on) {
   $('fly-toggle').textContent = on ? 'Give back' : 'Take the hands';
   $('fly-toggle').className = on ? 'quiet' : '';
 }
+let hubPanel = false;
+function hubControls(f) {
+  if (!hubPanel) {
+    hubPanel = true;
+    $('fly-toggle').hidden = true;
+    document.querySelector('#fly .fly-head b').textContent = 'Your hands fly';
+    $('fly-hint').innerHTML = `The physical hands and hub send the commands. Press ENABLE once with the left hand open (press again to stop), then
+      <span class="hubbtns"><button type="button" data-a="arm">Arm (R)</button> 
+      <button type="button" data-a="disarm" class="quiet">Disarm (F)</button></span><span id="hub-note" style="display:block;margin-top:6px;color:#ff8a80;font-weight:700"></span>`;
+    $('fly-hint').querySelectorAll('[data-a]').forEach((b) => b.addEventListener('click', (e) => { hubAction(b.dataset.a); e.currentTarget.blur(); }));
+  }
+  $('hub-note').textContent = f.notice || (!f.cmd.valid ? `Hub command invalid: ${(f.cmd.reason || '').replaceAll('_', ' ')}` : (!f.armed && f.cmd.throttle > 0.25 ? `Open the left hand to arm (throttle ${Math.round(f.cmd.throttle * 100)}%, needs under 25%)` : ''));
+}
+function hubAction(a) {
+  if (a === 'arm') post('/arm', { on: true });
+  if (a === 'disarm') post('/arm', { on: false });
+  if (a === 'althold') post('/althold');
+}
+window.addEventListener('keydown', (e) => {
+  if (!newest || newest.source !== 'hub' || e.repeat) return;
+  const a = { KeyR: 'arm', KeyF: 'disarm', KeyH: 'althold' }[e.code];
+  if (a) hubAction(a);
+});
 function syncFlying(f) {
   newest = f;
+  if (f.source === 'hub') return hubControls(f);
   if ((f.source === 'manual') !== flying) {
     if (f.source === 'manual' && f.hands) Object.assign(you, { curl: f.hands.left.curl, enable: f.hands.enable });
     showFlying(f.source === 'manual');
   }
+  if (f.manual_only) $('fly-toggle').hidden = true;
   $('fly-notice').textContent = f.notice || '';
   if (!flying || !f.hands) return;
   // What state you are in, and the one key to press next.
@@ -1061,7 +1109,18 @@ $('fly-toggle').addEventListener('click', (e) => {
   e.currentTarget.blur();
 });
 const FLY_KEYS = ['KeyW', 'KeyS', 'KeyA', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyE', 'KeyR', 'KeyF', 'KeyH', 'KeyQ'];
+if (FOLLOW) {
+  $('fly-toggle').hidden = true;
+  $('fly-hint').textContent = 'The compare page has the keyboard and sends the same keys to both drones.';
+  // Keys typed while this pane has focus go to the compare page, which flies both drones.
+  for (const type of ['keydown', 'keyup']) window.addEventListener(type, (e) => {
+    if (FLY_KEYS.includes(e.code)) e.preventDefault();
+    window.parent.postMessage({ palmpilotKey: { type, code: e.code, key: e.key, repeat: e.repeat } }, '*');
+  });
+  window.addEventListener('message', (e) => { if (e.data && e.data.palmpilotCam) setCam(e.data.palmpilotCam); });
+}
 window.addEventListener('keydown', (e) => {
+  if (FOLLOW) return;
   if (e.key === 'Shift') held.add(e.code);
   if (!flying || !FLY_KEYS.includes(e.code)) return;
   e.preventDefault();

@@ -339,6 +339,11 @@ The hand→hub packet payload is frozen in `firmware/components/palmpilot_core/p
 (59 bytes, little-endian, versioned, CRC-32) and decoded independently in
 `firmware/tests/s1g_packet.py`.
 
+On 2026-11-17 (engine 0.6.6, stock platform + RNG candidate, default build, after
+the bench profile was split out) `run_all.sh` passed 321 of 322 checks; the one
+failure is the known S2-B reset-to-invalid (160 ms against the provisional 150 ms).
+The physical bench is recorded in `docs/bench-bringup.md`; bench-only behaviour is
+behind `CONFIG_PALMPILOT_BENCH` and is not what the suites test.
 No S or C milestone is claimed. Still open: BLE pairing/bonding, the host
 bridge that consumes the hub's commands, and anything physical. The watchdog is implemented with FW-06's service
 discipline and its timeout is now exercised; only the panic and reset after a
