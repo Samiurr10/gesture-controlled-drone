@@ -1,0 +1,23 @@
+The firmware, scripts, simulation code and documentation in this repository are MIT
+licensed (see LICENSE), except as listed here.
+
+- simulation/drone/ardupilot_frame.py is a Python port of ArduPilot Copter-4.7.1
+  libraries/SITL/SIM_Frame.cpp and SIM_Motor.cpp. ArduPilot is GPLv3 or later, and so
+  is this file (SPDX-License-Identifier: GPL-3.0-or-later; full text:
+  https://www.gnu.org/licenses/gpl-3.0.txt). It is used for comparison with ArduPilot
+  only: quad_plant.py loads it when PALMPILOT_AIRFRAME=ardupilot, and
+  test_quad_plant.py imports it to check that airframe. The firmware, the default
+  airframe and the demo do not use it.
+- simulation/simantic/model-candidates/ holds Renode peripheral models, Copyright (c)
+  2026 Simantic, under the MIT License (the same text as LICENSE, with Simantic as the
+  copyright holder). They extend Renode (Copyright Antmicro, MIT).
+
+Not included in this repository, and used under their own licences:
+
+- ArduCopter 4.7.1 (ArduPilot, GPLv3): downloaded by simulation/drone/fetch_arducopter.sh
+  or built from source; run unmodified, or for the Pixhawk 6X built with one
+  board default (simulation/drone/pixhawk6x/build.sh).
+- ESP-IDF v5.5.2 and NimBLE (Espressif, Apache-2.0): the framework the hand and hub
+  firmware build against. Firmware images built from this repository contain it.
+- three.js 0.160.0 (MIT): loaded from jsDelivr by the browser views.
+- The Simantic simulator (https://simantic.com) and its board and platform files.

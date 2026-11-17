@@ -35,7 +35,7 @@ RIGHT hand ESP32-S3 ─┤ BLE (one simulated medium)
 | Stand-in hand | A hand's BLE peripheral that sends packets a test script supplies, for exact hub inputs | `firmware/apps/replay` |
 | ESP32-S3 model | Stock engine 0.6.6 platform plus one model candidate: RNG (renode-infrastructure #271, so a reset gives new session ids) | `simulation/simantic/model-candidates/` |
 | Drone firmware | ArduCopter 4.7.1. Pixhawk 6X: built from the release commit with `BRD_IO_ENABLE 0` as its only built-in default, because no IOMCU is modelled and the stock release stops at boot without one. F405: the stock release, unmodified | `simulation/drone/pixhawk6x/build.sh`, `fetch_arducopter.sh` |
-| Drone board | `PALMPILOT_DRONE=f405` (default): STM32F405 with the sim-fixtures Matek board. `h7`: mcu-lib Pixhawk6X with sim-fixtures' pixhawk6x board (three ICM-45686, BMP388, F-RAM, SD) | private sim-fixtures checkout in `tmp/` |
+| Drone board | `PALMPILOT_DRONE=f405` (default): STM32F405 with Simantic's Matek F405-Wing board files. `h7`: mcu-lib Pixhawk6X with Simantic's Pixhawk 6X board files (three ICM-45686, BMP388, F-RAM, SD) | Simantic board files in `tmp/simantic/boards/`, not published here |
 | Bridge | Turns the newest hub command into RC channels and sends them as a ground station would. Stops sending on an invalid command or when no fresh command has arrived for 100 ms, using its own clock | `simulation/drone/rc_link.py`, `gcs_peer.py` |
 | Physics and sensors | Integrates the airframe from the four motor pulses and answers the flight controller's sensor bus reads | `simulation/drone/quad_plant.py`; H7 `imu45686_plant.py`, `fram_peer.py`; F405 `imu_plant.py`, `baro_plant.py`, `sd_card.py` |
 

@@ -1,4 +1,4 @@
-"""The flight controller board's part models from the sim-fixtures checkout (PALMPILOT_DRONE_BOARD)."""
+"""The flight controller board's part models, from the Simantic board files in PALMPILOT_DRONE_BOARD."""
 import importlib.util
 import os
 

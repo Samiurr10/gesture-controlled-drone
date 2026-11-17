@@ -1,3 +1,5 @@
+> **[Simantic](https://simantic.com)** ran this controller's firmware on simulated hardware before any board was wired. Try it at [simantic.com](https://simantic.com).
+
 # PalmPilot — gesture-controlled drone
 
 Two wearable hand controllers, each an ESP32-S3 with five flex sensors and a
@@ -53,7 +55,11 @@ What a fresh clone can and cannot do today:
 | Flash and run the physical controller | the above, three ESP32-S3 DevKits, the parts in [docs/bom.md](docs/bom.md), wiring per [docs/wiring/](docs/wiring/README.md) | yes |
 | Fly the SITL demo drone | an ArduPilot SITL build of Copter-4.7.1 and pymavlink | expected with a standard ArduPilot checkout; the scripts look for it under `tmp/ardupilot` (`simulation/drone/sitl_live.py`, `demo_view.py`) |
 | Run the Simantic simulation suites | the Simantic engine 0.6.6 and Python SDK 0.4.0, the ESP32-S3 mask ROM and image packer, the platform files | **not yet**: these live in a local, gitignored `tmp/` that `firmware/tools/env.sh` points to |
-| Run the drone suites (S3, `fly.py`) | the above plus board descriptions and sensor peers from a private `sim-fixtures` checkout | **no**: not published |
+| Run the drone suites (S3, `fly.py`) | the above plus the Matek F405-Wing (or Pixhawk 6X) Simantic board files: board description and part models, set by `PALMPILOT_DRONE_BOARD` | **no**: those board files are not published |
+
+Simantic's `sim` CLI is public (`curl -fsSL https://simantic.com/install | sh`, free
+account). The suites here were run on engine 0.6.6 with Python SDK 0.4.0; they have not
+been tried on the current public release.
 
 `firmware/tools/palmpilot.py` wraps the build, flash image and simulation steps once
 the toolchain is in place. [docs/simantic.md](docs/simantic.md) explains how the
@@ -91,6 +97,8 @@ tmp/                              gitignored toolchain and build output, not rep
 
 ## Licence
 
-MIT ([LICENSE](LICENSE)), except `simulation/drone/ardupilot_frame.py`, which is a
-port of ArduPilot code and is GPLv3, and the Simantic model candidates, which carry
-their own notices.
+MIT ([LICENSE](LICENSE)). [NOTICE](NOTICE) lists the exceptions:
+`simulation/drone/ardupilot_frame.py` is a port of ArduPilot code and is GPLv3 (it is used only to
+compare against ArduPilot's airframe), and the Simantic model candidates carry
+Simantic's MIT notice. ArduCopter, ESP-IDF and three.js are not included and keep their
+own licences.

@@ -115,7 +115,7 @@ def build_drone_platform(out: Path, plant: bool = False) -> Path:
 
 
 def _pixhawk6x_board(board_dir: Path, out: Path, plant: bool) -> str:
-    """Pixhawk 6X (STM32H753) board from sim-fixtures: three ICM-45686, FRAM, SD on SDMMC2.
+    """Pixhawk 6X (STM32H753) Simantic board files: three ICM-45686, FRAM, SD on SDMMC2.
     Its ground-station peer becomes gcs_peer at ArduCopter's default SERIAL1 baud."""
     board = (board_dir / "pixhawk6x.board").read_text()
     if plant:

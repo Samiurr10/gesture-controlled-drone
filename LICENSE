@@ -20,16 +20,4 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----------------------------------------------------------------------------
-
-Exceptions. These files are not under the MIT licence above:
-
-- simulation/drone/ardupilot_frame.py is a port of ArduPilot's SITL frame and
-  motor model and is licensed under the GNU General Public License v3, as
-  ArduPilot is. See https://github.com/ArduPilot/ardupilot/blob/master/COPYING.txt
-- simulation/simantic/model-candidates/ carries its own copyright notices
-  (Copyright (c) 2026 Simantic, MIT) in each file.
-
-Third-party software that this project builds against or runs (ESP-IDF,
-ArduPilot/ArduCopter, three.js, the Simantic engine) is not included in this
-repository and keeps its own licence.
+Some files are under other licences; see NOTICE.

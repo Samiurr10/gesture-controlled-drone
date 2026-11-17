@@ -1,4 +1,4 @@
-# The Pixhawk 6X's FM25V02A parameter F-RAM (sim-fixtures peer), kept framed across the
+# The Pixhawk 6X's FM25V02A parameter F-RAM (the board files' peer), kept framed across the
 # engine's end-of-transfer. ArduPilot's AP_RAMTRON holds chip select over two SPI transfers,
 # the opcode and address, then the data. The STM32H7 SPI model ends each transfer with
 # FinishTransmission, which ScriptedSpiSlave reports as a deselect although the GPIO chip

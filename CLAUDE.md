@@ -102,8 +102,8 @@ SIMANTIC_HOME        tmp/simantic/runtime
 SIMANTIC_ENGINE_DIR  tmp/simantic/runtime/engine/0.6.6
 Platform .repl       tmp/simantic/platform/ESP32-S3-WROOM-1-N8R2-0.6.6.repl  (stock)
 Drone platform       PALMPILOT_DRONE=f405 (default): STM32F405RG-0.6.6.repl + Matek board;
-                     h7: Pixhawk6X-0.6.6.repl + sim-fixtures pixhawk6x board; both boards from
-                     tmp/simantic/sim-fixtures (private checkout, not copied into this repo)
+                     h7: Pixhawk6X-0.6.6.repl + Pixhawk 6X board files; both boards' files in
+                     tmp/simantic/boards/ (Simantic board files, not published here)
 ArduCopter ELF       tmp/drone/matekf405-wing-arducopter.elf (simulation/drone/fetch_arducopter.sh)
 ESP32-S3 mask ROM    tmp/simantic/esp-idf-tools/esp32s3_rev0_rom.bin
 Model candidates     tmp/simantic/upstream-candidates/rng-reset/  built from
@@ -164,7 +164,7 @@ commits that introduced each result.
 | Hardware RNG across a reset | **WORKS with candidate RNG (#271); stock 0.5.20 still replays** | stock model replays the same values after every chip reset, so a rebooted hand reused its session |
 | Pin inputs across an MCU reset | **bench re-applies them** | Renode resets injected ADC voltages and GPIO levels with the chip (simantic-core#561); `harness.ExternalInputs` re-drives them, as real sensors would |
 | Drone: ArduCopter 4.7.1, STM32F405 (Matek F405-Wing model), **the default** | **WORKS on stock 0.6.6 (#325 shipped)** | RC as MAVLink RC_CHANNELS_OVERRIDE on SERIAL1 is reported back exactly (S3-A); gesture flight closed through quad_plant (fly.py). Alone (the demo setup) it runs flight at 1.47 s wall per simulated second (demo_speed.py, 2026-11-01) |
-| Drone: ArduCopter 4.7.1, STM32H753 (mcu-lib Pixhawk6X + sim-fixtures pixhawk6x board) | **WORKS on 0.6.6 with two project pieces** | the stock release stops on "Failed to update IO firmware" (no IOMCU model), so the ELF is built from Copter-4.7.1 with BRD_IO_ENABLE 0 (simulation/drone/pixhawk6x/build.sh). F-RAM parameters were lost on reboot: ScriptedSpiSlave takes the STM32H7 SPI's end of transfer as a deselect (simantic-core#658, fix PR #659); simulation/drone/fram_peer.py keeps the peer framed until it ships. S3-A, S3-B and fly.py pass; the sim runs about 3x slower than with the F405, so it is selectable (`PALMPILOT_DRONE=h7`), not the default |
+| Drone: ArduCopter 4.7.1, STM32H753 (mcu-lib Pixhawk6X + Pixhawk 6X board files) | **WORKS on 0.6.6 with two project pieces** | the stock release stops on "Failed to update IO firmware" (no IOMCU model), so the ELF is built from Copter-4.7.1 with BRD_IO_ENABLE 0 (simulation/drone/pixhawk6x/build.sh). F-RAM parameters were lost on reboot: ScriptedSpiSlave takes the STM32H7 SPI's end of transfer as a deselect (simantic-core#658, fix PR #659); simulation/drone/fram_peer.py keeps the peer framed until it ships. S3-A, S3-B and fly.py pass; the sim runs about 3x slower than with the F405, so it is selectable (`PALMPILOT_DRONE=h7`), not the default |
 | ADC2, DMA/continuous, ADC interrupts | **OUT OF SCOPE** | not modeled |
 
 The ADC fix is **PR #168**, merged into `simantic-main` on 2026-09-26 and

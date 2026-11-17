@@ -50,18 +50,19 @@ export PALMPILOT_RNG_OVERLAY="${PALMPILOT_RNG_OVERLAY-$PALMPILOT_ROOT/tmp/simant
 # --- Drone (Goal 2): stock ArduCopter 4.7.1 -----------------------------------
 # PALMPILOT_DRONE=f405 (default): Matek F405-Wing, STM32F405. About 3x faster to simulate.
 # PALMPILOT_DRONE=h7: Holybro Pixhawk 6X, STM32H753, the mcu-lib Pixhawk6X model.
-# ELFs: simulation/drone/fetch_arducopter.sh. Board overlays and sensor scripts come
-# from a local sim-fixtures checkout (private, not copied here).
+# ELFs: simulation/drone/fetch_arducopter.sh. The board description and its part
+# models are Simantic board files that are not published with this repository;
+# point PALMPILOT_DRONE_BOARD at them (default: tmp/simantic/boards/<board>).
 export PALMPILOT_DRONE="${PALMPILOT_DRONE:-f405}"
 case "$PALMPILOT_DRONE" in
   h7)
     export PALMPILOT_DRONE_ELF="$PALMPILOT_ROOT/tmp/drone/pixhawk6x-arducopter.elf"
     export PALMPILOT_DRONE_PLATFORM="$PALMPILOT_ROOT/tmp/simantic/platform/Pixhawk6X-0.6.6.repl"
-    export PALMPILOT_DRONE_BOARD="${PALMPILOT_DRONE_BOARD:-$PALMPILOT_ROOT/tmp/simantic/sim-fixtures/tests/stm/pixhawk6x/arducopter-valkyrie}" ;;
+    export PALMPILOT_DRONE_BOARD="${PALMPILOT_DRONE_BOARD:-$PALMPILOT_ROOT/tmp/simantic/boards/pixhawk6x}" ;;
   f405)
     export PALMPILOT_DRONE_ELF="$PALMPILOT_ROOT/tmp/drone/matekf405-wing-arducopter.elf"
     export PALMPILOT_DRONE_PLATFORM="$PALMPILOT_ROOT/tmp/simantic/platform/STM32F405RG-0.6.6.repl"
-    export PALMPILOT_DRONE_BOARD="${PALMPILOT_DRONE_BOARD:-$PALMPILOT_ROOT/tmp/simantic/sim-fixtures/tests/stm/matek-f405-wing}" ;;
+    export PALMPILOT_DRONE_BOARD="${PALMPILOT_DRONE_BOARD:-$PALMPILOT_ROOT/tmp/simantic/boards/matek-f405-wing}" ;;
   *) echo "env.sh: PALMPILOT_DRONE must be h7 or f405" >&2; return 1 2>/dev/null || exit 1 ;;
 esac
 # Superseded local timer-group overlay (hangs esp_restart); used only when
