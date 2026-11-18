@@ -1,8 +1,8 @@
 # Bench 04: calibration (LEFT)
 
-**Mirrors:** S1-B (`s1b_calibration.py`): extended / curled capture, neutral orientation, finish,
-curl normalisation, and every rejection case. **Test plan:** B2.
-**Board:** LEFT. **Before:** bench 03 passed (calibration needs the IMU: `cal finish` refuses until a
+Mirrors: S1-B (`s1b_calibration.py`): extended / curled capture, neutral orientation, finish,
+curl normalisation, and every rejection case. Test plan: B2.
+Board: LEFT. Before: bench 03 passed (calibration needs the IMU: `cal finish` refuses until a
 neutral orientation has been captured).
 
 ## Wiring
@@ -29,13 +29,13 @@ Calibration lives in RAM until `cal save` (bench 07). A reset or reflash loses i
 1. `profile`: `valid` 0. `sample`: `curl_milli` is `-1` on every channel (no calibration, never 0).
 2. All five fingers straight and still: `cal extended`. Expect `capturing`, then
    `{"type":"capture","end":"extended","result":0,...}` with a `spread` and `mean` per channel.
-3. All five fully curled and still: `cal curled`, result 0. Every curled mean must be **below** its
+3. All five fully curled and still: `cal curled`, result 0. Every curled mean must be below its
    extended mean.
 4. Breakout flat and still: `cal neutral`, result 0.
 5. `cal finish`: `{"type":"calibration","result":0,...}`. `profile`: `valid` 1, both ends recorded.
 6. `sample` with fingers straight: `curl_milli` 0 (inside the 30 milli deadband). Fully curled: 1000.
    Half bent: somewhere between; record the values.
-7. **Rejections.** After each, `profile` shows `valid` 0 and `curl_milli` returns to -1. `cal reset`
+7. Rejections. After each, `profile` shows `valid` 0 and `curl_milli` returns to -1. `cal reset`
    clears the profile between cases. Result codes: 1 fault, 2 unstable, 3 travel, 4 inverted,
    5 incomplete.
    - Move the fingers during `cal extended`: result 2.

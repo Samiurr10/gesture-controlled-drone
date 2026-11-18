@@ -1,8 +1,8 @@
 # Bench 02: five flex channels (LEFT)
 
-**Mirrors:** S1-A, the rest: channel identity, all channels healthy in range, one channel open marks
-only its own bit, recovery. **Test plan:** B2.
-**Board:** LEFT. **Before:** bench 01 passed.
+Mirrors: S1-A, the rest: channel identity, all channels healthy in range, one channel open marks
+only its own bit, recovery. Test plan: B2.
+Board: LEFT. Before: bench 01 passed.
 
 ## Wiring
 
@@ -41,15 +41,15 @@ Same image as the previous stage; reflash only if the firmware changed (compare 
    GPIO5 (J1-5) to 14e, GPIO6 (J1-6) to 23e. No continuity between any two node strips.
 2. Power up, console as in bench 01. All fingers straight, `stream 100`, then summarise:
    every channel `status` 0 and `0 not healthy`. The array order is
-   **thumb, index, middle, ring, little** (GPIO1, 2, 4, 5, 6), not the order on the breadboard.
-3. **Identity:** bend one finger at a time, `sample` each time. Only that finger's mV falls; record by
+   thumb, index, middle, ring, little (GPIO1, 2, 4, 5, 6), not the order on the breadboard.
+3. Identity: bend one finger at a time, `sample` each time. Only that finger's mV falls; record by
    how much, and how much the other four move (coupling). Set the coupling limit before you start.
-4. **Alternating:** bend thumb, middle and little, keep index and ring straight; `stream 100`; then swap.
+4. Alternating: bend thumb, middle and little, keep index and ring straight; `stream 100`; then swap.
    Each channel holds its own level (settling between channels).
-5. **Noise:** hold still, `stream 200`, summarise. Record each channel's spread (max - min) in raw counts.
+5. Noise: hold still, `stream 200`, summarise. Record each channel's spread (max - min) in raw counts.
    Calibration rejects a capture whose spread exceeds 120 raw (PROVISIONAL), so a channel already near
    that here needs looking at before bench 04.
-6. **One open:** pull the middle finger's flex lead. `sample`: `status` `[0,0,1,0,0]`, `fault_mask` 4
+6. One open: pull the middle finger's flex lead. `sample`: `status` `[0,0,1,0,0]`, `fault_mask` 4
    (only bit 2), `healthy` 0. Replace it: healthy again. Repeat for each finger.
 
 ## Record

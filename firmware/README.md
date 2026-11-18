@@ -1,7 +1,7 @@
 # PalmPilot firmware workspace
 
 Hand and hub firmware, and the harness that builds and simulates it.
-Constraints and the pin map: [`CLAUDE.md`](../CLAUDE.md). The order to run the
+Pin map: [docs/wiring](../docs/wiring/README.md#pins). The order to run the
 tests in: [test plan](../docs/test-plan.md). What the simulation covers:
 [simulation plan](../docs/simulation.md).
 
@@ -31,7 +31,7 @@ python3 firmware/tools/palmpilot.py run \
   firmware/tools/selftest.py
 ```
 
-Expected: **8/8 checks passed**, with raw counts 186/372/558/744/930 at
+Expected: 8/8 checks passed, with raw counts 186/372/558/744/930 at
 attenuation 3 on GPIO1/2/4/5/6.
 
 ## Commands
@@ -48,7 +48,7 @@ python3 firmware/tools/palmpilot.py run   <app> <script> [args...]
 taken as a path. `pack` prints the app-ELF and sim-ELF SHA-256 — record both in
 any test record.
 
-The physical board and the simulator run the **same** bootloader, partition
+The physical board and the simulator run the same bootloader, partition
 table and application binaries; only the mask-ROM wrapper differs. Preserve
 that property, because it is what lets a bench result and a simulator result be
 compared at all.
@@ -78,22 +78,22 @@ failure.
 
 The wrapper encodes these findings so they are not rediscovered:
 
-- **One simulator model candidate loads by default** (`env.sh`): RNG
+- One simulator model candidate loads by default (`env.sh`): RNG
   (renode-infrastructure #271), from `simulation/simantic/model-candidates/`. Set
   `PALMPILOT_RNG_OVERLAY=` (empty) to run the engine's own model.
-- **Runs are time-limited.** `palmpilot.py` stops a simulation that stays under 5% of a
+- Runs are time-limited. `palmpilot.py` stops a simulation that stays under 5% of a
   core for `PALMPILOT_STALL_S` (120 s), saving the engine's stacks to
   `stall-stacks.txt`, or that passes `PALMPILOT_MAX_WALL_S` (3600 s).
-- **The drone board** is `PALMPILOT_DRONE=f405` (Matek F405-Wing, default) or `h7`
+- The drone board is `PALMPILOT_DRONE=f405` (Matek F405-Wing, default) or `h7`
   (Pixhawk 6X, about 3× slower to simulate).
-- **`palmpilot.py drone <script>`** runs the flight controller without the three
+- `palmpilot.py drone <script>` runs the flight controller without the three
   ESP32-S3 machines (`ControllerSim(hands=False)`), as the laptop demo will.
-- **ADC1 is upstream since engine 0.5.14** (PR #168), in its calibrated-state
+- ADC1 is upstream since engine 0.5.14 (PR #168), in its calibrated-state
   mode: raw counts are die-specific, so tests assert calibrated millivolts.
-- **`Sim.read_uart` is unreliable** with the SDK — it duplicates
+- `Sim.read_uart` is unreliable with the SDK — it duplicates
   and interleaves fragments. The harness captures the Renode `CharReceived`
   event instead. Assert against `sim.records()`, never `read_uart`.
-- **ADC injection is not in the SDK.** `set_flex_uv` / `set_channel_uv` go
+- ADC injection is not in the SDK. `set_flex_uv` / `set_channel_uv` go
   through Renode interop (`IADCExtensions.SetVoltage`).
 
 `ADC_MV_TOLERANCE` (±5 mV) bounds the calibrated millivolts against the
@@ -173,17 +173,17 @@ for the FW-04 stalled-acquisition case, not production behavior.
 
 ## Constraints that bite in firmware
 
-- **Fixed-point control path.** All control arithmetic is in milli-units. The FPU
+- Fixed-point control path. All control arithmetic is in milli-units. The FPU
   gap that forced this (the first Xtensa FPU instruction aborted engine 0.5.7) no
   longer reproduces on engine 0.6.3 and later, so this is now a design choice, not a
   simulator limitation.
-- **Pace periodic work with `esp_timer`, not `vTaskDelay`.**
-- **Never write flash from the live control path.** A real flash write suspends
+- Pace periodic work with `esp_timer`, not `vTaskDelay`.
+- Never write flash from the live control path. A real flash write suspends
   the scheduler; `cal save` and `cal erase` are refused while `permitted`.
-- **The interrupt watchdog is on** (`CONFIG_ESP_INT_WDT=y`, 300 ms), as in
+- The interrupt watchdog is on (`CONFIG_ESP_INT_WDT=y`, 300 ms), as in
   production. `run_all.sh` fails any suite whose UART shows a firmware panic.
 - Use `esp_timer` rather than GPTimer.
-- The platform models **two CPU cores** while `sdkconfig` sets
+- The platform models two CPU cores while `sdkconfig` sets
   `CONFIG_FREERTOS_UNICORE=y`. For deterministic runs set `PALMPILOT_SERIAL=1`
   (serial execution; much slower).
 - Reserved pins: GPIO19/20 (native USB), GPIO43/44 (UART0 bridge),
@@ -194,7 +194,7 @@ for the FW-04 stalled-acquisition case, not production behavior.
 ## The toolchain is fragile
 
 Everything the build depends on lives in gitignored `tmp/simantic/` (~3.5 GB)
-and is **not reproducible from a clean checkout**: ESP-IDF v5.5.2, the Xtensa
+and is not reproducible from a clean checkout: ESP-IDF v5.5.2, the Xtensa
 compiler, the Simantic engine, the platform `.repl`, the Espressif mask ROM, the model candidates
 and ArduCopter. Deleting `tmp/` destroys the ability to build or
 simulate. `env.sh` fails loudly rather than silently picking up a different

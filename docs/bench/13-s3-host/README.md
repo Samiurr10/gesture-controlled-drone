@@ -1,8 +1,8 @@
 # Bench 13: hub to the laptop (S3)
 
-**Mirrors:** S3-A and S3-B (`s3a_drone.py`, `s3b_replay.py`) at the boundary they share: the hub's
-command stream on UART0. **Test plan:** B6.
-**Before:** bench 12 passed.
+Mirrors: S3-A and S3-B (`s3a_drone.py`, `s3b_replay.py`) at the boundary they share: the hub's
+command stream on UART0. Test plan: B6.
+Before: bench 12 passed.
 
 ## Wiring
 

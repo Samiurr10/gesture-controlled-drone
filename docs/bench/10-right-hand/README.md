@@ -1,7 +1,7 @@
 # Bench 10: the RIGHT hand
 
-**Mirrors:** S1-A, S1-B, S1-D to S1-H on the RIGHT build. **Test plan:** B4.
-**Board:** RIGHT, a second DevKit. **Before:** benches 01-09 passed on LEFT. A LEFT result does not pass
+Mirrors: S1-A, S1-B, S1-D to S1-H on the RIGHT build. Test plan: B4.
+Board: RIGHT, a second DevKit. Before: benches 01-09 passed on LEFT. A LEFT result does not pass
 the RIGHT board.
 
 ## Wiring

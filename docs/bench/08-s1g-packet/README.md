@@ -1,8 +1,8 @@
 # Bench 08: the hand packet (full LEFT hand)
 
-**Mirrors:** S1-G (`s1g_packet.py`): size, independent decode, corruption rejected, session and
+Mirrors: S1-G (`s1g_packet.py`): size, independent decode, corruption rejected, session and
 sequence, side, flags, bounds, and packets that keep flowing while sampling is stopped.
-**Test plan:** groundwork for B5 (payload only). **Board:** LEFT. **Before:** bench 07 passed.
+Test plan: groundwork for B5 (payload only). Board: LEFT. Before: bench 07 passed.
 
 ## Wiring
 

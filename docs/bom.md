@@ -4,7 +4,7 @@ Parts for the two hands and the hub, bought in the order the
 [wiring](wiring/README.md#build-order) is built. The drone is simulated, so it
 needs no parts.
 
-**Board choice is open.** The wiring drawings use the genuine Espressif
+Board choice is open. The wiring drawings use the genuine Espressif
 ESP32-S3-DevKitC-1 header. The N8R2 variant used as the simulation reference was
 discontinued on 2026-09-30, so the table lists the N8R8. The firmware runs with
 PSRAM off, so the extra PSRAM changes nothing. The ADC bench measurements so far used a

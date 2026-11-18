@@ -1,8 +1,8 @@
 # Bench 12: the whole controller (S2-B)
 
-**Mirrors:** S2-B (`s2b_controller.py`): mapping, slew, HOLD, PRECISION, deadman, faults, the latch,
-a hand reboot, hub CALIBRATE. **Test plan:** B5.
-**Before:** bench 11 passed.
+Mirrors: S2-B (`s2b_controller.py`): mapping, slew, HOLD, PRECISION, deadman, faults, the latch,
+a hand reboot, hub CALIBRATE. Test plan: B5.
+Before: bench 11 passed.
 
 ## Wiring
 
@@ -50,18 +50,18 @@ consecutive commands; fault to invalid within 150 ms; after any loss of validity
 is released and pressed again.
 
 1. Both hands open and level. Release, then press ENABLE: `valid` 1 within 0.2 s.
-2. **Mapping:** tilt RIGHT: `roll`; tilt RIGHT forward/back: `pitch`; tilt LEFT sideways: `yaw`;
+2. Mapping: tilt RIGHT: `roll`; tilt RIGHT forward/back: `pitch`; tilt LEFT sideways: `yaw`;
    curl LEFT's four fingers: `throttle`. Record the signs. Each settles at the value the hand reports.
-3. **Slew:** snap from level to full tilt; `bench_summary.py` shows no step above 80 (30 on throttle).
-4. **PRECISION:** curl the LEFT thumb: `precision` 1 and the axes halve. **HOLD:** RIGHT fist: `hold` 1.
-5. **Deadman:** release ENABLE: `valid` 0 (`not_enabled`). Press again: valid.
-6. **Fault:** pull a RIGHT flex lead: invalid within 150 ms (`right_not_ready`). Put it back while
+3. Slew: snap from level to full tilt; `bench_summary.py` shows no step above 80 (30 on throttle).
+4. PRECISION: curl the LEFT thumb: `precision` 1 and the axes halve. HOLD: RIGHT fist: `hold` 1.
+5. Deadman: release ENABLE: `valid` 0 (`not_enabled`). Press again: valid.
+6. Fault: pull a RIGHT flex lead: invalid within 150 ms (`right_not_ready`). Put it back while
    holding ENABLE: still invalid (`await_release`). Release and press: valid.
-7. **Frozen sampling:** on the RIGHT console, `stall 40`: reason `right_frozen` while packets keep
+7. Frozen sampling: on the RIGHT console, `stall 40`: reason `right_frozen` while packets keep
    arriving. Recover by release and press.
-8. **Hand reboot:** press RESET on RIGHT: invalid at once, and still invalid after it relinks until
+8. Hand reboot: press RESET on RIGHT: invalid at once, and still invalid after it relinks until
    ENABLE is released and pressed.
-9. **Hub CALIBRATE:** release ENABLE, hold both hands level, press and hold CALIBRATE: a
+9. Hub CALIBRATE: release ENABLE, hold both hands level, press and hold CALIBRATE: a
    `calibrate` line reports both hands, and `reason` is `calibrating` while held. Release, then press
    ENABLE: the new neutral reads level.
 

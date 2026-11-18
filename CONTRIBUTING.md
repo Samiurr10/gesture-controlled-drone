@@ -4,8 +4,8 @@ Thanks for looking at PalmPilot. A few rules keep the project's results honest.
 
 ## Evidence first
 
-Every result is one of **PASS**, **FAIL**, **BLOCKED**, **MOCKED-INPUT-ONLY** or
-**NOT APPLICABLE**. A simulation PASS never marks a physical check passed, and the
+Every result is one of PASS, FAIL, BLOCKED, MOCKED-INPUT-ONLY or
+NOT APPLICABLE. A simulation PASS never marks a physical check passed, and the
 reverse. Set numeric acceptance limits before running a test, and record the
 engine, SDK and model versions, the ELF hash and the stimulus with the result.
 Stimulus must go through the modelled driver: writing a value straight into the
@@ -21,7 +21,7 @@ does not establish.
 - Never write flash from the live control path.
 - Near-rail flex readings are faults, never clamped into a valid gesture.
 - ENABLE is a permission request; it never arms, starts or resumes anything.
-- The pin map in `CLAUDE.md` §2 is frozen.
+- The pin map in [docs/wiring](docs/wiring/README.md#pins) is frozen.
 
 Bench-only behaviour goes behind `CONFIG_PALMPILOT_BENCH`
 ([docs/bench-bringup.md](docs/bench-bringup.md)); the default build is what the

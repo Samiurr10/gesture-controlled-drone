@@ -1,18 +1,15 @@
 # Laptop demo: physical controller, simulated drone
 
-**Status: PLAN, with the drone side built.** The drone runner (`simulation/drone/sitl_live.py`)
-exists and was tested on 2026-11-01 against a scripted hub and against a fake hub on a
-pseudo-terminal. The 3D view (`simulation/drone/demo_view.py`) runs live from SITL. On
-2026-11-17 the physical hub and hands flew it on a breadboard bench
-([bench-bringup.md](bench-bringup.md)); that is an observation, not a pass of Part C. The steps are
-Part C of the [test plan](test-plan.md#part-c--physical-controller-simulated-drone).
-It marks no milestone complete.
+The demo works: the physical gloves and hub, on breadboards, fly the simulated drone in
+the 3D view (`simulation/drone/demo_view.py`). What is left is listed in the gap list
+(§6), and the formal checks are Part C of the
+[test plan](test-plan.md#part-c--physical-controller-simulated-drone).
 
 The demonstration: an operator wears the two physical hand controllers, the physical hub
 is plugged into a laptop, and the laptop shows a simulated drone flying. No physical drone
-is in scope ([CLAUDE.md §1](../CLAUDE.md)).
+is in scope.
 
-**Decision, 2026-11-01: the demo drone is ArduCopter 4.7.1 as native SITL**, built from
+Decision, 2026-11-01: the demo drone is ArduCopter 4.7.1 as native SITL, built from
 the 4.7.1 release commit and run on the laptop in real time with ArduPilot's own quad
 physics. It replaces the emulated F405 for the demo only: in Simantic the F405 runs flight
 1.47× slower than real time and pauses for seconds at the mode change and at arming (§3).
@@ -41,8 +38,7 @@ Settings every run needs, set by the runner at each start (`-w` wipes SITL's par
 no RC receiver and only the bridge's overrides. SITL's `copter.parm` already sets RC1–4 to
 1000–2000 µs.
 
-Arming is a deliberate host action. ENABLE grants gesture permission only; it never arms
-([CLAUDE.md §5](../CLAUDE.md)).
+Arming is a deliberate host action. ENABLE grants gesture permission only; it never arms.
 
 ## 2. Physical setup
 
@@ -62,17 +58,17 @@ Arming is a deliberate host action. ENABLE grants gesture permission only; it ne
                     LAPTOP
 ```
 
-- **Pins and circuits:** use the frozen pin map in [CLAUDE.md §2](../CLAUDE.md)
-  and the [wiring guide](wiring/README.md), which has the per-board drawings.
-- **Hub to laptop:** use the board's USB connector wired to the USB-to-UART
+- Pins and circuits: the [wiring guide](wiring/README.md#pins), which has the pin map
+  and the per-board drawings.
+- Hub to laptop: use the board's USB connector wired to the USB-to-UART
   bridge (UART0, GPIO43/44), not the native USB port (GPIO19/20). The hub
   prints its commands on UART0. The macOS device name depends on the bridge
   chip (for example `/dev/cu.usbserial-*`, `/dev/cu.wchusbserial*` or
   `/dev/cu.usbmodem*`). Use the `cu.` device, not `tty.`. Confirm the
   connector on the received board at C0.
-- **Hand power:** the [wiring guide](wiring/README.md) keeps every board on USB power until a
+- Hand power: the [wiring guide](wiring/README.md) keeps every board on USB power until a
   wearable power circuit is designed and reviewed. For
-  the demo, each hand is powered through **its own** USB cable into its own
+  the demo, each hand is powered through its own USB cable into its own
   board's USB-to-UART connector, from the laptop or a powered USB hub. The
   cables also give access to each hand's console for calibration.
   - No LiPo, no 5 V to any ADC pin, GPIO10 disconnected. Never wire 3V3 or GND
@@ -80,7 +76,7 @@ Arming is a deliberate host action. ENABLE grants gesture permission only; it ne
   - The firmware reports *"USB bench power; battery unavailable"*. It never
     reports a battery value.
   - A USB power bank plugged into each board's USB connector would remove the
-    tethers. It is still USB input, but it is **not** the reviewed C3 wearable
+    tethers. It is still USB input, but it is not the reviewed C3 wearable
     power design, and it has no battery monitoring. Using one is a decision for
     the project owner, not a default in this plan.
 
@@ -177,7 +173,7 @@ average 3–4, engine 0.6.6, two runs agreeing within 0.1 s per phase):
 | Mode change to AltHold | 2.7–2.8; one 20 ms slice took about 1.5 s |
 | First second after arming | 6.8–7.1 |
 | Armed on the ground | 1.6 |
-| Flight | 1.38–1.59, overall **1.47** |
+| Flight | 1.38–1.59, overall 1.47 |
 
 A stick step therefore reaches the screen about 1.47× later than in SITL, and the view
 freezes at the mode change and at arming. Those pauses are not explained. The engine's
@@ -189,7 +185,7 @@ pursued.
 
 | Option | Shows | Needs | Hard rule |
 |---|---|---|---|
-| **(b) 3D view** (built; grass blades, leaf-card trees, clouds; Hermite/slerp interpolation on a 70 ms delayed clock; spring-damped cameras) | The airframe's true position, attitude and motor outputs (props spin from `SERVO_OUTPUT_RAW`); armed state and mode; ArduCopter's messages; the hub command and, with the virtual pilot, the two hand poses; an artificial horizon, heading tape and the estimate-minus-truth attitude; real-time factor; cameras: auto, chase, pilot's eye, orbit, top | `demo_view.py` runs SITL, keeps the newest state and serves it over Server-Sent Events (standard library) to `view/page.html` + `view/view.js` (three.js 0.160.0 from jsDelivr). `--record` saves each tour for a replay page | Complies. The pose is SITL's physics state, driven by ArduCopter's motor outputs. The scenery (field, trees, hangar) is decoration with no physics |
+| (b) 3D view (built; grass blades, leaf-card trees, clouds; Hermite/slerp interpolation on a 70 ms delayed clock; spring-damped cameras) | The airframe's true position, attitude and motor outputs (props spin from `SERVO_OUTPUT_RAW`); armed state and mode; ArduCopter's messages; the hub command and, with the virtual pilot, the two hand poses; an artificial horizon, heading tape and the estimate-minus-truth attitude; real-time factor; cameras: auto, chase, pilot's eye, orbit, top | `demo_view.py` runs SITL, keeps the newest state and serves it over Server-Sent Events (standard library) to `view/page.html` + `view/view.js` (three.js 0.160.0 from jsDelivr). `--record` saves each tour for a replay page | Complies. The pose is SITL's physics state, driven by ArduCopter's motor outputs. The scenery (field, trees, hangar) is decoration with no physics |
 | (a) Ground station (QGroundControl, Mission Planner) | ArduCopter's own estimate: attitude, altitude, mode, messages, and with GPS a map position | A second MAVLink connection to SITL. SITL serves further TCP ports (5762, 5763) for its other serial ports; not tried | Complies |
 | (c) Both | Truth and estimate side by side | Both | Complies |
 
@@ -209,7 +205,7 @@ pursued.
 | Hub command, valid or not | `rc_link` | Every hub line | Status only; it never moves the drone |
 | Real-time factor | `ATTITUDE.time_boot_ms` against wall time | Continuous | 1.000 in every run so far |
 
-**Delay**, from the first hub line of a new command, over the scripted runs:
+Delay, from the first hub line of a new command, over the scripted runs:
 
 | Stick step | ArduCopter reports the new value | Airframe at 90% of its change |
 |---|---|---|
@@ -251,28 +247,28 @@ same keys to both and times each one's response.
 
 ### Demo sequence
 
-1. **Hub, then laptop.** Plug the hub in and start
+1. Hub, then laptop. Plug the hub in and start
    `sitl_live.py serial <port>`. SITL is ready to arm after about 45 s with GPS. The
    status line shows `hub invalid` until the hands are linked and ENABLE is held.
-2. **Hands.** Power both hands. Each restores its calibration and advertises, and the
+2. Hands. Power both hands. Each restores its calibration and advertises, and the
    hub links both. Until ENABLE, commands read `valid=0` with reason `not_enabled`, or
    `await_release` after a fault.
-3. **Neutral.** The operator holds both hands level and relaxed. Someone presses hub
+3. Neutral. The operator holds both hands level and relaxed. Someone presses hub
    CALIBRATE. While it is held the command is invalid (`calibrating`), and the neutral
    orientation of both hands is captured.
-4. **Enable.** Open the left hand (throttle below 5%; the firmware refuses a new ENABLE
-   otherwise), then press and **hold** ENABLE. ENABLE is a deadman: commands are valid
+4. Enable. Open the left hand (throttle below 5%; the firmware refuses a new ENABLE
+   otherwise), then press and hold ENABLE. ENABLE is a deadman: commands are valid
    only while it is held. The status line shows `hub valid`.
-5. **Arm.** The laptop operator types `arm`. The runner refuses unless the hub command
+5. Arm. The laptop operator types `arm`. The runner refuses unless the hub command
    is valid and the throttle is low, and selects AltHold before arming.
-6. **Fly.** In AltHold, mid-curl holds altitude. More curl climbs, less curl descends,
+6. Fly. In AltHold, mid-curl holds altitude. More curl climbs, less curl descends,
    and an open hand descends at the maximum rate. Right-hand tilt rolls and pitches;
    left-hand roll tilt yaws. A right fist (HOLD) levels the attitude and freezes
    throttle. A left thumb curl (PRECISION) halves attitude authority.
-7. **Land.** Reduce the curl to descend (in SITL, throttle 250 descends at about 1 m/s
+7. Land. Reduce the curl to descend (in SITL, throttle 250 descends at about 1 m/s
    and lands). After touchdown, open the hand fully.
-8. **Disarm** with `disarm`, then release ENABLE.
-9. **Shutdown.** `quit`. Unplug the hands, then the hub.
+8. Disarm with `disarm`, then release ENABLE.
+9. Shutdown. `quit`. Unplug the hands, then the hub.
 
 If a radio failsafe starts (§ below), wait for `hub valid` and type `althold` to take
 control back.
@@ -300,15 +296,13 @@ Effort is a rough single-person estimate.
 
 | # | Gap | Effort | Notes |
 |---|---|---|---|
-| 1 | **Runner, remaining**: poll the hub's `status` once a second and show it; reopen the port after a serial error; save a flight log in `serial` mode; detect SITL exiting or hanging | 0.5–1 day | The rest of the runner is built (§3) |
-| 2 | 3D view: built (`demo_view.py`, `view/`). Remaining: an arm/disarm control on the page for the physical-hub mode (today it is the terminal) | 0.5 day | |
-| 3 | **Physical controller**: build both hands and the hub to the [wiring](wiring/README.md); flash; physical calibration; two physical BLE links; hub serial to laptop | Dominated by test plan B1–B6 | Every physical row: **not tested** |
-| 4 | Ground-station view (option a), optional | 0.5 day | A second MAVLink client on SITL; not tried |
-| 5 | Estimate drift without GPS | Unknown | Seen on the emulated F405 and once in SITL without GPS; not seen in SITL with GPS |
+| 1 | Runner: reopen the port after a serial error; save a flight log in `serial` mode; detect SITL exiting or hanging | 0.5–1 day | Hub `status` and both hands' telemetry are shown (§4) |
+| 2 | Physical controller: run the bench procedures (test plan B1–B6) with recorded results; find why a hand sometimes stops sending while linked | Unknown | Built and flown on breadboards ([bench-bringup.md](bench-bringup.md)) |
+| 3 | Ground-station view (option a), optional | 0.5 day | A second MAVLink client on SITL; not tried |
+| 4 | Estimate drift without GPS | Unknown | Seen on the emulated F405 and once in SITL without GPS; not seen in SITL with GPS |
 
-What this plan does **not** establish:
+What this plan does not establish:
 
-- that the physical hands and hub behave like their simulated firmware;
 - the physical part of the latency (hands, BLE, hub, USB serial), or that a USB-UART
   bridge behaves like the pseudo-terminal used in the test;
 - that SITL behaves like the `matekf405-wing` binary on an STM32F405: no MCU, timers or

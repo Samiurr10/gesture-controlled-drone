@@ -1,7 +1,7 @@
 # Bench 11: both hands linked to the hub (S2-A)
 
-**Mirrors:** S2-A (`s2a_link.py`): both hands linked, MTU, packet rate, nothing rejected, distinct
-sessions. **Test plan:** B5. **Before:** benches 01-10 passed.
+Mirrors: S2-A (`s2a_link.py`): both hands linked, MTU, packet rate, nothing rejected, distinct
+sessions. Test plan: B5. Before: benches 01-10 passed.
 
 ## Wiring
 
@@ -61,7 +61,7 @@ per second per hand; zero rejected.
    and `subscribed` 1.
 5. The hub prints `command` lines at 50 per second. With both hands ready and ENABLE not pressed, the
    reason is `not_enabled`.
-6. **Loss:** unplug RIGHT: within about 100 ms the reason becomes `right_stale` or
+6. Loss: unplug RIGHT: within about 100 ms the reason becomes `right_stale` or
    `right_missing`. Plug back: it links again by itself. Repeat for LEFT. Summarise with
    `bench_summary.py` to read the times.
 7. Repeat bench 02 step 5 (noise) on a hand while it is linked; this is the BLE-load part of the coupling check.

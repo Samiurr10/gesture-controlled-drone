@@ -1,6 +1,6 @@
 # How the Simantic simulation works
 
-PalmPilot's firmware was developed and tested in [Simantic](https://simantic.dev),
+PalmPilot's firmware was developed and tested in [Simantic](https://simantic.com),
 a hardware simulator built on Renode, before any board was wired. This document
 walks through what actually runs when a simulation test starts, from source code
 to a passing check. For the list of models, the physics verification and the known
@@ -152,7 +152,7 @@ Position, attitude and motors come from `quad_plant` after each slice. The page'
 | `firmware/probes/drone-flight/demo_speed.py`, 2026-11-01 | F405 + quad_plant only, no view, M4, load average 3–4 | flight 1.38–1.59 s wall per simulated second (overall 1.47); first second after arming 6.8–7.1; mode change 2.7–2.8 |
 | Live view with a physical hub, 2026-11-17 | the above, plus the view's HTTP server, the hub reader and a browser rendering the 3D scene on the same laptop | 0.78–0.81× real time on the pad before arming; 0.52× shortly after arming |
 
-The live-view figures are **not a benchmark of the emulated F405**. They include
+The live-view figures are not a benchmark of the emulated F405. They include
 whatever else the laptop is doing: the Python view server shares the process with
 the simulation, and the browser's WebGL rendering competes for the same CPU and
 memory bandwidth. The 0.52× reading was also taken during the post-arming slowdown
@@ -169,7 +169,7 @@ falling at the start because firmware builds had just finished):
 | Mode change | 1.24 | 0.81 |
 | First second after arming | 6.70 | 0.15 |
 | Armed on the ground | 1.66 | 0.60 |
-| Flight (climb, hover, roll, pitch, yaw, descend) | 1.37–1.66, overall **1.46** | about **0.68** |
+| Flight (climb, hover, roll, pitch, yaw, descend) | 1.37–1.66, overall 1.46 | about 0.68 |
 
 This agrees with 2026-11-01 (1.47 overall in flight). A stick step reached 90% of
 the airframe's change in 0.38–0.46 simulated seconds for roll and pitch, which is

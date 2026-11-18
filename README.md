@@ -1,102 +1,107 @@
-# PalmPilot — gesture-controlled drone
+# PalmPilot
 
-Two wearable hand controllers, each an ESP32-S3 with five flex sensors and a
-motion sensor, send their readings over BLE to an ESP32-S3 hub. The hub turns them
-into roll, pitch, yaw and throttle and sends one command every 20 ms over USB to a
-laptop. On the laptop, ArduCopter 4.7.1 runs in real time as ArduPilot's native
-simulator (SITL), and its motor outputs drive ArduPilot's physics model of a quad that is
-shown on screen. The simulation test suites run the same ArduCopter release on an
-emulated Matek F405-Wing (STM32F405) flight controller instead.
+Fly a drone with your hands. Two glove controllers, each an ESP32-S3 with five
+flex sensors and a motion sensor, send their readings over Bluetooth to a third
+ESP32-S3, the hub. The hub turns finger curl and hand tilt into stick commands for
+ArduCopter. The controller is real hardware; the drone is simulated and flies on
+screen.
 
-**We build the controller. The drone is only simulated.** No airframe, motors or
-flight test are in scope. The screen shows only what the simulated flight
-controller's motors did; nothing moves the drone straight from a gesture.
+![The simulated quad, flown with the physical gloves and hub](docs/media/flight-view.jpg)
 
-## The plan
-
-1. **Simulate everything first.** Both hands, the hub and the drone run in Simantic
-   with the real firmware. The physics is checked twice: first against closed-form
-   results, then against ArduPilot's own SITL physics.
-   → [Simulation plan](docs/simulation.md)
-2. **Wire and test the physical controller, one board at a time.** Start with one
-   flex sensor, then one hand, the second hand, and the hub. Each physical step
-   repeats the simulation tests for that part. → [Wiring](docs/wiring/README.md)
-3. **Physical controller, simulated drone.** Plug the physical hub into the laptop
-   in place of the simulated hands and hub, and fly the simulated drone from a 3D
-   view. → [Demo plan](docs/demo.md)
-
-The step-by-step order with commands and pass criteria: [Test plan](docs/test-plan.md).
-
-## Status, 2026-11-17
-
-| Part | State |
-|---|---|
-| Hand and hub firmware | Implemented: acquisition, calibration, motion, mapping, interlocks, BLE, persistence, watchdog |
-| **Simulation, end to end** | **Works.** The whole system runs in Simantic with the real firmware: both hands and the hub (three ESP32-S3s over BLE) drive ArduCopter 4.7.1 on an emulated STM32F405, whose motor outputs fly the simulated quad. Every suite runs: one hand (S1-A to S1-H), both hands and the hub (S2-A, S2-B), controller into ArduCopter (S3-A, S3-B), and closed-loop gesture flight in AltHold (`fly.py`: take-off, roll, pitch, yaw, hover, landing). Latest full run, 2026-11-17, engine 0.6.6: 321 of 322 checks pass. The one miss is a timing margin, not a function: S2-B's hand-reset-to-invalid measured 160 ms against a provisional 150 ms limit (earlier runs 120 ms) |
-| Simulated drone vs ArduPilot | Flown the same way on the F405 (default) and the Pixhawk 6X (H7, selectable). On the F405 it agrees with ArduPilot's own SITL to within about 0.4° and 0.05 m/s. Open: a 1–3° attitude-estimate drift after manoeuvres |
-| Physical controller | Built on breadboards: LEFT, RIGHT and HUB on ESP32-S3 DevKits, flashed with the same images that pass in simulation. Both hands link to the hub at 50 packets/s; the physical hub has flown the simulated drone. No physical test-plan step is claimed passed. Open: a hand that stops sending while still linked. Record: [docs/bench-bringup.md](docs/bench-bringup.md) |
-| Laptop demo | `simulation/drone/demo_view.py`: ArduCopter SITL in real time (or the emulated F405 with `--drone f405`) in a 3D view, flown by the physical hub (`--hub PORT`), the keyboard (`--manual`) or a scripted virtual pilot. Both hands' telemetry in the side panel |
-| Simulator gaps | Four-machine stall (renode-infrastructure #340) and H7 F-RAM framing (simantic-core #659): fixed upstream, not in the pinned engine 0.6.6. This repo stops stalled runs with a watchdog and works around the F-RAM framing |
-
-No milestone is claimed complete. Simulation results are evidence about the
-firmware against Simantic's models, not about hardware.
-
-## Getting started
-
-What a fresh clone can and cannot do today:
-
-| Want to | Needs | Reproducible from this repo? |
-|---|---|---|
-| Read the design, wiring and test plan | nothing | yes |
-| Build the hand and hub firmware | ESP-IDF v5.5.2 with its Xtensa GCC 14.2.0 | expected with a standard ESP-IDF v5.5.2 install (`idf.py -C firmware/apps/hand -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.left" build`); only tried with this repo's pinned toolchain |
-| Flash and run the physical controller | the above, three ESP32-S3 DevKits, the parts in [docs/bom.md](docs/bom.md), wiring per [docs/wiring/](docs/wiring/README.md) | yes |
-| Fly the SITL demo drone | an ArduPilot SITL build of Copter-4.7.1 and pymavlink | expected with a standard ArduPilot checkout; the scripts look for it under `tmp/ardupilot` (`simulation/drone/sitl_live.py`, `demo_view.py`) |
-| Run the Simantic simulation suites | the Simantic engine 0.6.6 and Python SDK 0.4.0, the ESP32-S3 mask ROM and image packer, the platform files | **not yet**: these live in a local, gitignored `tmp/` that `firmware/tools/env.sh` points to |
-| Run the drone suites (S3, `fly.py`) | the above plus the Matek F405-Wing (or Pixhawk 6X) Simantic board files: board description and part models, set by `PALMPILOT_DRONE_BOARD` | **no**: those board files are not published |
-
-Simantic's `sim` CLI is public (`curl -fsSL https://simantic.com/install | sh`, free
-account). The suites here were run on engine 0.6.6 with Python SDK 0.4.0; they have not
-been tried on the current public release.
-
-`firmware/tools/palmpilot.py` wraps the build, flash image and simulation steps once
-the toolchain is in place. [docs/simantic.md](docs/simantic.md) explains how the
-simulation runs.
-
-## Documents
-
-| Document | Contents |
-|---|---|
-| [docs/simantic.md](docs/simantic.md) | How the Simantic simulation runs: binaries, machines, stimulus, the drone loop, the suites, speed |
-| [docs/simulation.md](docs/simulation.md) | What is simulated, the models, the physics and its verification, known limits |
-| [docs/bench-bringup.md](docs/bench-bringup.md) | Moving from simulation to the physical boards: what carried over, what the bench found, the bench profile |
-| [docs/wiring/](docs/wiring/README.md) | Pins, circuits, the build order and pinplanner drawings for LEFT, RIGHT and HUB |
-| [docs/test-plan.md](docs/test-plan.md) | Every test in order: simulation (A), physical bench (B), physical controller with simulated drone (C) |
-| [docs/bench/](docs/bench/README.md) | Bench procedures for part B: one per simulation suite, each with its wiring drawing, the firmware to flash and the console steps (not tested on hardware) |
-| [docs/demo.md](docs/demo.md) | Laptop demo: data path, 3D view, operator procedure, what is missing |
-| [docs/gesture-mapping.md](docs/gesture-mapping.md) | Which gesture is which command, and the safety interlocks |
-| [docs/bom.md](docs/bom.md) | Parts for the controller |
-| [firmware/README.md](firmware/README.md) | Building, simulating, the test suites and the firmware's UART commands |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Evidence rules and firmware rules for changes |
-| [CLAUDE.md](CLAUDE.md) | Frozen constraints: pin map, toolchain, command contract, evidence rules (also the instructions for the AI assistant used on this project) |
-
-## Layout
+## How it works
 
 ```text
-firmware/apps/hand, hub, replay   hand and hub firmware; replay is a scripted stand-in hand
-firmware/components/              shared logic (hand_core, hub_core, packet) and UART console
-firmware/tests/                   simulation suites S1-S3; run_all.sh runs them all
-firmware/tools/                   env.sh (pinned paths), palmpilot.py (build/sim), controller.py; bench/ physical bench tools
-firmware/probes/                  engine-defect reproducers and drone flight scripts
-simulation/drone/                 bridge, physics, sensor models, SITL cross-check, SITL demo runner
-simulation/simantic/              model candidates awaiting release; ADC reference app with physical captures
-docs/                             the documents above
-tmp/                              gitignored toolchain and build output, not reproducible
+left glove  ─┐
+             ├─ BLE ─> hub ─ USB ─> laptop ─> ArduCopter ─> motor outputs ─> physics ─> 3D view
+right glove ─┘          one command every 20 ms
 ```
+
+The drone on screen moves only because ArduCopter's motor outputs moved it. No
+gesture moves the drone directly.
+
+On the laptop, ArduCopter runs as ArduPilot's native simulator (SITL) in real time.
+The same firmware can also run on an emulated STM32F405 flight controller in the
+[Simantic](https://simantic.com) simulator, which is how the automated tests fly it.
+
+## Gestures
+
+| Hand | Movement | Drone |
+|---|---|---|
+| Left | curl four fingers | throttle: open is zero, half curl holds height |
+| Left | roll the hand | yaw |
+| Right | tilt forward or back | pitch |
+| Right | tilt left or right | roll |
+| Left | press the button | ENABLE: commands only count while enabled |
+
+Full table, deadbands and safety interlocks: [docs/gesture-mapping.md](docs/gesture-mapping.md).
+
+## Hardware
+
+Three ESP32-S3 DevKits, ten flex sensors and two Adafruit LSM6DS3TR-C + LIS3MDL
+motion breakouts, on breadboards for now.
+
+![Left hand wiring](docs/wiring/left-hand.png)
+
+Parts: [docs/bom.md](docs/bom.md). Wiring for each board: [docs/wiring/](docs/wiring/README.md).
+
+## Status
+
+- The whole system works in simulation, from the gloves' firmware to the flying
+  drone: both hands and the hub run their real firmware on simulated ESP32-S3s and
+  fly ArduCopter on an emulated F405. The latest test run passed 321 of 322 checks.
+- The physical controller is built on breadboards and has flown the simulated
+  drone. One problem is open: a hand sometimes stops sending while it stays
+  connected. Notes: [docs/bench-bringup.md](docs/bench-bringup.md).
+- Not done yet: the physical test procedures, a soldered build, and pairing.
+
+## Try it
+
+Build the firmware (ESP-IDF v5.5.2):
+
+```sh
+idf.py -C firmware/apps/hand -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.left" build
+idf.py -C firmware/apps/hub build
+```
+
+Fly the simulated drone with the keyboard, or with a physical hub (needs an
+ArduPilot SITL build of Copter-4.7.1 in `tmp/ardupilot` and pymavlink):
+
+```sh
+python simulation/drone/demo_view.py --manual             # then open http://localhost:8765
+python simulation/drone/demo_view.py --hub /dev/cu.usbserial-XXXX
+```
+
+The automated simulation tests (`firmware/tests/`) need the Simantic engine and
+board files that are not public yet; [firmware/README.md](firmware/README.md)
+describes them.
+
+## How it was tested
+
+Every feature was written and tested in simulation before any sensor was wired.
+The simulator runs the exact images that are flashed onto the boards, with test
+inputs entering through the simulated chip's own ADC, I2C and GPIO. The same images
+then went onto the physical boards.
+
+- [docs/simulation.md](docs/simulation.md): what is simulated and how the physics was checked
+- [docs/simantic.md](docs/simantic.md): how a simulation run works, step by step
+- [docs/test-plan.md](docs/test-plan.md): every test, in order
+- [docs/bench-bringup.md](docs/bench-bringup.md): moving to the physical boards, and what simulation could not catch
+- [docs/demo.md](docs/demo.md): the laptop demo
+
+## Repository layout
+
+```text
+firmware/apps/          hand and hub firmware (and a scripted stand-in hand for tests)
+firmware/components/    logic shared by hand and hub: gesture mapping, interlocks, packet format
+firmware/tests/         simulation test suites; run_all.sh runs them all
+firmware/tools/         build and simulation wrappers; bench/ has tools for the physical boards
+simulation/drone/       the bridge to ArduCopter, the physics model, the 3D view
+docs/                   design, wiring, tests and notes
+```
+
+Contributing: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licence
 
-MIT ([LICENSE](LICENSE)). [NOTICE](NOTICE) lists the exceptions:
-`simulation/drone/ardupilot_frame.py` is a port of ArduPilot code and is GPLv3 (it is used only to
-compare against ArduPilot's airframe), and the Simantic model candidates carry
-Simantic's MIT notice. ArduCopter, ESP-IDF and three.js are not included and keep their
-own licences.
+MIT ([LICENSE](LICENSE)). `simulation/drone/ardupilot_frame.py` is a port of
+ArduPilot code and is GPLv3; [NOTICE](NOTICE) lists it and the other exceptions.

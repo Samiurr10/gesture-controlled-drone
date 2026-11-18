@@ -1,8 +1,8 @@
 # Bench 03: external motion module (LEFT)
 
-**Mirrors:** S1-D (`s1d_motion.py`): identities, reads, gravity at rest, a silent device reported as
-a fault and never as data, recovery. **Test plan:** B2.
-**Board:** LEFT. **Before:** bench 02 passed.
+Mirrors: S1-D (`s1d_motion.py`): identities, reads, gravity at rest, a silent device reported as
+a fault and never as data, recovery. Test plan: B2.
+Board: LEFT. Before: bench 02 passed.
 
 ## Wiring
 
@@ -36,9 +36,9 @@ Same image as the previous stage; reflash only if the firmware changed (compare 
 4. Breakout flat and still: `accel` about `[0, 0, 16384]` (1 g = 16384); the sign depends on which
    side faces up. `gyro` near 0: record the offsets. Repeat `motion` a few times; the values must change
    (fresh data, not a stuck register).
-5. **Axes:** stand the breakout on each edge in turn and record which `accel` axis carries gravity and
+5. Axes: stand the breakout on each edge in turn and record which `accel` axis carries gravity and
    with which sign. This is the mounting record; bench 06 needs it.
-6. **Silent device:** pull the `SDA` jumper. `motion`: `accel_gyro` nonzero, and the hand must not keep
+6. Silent device: pull the `SDA` jumper. `motion`: `accel_gyro` nonzero, and the hand must not keep
    presenting old data as fresh (`sample` / `control` report the motion fault). Put it back: `accel_gyro`
    returns to 0 without a reset.
 

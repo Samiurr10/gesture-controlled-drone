@@ -5,8 +5,9 @@ what to send on the console and what must come back. Start with one hand, one fi
 part at a time. Every part goes into the hole it has on the finished hand, so each bench only adds
 to the one before.
 
-A bench PASS is a physical result and a simulation PASS is not; keep them separate (CLAUDE.md
-section 7). Nothing here has been run on hardware yet. Each procedure is a plan until someone does.
+A bench result and a simulation result are separate evidence; keep them apart. The boards
+have been built and run ([bench-bringup.md](../bench-bringup.md)), but these procedures
+have not yet been carried out step by step with recorded results.
 
 ## Order
 
@@ -38,15 +39,15 @@ needs a neutral orientation from the motion module.
   LEFT and HUB each add one 10k, one 100nF, one 1k and a normally-open push button.
 - A multimeter. An oscilloscope helps for debounce and settling; a logic analyser is optional.
 
-**Board variant:** the diagrams use genuine DevKitC-1 header positions. CLAUDE.md records the actual
-ADC bench board as a **Freenove ESP32-S3 WROOM**, whose headers differ. On that board wire by **GPIO
-number** (the silkscreen), not by header position, and record the mapping you used. The firmware is
+Board variant: the diagrams use genuine DevKitC-1 header positions. If your board is a
+Freenove ESP32-S3 WROOM or another layout, wire by GPIO
+number (the silkscreen), not by header position, and record the mapping you used. The firmware is
 built without PSRAM, so the Freenove's 8 MB PSRAM does not change it.
 
 ## Build and flash
 
-The toolchain is the pinned one in `tmp/simantic/` (CLAUDE.md section 3). Plug into the DevKit port
-marked **UART**; on macOS it shows up as `/dev/cu.usbserial-*` or `/dev/cu.wchusbserial-*`.
+The toolchain is the pinned one in `tmp/simantic/` ([firmware/README.md](../../firmware/README.md)). Plug into the DevKit port
+marked UART; on macOS it shows up as `/dev/cu.usbserial-*` or `/dev/cu.wchusbserial-*`.
 
 ```sh
 python3 firmware/tools/palmpilot.py build hand:left      # or hand:right, hub

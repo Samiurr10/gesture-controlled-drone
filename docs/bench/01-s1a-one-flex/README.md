@@ -1,9 +1,9 @@
 # Bench 01: one flex channel (LEFT thumb)
 
-**Mirrors:** S1-A (`firmware/tests/s1a_acquisition.py`), the single-channel part: pin map, ADC
+Mirrors: S1-A (`firmware/tests/s1a_acquisition.py`), the single-channel part: pin map, ADC
 calibration, ticks and acquisition advancing, calibrated millivolts, open and shorted faults.
-**Test plan:** B1.
-**Board:** LEFT. **Before:** bench 00 passed on this board.
+Test plan: B1.
+Board: LEFT. Before: bench 00 passed on this board.
 
 ## Wiring
 
@@ -41,19 +41,19 @@ python3 firmware/tools/palmpilot.py pack  hand:left     # prints the app ELF sha
 
 ## Steps
 
-Set the numeric limits in your test record **before** powering up (CLAUDE.md section 7).
+Set the numeric limits in your test record before powering up ([CONTRIBUTING.md](../../../CONTRIBUTING.md)).
 The values below marked PROVISIONAL are starting points from the firmware, not qualified limits.
 
 ### Unpowered
 
 1. USB unplugged. Continuity: DevKit GPIO1 (J3-4) to hole 45e; DevKit 3V3 (J1-1) to both + rails;
-   DevKit GND (J3-1) to both - rails. **No** continuity between any + rail and any - rail.
+   DevKit GND (J3-1) to both - rails. No continuity between any + rail and any - rail.
 2. Measure the 47k and the 100nF before fitting them, and the flex sensor straight and fully bent.
    Record all three. The 25k straight / 100k bent in docs/wiring/README.md are catalogue figures, not limits.
 
 ### Powered
 
-3. Plug a data USB cable into the DevKit port marked **UART** and start the console:
+3. Plug a data USB cable into the DevKit port marked UART and start the console:
 
    ```sh
    "$IDF_PYTHON_ENV_PATH/bin/python" firmware/tools/bench.py $PORT
@@ -66,7 +66,7 @@ The values below marked PROVISIONAL are starting points from the firmware, not q
 5. `stats`, wait about 1 s, `stats` again: `ticks` and `acq` advance by about 100 per second,
    `overruns` stays 0.
 6. Meter: 3V3 rail to - rail; then hole 45e to - rail with the thumb straight, and again fully bent.
-   Record both. Bending raises the flex resistance, so the node voltage **falls** when bent.
+   Record both. Bending raises the flex resistance, so the node voltage falls when bent.
 7. Thumb straight: `stream 100`, then thumb bent: `stream 100`. Summarise the log:
 
    ```sh
@@ -79,12 +79,12 @@ The values below marked PROVISIONAL are starting points from the firmware, not q
 
 ### Faults and settling
 
-8. **Open:** pull the flex lead out of the + rail. `sample`: `status[0]` 1 (`FLEX_FAULT_OPEN`, raw
+8. Open: pull the flex lead out of the + rail. `sample`: `status[0]` 1 (`FLEX_FAULT_OPEN`, raw
    below 40), `fault_mask` bit 0 set. Put it back: `status[0]` returns to 0.
-9. **Short:** with a spare jumper, join hole 45c to the top + rail (the node straight to 3V3, nothing
+9. Short: with a spare jumper, join hole 45c to the top + rail (the node straight to 3V3, nothing
    in between). `sample`: `status[0]` 2 (`FLEX_FAULT_SHORT`, raw above 4040). In simulation this case
    is MODEL-ONLY; this is its first physical check. Remove the jumper: back to 0.
-10. **Settling:** press RESET and immediately send `stream 30`. Note how many samples (10 ms each) pass
+10. Settling: press RESET and immediately send `stream 30`. Note how many samples (10 ms each) pass
     before channel 0 is within 1% of its settled value. The firmware assumes 50 ms (PROVISIONAL).
 
 ## Record

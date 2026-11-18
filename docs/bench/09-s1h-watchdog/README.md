@@ -1,8 +1,8 @@
 # Bench 09: the task watchdog (full LEFT hand)
 
-**Mirrors:** S1-H (`s1h_watchdog.py`): the watchdog is fed only by real work, not fed while sampling
-is stalled, and its timeout fires. **Test plan:** the B2 watchdog item; FW-06.
-**Board:** LEFT. **Before:** bench 08 passed.
+Mirrors: S1-H (`s1h_watchdog.py`): the watchdog is fed only by real work, not fed while sampling
+is stalled, and its timeout fires. Test plan: the B2 watchdog item; FW-06.
+Board: LEFT. Before: bench 08 passed.
 
 ## Wiring
 
