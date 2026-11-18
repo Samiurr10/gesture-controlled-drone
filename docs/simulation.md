@@ -1,156 +1,187 @@
-# Simulation plan
+# Simulation
 
-The whole system runs in Simantic before anything is built. That means both hand
-controllers, the hub and the drone's flight controller. Later the physical
-controller replaces the simulated hands and hub one board at a time. The drone
-stays simulated for good.
+Every part of PalmPilot was developed and tested in the
+[Simantic](https://simantic.com) simulator before any sensor was wired. The
+simulator runs the same binaries that are flashed onto the boards: both gloves,
+the hub and the drone's flight controller are full emulated chips executing their
+real firmware. Tests change only the outside world: a voltage on a pin, a value on
+a sensor bus, a button.
 
-One rule holds throughout: **the drone on screen moves only because the simulated
-flight controller's motor outputs moved it.** Nothing turns a gesture straight into
-drone motion.
+One rule holds throughout: the drone moves only because the simulated flight
+controller's motor outputs moved it. Nothing turns a gesture straight into drone
+motion.
 
 ## What runs
 
 ```text
-LEFT hand  ESP32-S3 ─┐                               real hand firmware (apps/hand)
-RIGHT hand ESP32-S3 ─┤ BLE (one simulated medium)
-                     └─> HUB ESP32-S3                real hub firmware (apps/hub)
-                           │ UART0, one JSON command line per 20 ms
-                           v
-                     bridge: rc_link.py + gcs_peer.py (host side, Python)
-                           │ MAVLink RC_CHANNELS_OVERRIDE every 20 ms, SERIAL1
-                           v
-                     ArduCopter 4.7.1 on an emulated flight controller:
-                     Matek F405-Wing (STM32F405, default) or Pixhawk 6X (STM32H753)
-                           │ motor PWM read from the timer compare registers
-                           v
-                     quad_plant.py: rigid-body quad X
-                           │ IMUs, barometer (and on the F405 the SD card)
-                           └─> back into ArduCopter
+LEFT glove  ESP32-S3 ─┐                              real hand firmware (firmware/apps/hand)
+RIGHT glove ESP32-S3 ─┤ BLE (one simulated radio medium)
+                      └─> HUB ESP32-S3               real hub firmware (firmware/apps/hub)
+                            │ UART, one command line every 20 ms
+                            v
+                      bridge: rc_link.py + gcs_peer.py (Python, on the host)
+                            │ MAVLink RC override every 20 ms
+                            v
+                      ArduCopter 4.7.1 on an emulated Matek F405-Wing (STM32F405)
+                            │ motor PWM, read from the timer registers
+                            v
+                      quad_plant.py: rigid-body quad
+                            │ IMU and barometer readings
+                            └─> back into ArduCopter
 ```
 
 | Piece | What it is | Where |
 |---|---|---|
-| Hand, hub | The same bootloader, partition table and application binaries that will be flashed on the boards. Only the mask-ROM wrapper differs | `firmware/apps/hand`, `firmware/apps/hub` |
-| Stand-in hand | A hand's BLE peripheral that sends packets a test script supplies, for exact hub inputs | `firmware/apps/replay` |
-| ESP32-S3 model | Stock engine 0.6.6 platform plus one model candidate: RNG (renode-infrastructure #271, so a reset gives new session ids) | `simulation/simantic/model-candidates/` |
-| Drone firmware | ArduCopter 4.7.1. Pixhawk 6X: built from the release commit with `BRD_IO_ENABLE 0` as its only built-in default, because no IOMCU is modelled and the stock release stops at boot without one. F405: the stock release, unmodified | `simulation/drone/pixhawk6x/build.sh`, `fetch_arducopter.sh` |
-| Drone board | `PALMPILOT_DRONE=f405` (default): STM32F405 with Simantic's Matek F405-Wing board files. `h7`: mcu-lib Pixhawk6X with Simantic's Pixhawk 6X board files (three ICM-45686, BMP388, F-RAM, SD) | Simantic board files in `tmp/simantic/boards/`, not published here |
-| Bridge | Turns the newest hub command into RC channels and sends them as a ground station would. Stops sending on an invalid command or when no fresh command has arrived for 100 ms, using its own clock | `simulation/drone/rc_link.py`, `gcs_peer.py` |
-| Physics and sensors | Integrates the airframe from the four motor pulses and answers the flight controller's sensor bus reads | `simulation/drone/quad_plant.py`; H7 `imu45686_plant.py`, `fram_peer.py`; F405 `imu_plant.py`, `baro_plant.py`, `sd_card.py` |
+| Gloves and hub | The bootloader, partition table and application that are flashed on the boards. Only the boot wrapper differs (next section) | `firmware/apps/hand`, `firmware/apps/hub` |
+| Stand-in glove | A glove's BLE side that sends packets a test script supplies, to give the hub exact inputs | `firmware/apps/replay` |
+| Flight controller | ArduCopter 4.7.1, the stock `matekf405-wing` release. A Pixhawk 6X (STM32H753) can be selected instead with `PALMPILOT_DRONE=h7`; it flies the same but simulates about three times slower | `simulation/drone/fetch_arducopter.sh` |
+| Bridge | Turns the hub's newest command into RC channels and sends them as a ground station would. It stops sending on an invalid command, or when no new command has arrived for 100 ms | `simulation/drone/rc_link.py`, `gcs_peer.py` |
+| Physics | Integrates the airframe from the four motor pulses and answers the flight controller's sensor reads | `simulation/drone/quad_plant.py`, `imu_plant.py`, `baro_plant.py` |
 
-`python3 firmware/tools/palmpilot.py system <script>` builds and starts all four
-machines. `python3 firmware/tools/palmpilot.py drone <script>` starts the flight
-controller alone, as in the laptop demo (`ControllerSim(hands=False)`).
-`firmware/tools/controller.py` (`ControllerSim`) is the test-facing API.
+The ESP32-S3 platform is Simantic's stock one, plus one fix not yet in a release:
+the random number generator now gives new values after a reset, so a rebooted glove
+starts a new session (`simulation/simantic/model-candidates/`).
 
-The drone target is the Matek F405-Wing (STM32F405), chosen for speed; the
-Pixhawk 6X (STM32H753) stays selectable with `PALMPILOT_DRONE=h7`. On engine 0.6.6
-both fly the same gesture flight and land, with the same estimate error (mean
-0.95–1.07°, worst 2.6–3.0°; for each airframe the H7 and F405 means are within
-0.01°). The four-machine system runs about 3.7× slower than real time with the F405
-and about 11× with the H7. `ControllerSim.setup_drone` does each board's bench setup
-over MAVLink.
+## From source to a simulated chip
 
-## What a test controls
+```text
+firmware/apps/hand ── idf.py build ──> bootloader.bin, partition-table.bin, palmpilot_hand.bin
+                                         │ esptool merge_bin
+                                         v
+                                      flash.bin   (what esptool writes to a real board)
+                                         │ wrapped with the ESP32-S3 mask ROM
+                                         v
+                                      sim.elf
+```
 
-| Input | How it enters | Notes |
+`firmware/tools/palmpilot.py build hand:left` runs the build with the pinned ESP-IDF
+v5.5.2. The simulated chip then boots like a real one: the mask ROM loads the real
+second-stage bootloader from simulated flash, which loads the application. Nothing
+is compiled differently for simulation. `hand:left` and `hand:right` are the same
+source with a different `sdkconfig` variant.
+
+`palmpilot.py system <script>` starts all four machines in one simulation; each
+ESP32-S3 has its own factory MAC, so the gloves advertise different Bluetooth
+addresses and the hub finds, connects to and subscribes to them through the same
+NimBLE code as on hardware. `palmpilot.py run <app> <script>` starts one board,
+and `palmpilot.py drone <script>` starts only the flight controller.
+
+## How a test drives the inputs
+
+Tests are Python scripts (`firmware/tools/harness.py` for one board,
+`firmware/tools/controller.py` for the whole system). They never write a reading
+into the firmware's memory; every input goes through a simulated peripheral and is
+read by the firmware's own driver.
+
+| On the real device | In simulation | Read by |
 |---|---|---|
-| Flex sensors | Voltage on each ADC1 channel, read by the firmware's own `esp_adc` driver | Calibrated mV within ±5 mV of the injected value. This is the model's contract and says nothing about silicon noise |
-| Hand motion | Register-level LSM6DS3TR-C and LIS3MDL fixtures on I2C0 | No ODR timing, FIFO, interrupts or noise |
-| ENABLE, CALIBRATE | GPIO7 level | |
-| Exact BLE packets | `set <hex>`, `freeze`, `mute` on the stand-in hand's UART | S3-B |
-| Drone sensors | Computed from the plant state. IMU noise follows the datasheet (`PALMPILOT_IMU_NOISE=0` turns it off) | No GPS, compass or battery model |
+| A finger bending a flex sensor | A voltage on that ADC channel | ESP-IDF's ADC driver and its calibration; the reading matches the injected voltage within ±5 mV |
+| The glove tilting | Register values from scripted LSM6DS3TR-C and LIS3MDL devices at 0x6A and 0x1C | The firmware's I2C driver: identity, configuration, status, burst reads |
+| Pressing ENABLE | The GPIO7 level | The GPIO input and its debounce |
+| The drone's own sensors | IMU and barometer values computed from the physics state, with datasheet noise | ArduCopter's drivers |
 
-Renode resets injected ADC voltages and GPIO levels when a chip resets
-(simantic-core#561). `harness.ExternalInputs` drives them again, as real sensors
-would.
+When a simulated chip resets, the simulator clears the injected voltages and pin
+levels; the harness sets them again, as real sensors would keep their state.
 
-## Physics, in two steps
+Outputs are read the way a bench reads them: every character the firmware prints on
+its UART is captured. The hub's command line is exactly the line a physical hub
+prints over USB.
 
-1. Our own model first. `quad_plant.py` is a provisional 1 kg, 5-inch-class quad.
-   It uses ArduPilot's thrust curve (`MOT_THST_EXPO` 0.65, spin min/max 0.15/0.95),
-   so ArduCopter's default hover estimate fits it.
-   `python3 simulation/drone/test_quad_plant.py` checks it against closed-form
-   results, with limits fixed before the first run: free fall with drag, hover,
-   thrust curve, motor signs, coordinated tilt, rate integration, ground contact,
-   terminal climb and ISA pressure. Currently 27/27.
-2. ArduPilot's physics as the final check. `PALMPILOT_AIRFRAME=ardupilot` swaps in
-   `ardupilot_frame.py`, a port of SITL's `SIM_Frame`/`SIM_Motor` default quad (3 kg,
-   0.35 m). The same gesture flight then runs twice:
-   - in Renode: real hands and hub, ArduCopter on the emulated F405;
-   - in native ArduPilot SITL: `sitl_reference.py` replays the same hub commands
-     through the same bridge mapping.
+## The drone loop
 
-   The two are compared phase by phase. The last comparison agreed within about
-   0.4° and 0.05 m/s. Acceptance limits for a qualifying run are not set yet.
+- The bridge turns the hub's latest command into RC channels. An invalid command, or
+  silence for 100 ms, stops the overrides, and ArduCopter's radio failsafe takes over,
+  as with a transmitter that has gone dead.
+- ArduCopter receives the channels over MAVLink, as from a ground station. Arming
+  and the flight mode are set by the host; ENABLE never arms.
+- The motor outputs are read from the STM32 timer registers. `quad_plant.py` (a 1 kg,
+  5-inch class quad using ArduPilot's thrust curve) turns them into forces, moves the
+  airframe and answers the next sensor read.
 
-ArduCopter settings every drone run needs, all sent over MAVLink by the host:
+ArduCopter settings every run needs, sent by the host: quad X frame
+(`FRAME_CLASS=1`, `FRAME_TYPE=1`); arming checks reduced (`ARMING_SKIPCHK=0xFFFFE`),
+because the board has no compass or accelerometer calibration; `FLTMODE_CH=0`,
+because the bridge holds channel 5; `RC1..4_MIN=1000` and `RC1..4_MAX=2000`, since
+the default 1100–1900 inflates stick inputs by about 25%; flight in AltHold.
 
-- `FRAME_CLASS=1`, `FRAME_TYPE=1` (quad X).
-- `ARMING_SKIPCHK=0xFFFFE`, because the board model has no compass and no
-  accelerometer calibration.
-- `FLTMODE_CH=0`, because the bridge holds ch5 at 1500 µs.
-- `RC1..4_MIN=1000`, `RC1..4_MAX=2000`. The default 1100–1900 inflates stick inputs
-  by about 25%.
-- AltHold (mode 2). Arming is a host action; ENABLE never arms.
+## Checking the physics
 
-## Stages
+1. Against closed-form results. `python3 simulation/drone/test_quad_plant.py` checks
+   free fall with drag, hover, the thrust curve, motor directions, coordinated tilt,
+   rate integration, ground contact, terminal climb and air pressure (27 checks, all
+   pass), with limits fixed before the first run.
+2. Against ArduPilot itself. `PALMPILOT_AIRFRAME=ardupilot` swaps in a port of
+   ArduPilot SITL's default quad (`ardupilot_frame.py`, 3 kg). The same gesture flight
+   then runs on the emulated F405 and in ArduPilot's native SITL (`sitl_reference.py`,
+   replaying the same hub commands). The last comparison agreed within about 0.4° and
+   0.05 m/s.
 
-| Stage | What is simulated | Tests |
+## The tests
+
+`sh firmware/tests/run_all.sh` runs every suite and fails any run in which the
+firmware panics. The full order, with commands and pass criteria, is in
+[test-plan.md](test-plan.md).
+
+| Suite | Machines | Checks |
 |---|---|---|
-| S1 | One hand: acquisition, calibration, control state, motion, attitude, persistence, packet, watchdog | S1-A to S1-H |
-| S2 | Both hands and the hub over BLE: link, mapping, interlocks, faults, reboot recovery, CALIBRATE | S2-A, S2-B |
-| S3 | Controller into ArduCopter: hub commands arrive as RC, and expiry stops them | S3-A (real hands), S3-B (scripted packets checked against an independent model) |
-| D2 | Closed loop: motor PWM → physics → sensors → ArduCopter, with gesture flight | `test_quad_plant.py`, `fly.py`, `sitl_reference.py` |
-| D3/D4 | Physical hub on a laptop driving the simulated drone, with a 3D view | [demo plan](demo.md); not built yet |
+| S1-A acquisition | one glove | channel identity, voltage within ±5 mV, open and short faults, ENABLE debounce |
+| S1-B calibration | one glove | capture; rejection of too little travel, unstable or inverted captures; curl normalisation |
+| S1-C control | one glove | ENABLE only grants permission with the throttle low; faults latch; a stalled sampler is caught |
+| S1-D motion | one glove | IMU identity, configuration, data-ready gating, burst decode |
+| S1-E attitude | one glove | tilt to command, deadband, saturation, HOLD and PRECISION flags |
+| S1-F persistence | one glove | calibration saved, restored after a reboot, erased, corrupt data rejected |
+| S1-G packet | one glove | the 59-byte packet, decoded independently in Python |
+| S1-H watchdog | one glove | the watchdog is fed only after real work, and trips when it stops |
+| S2-A link | both gloves + hub | BLE link, MTU, 50 packets/s, nothing rejected |
+| S2-B controller | both gloves + hub | mapping, slew, HOLD, PRECISION, ENABLE, faults, a glove rebooting, CALIBRATE |
+| S3-A drone | gloves + hub + F405 | ArduCopter reports the RC it was sent; a cut hub line stops it |
+| S3-B replay | stand-in gloves + hub + F405 | scripted packets through the hub and bridge, checked against an independent model |
+| `fly.py` | gloves + hub + F405 + physics | climb, hover, roll, pitch, yaw, descend and land in AltHold |
 
-The order of execution, the commands and the pass criteria are in the
-[test plan](test-plan.md).
+Latest run, 2026-11-17: 321 of 322 checks pass. The one miss: after a glove resets,
+the hub took 160 ms to mark the command invalid, against a provisional 150 ms limit
+(other runs measure 120 ms).
 
-## Known limits and open items
+## Speed
 
-- Engine stall with four machines. A lock-order deadlock between ESP32-S3 core
-  threads can stop a run with the host idle. The fix is open as
-  renode-infrastructure #340. On the stall tests, 19 of 205 stock runs stalled and
-  0 of 204 with the fix. Until it ships, long or repeated four-machine runs need
-  the locally built fixed engine, or serial execution (`PALMPILOT_SERIAL=1`), which
-  is much slower.
-- Attitude estimate drift. After a manoeuvre, ArduCopter's estimate is off by
-  1–3° and the vehicle drifts slowly, by the same amount on the emulated F405 and
-  H7. Native SITL with GPS does not show it; without GPS (the board's sensor set)
-  two scripted SITL runs stayed 2.1–2.6° off after a roll, while a replay of the
-  F405 flight stayed within 0.7° ([demo.md §3](demo.md#3-laptop-data-path)). Ruled out so far: physics, sensor signs, scale
-  and rate, dropped samples, noise, parameters, the CPU/FPU (ArduPilot's Replay tool
-  reproduces the estimate exactly from the log) and, now, the flight-controller
-  model. Still open.
-- H7 F-RAM framing. The engine ends a scripted SPI device's transaction at every
-  STM32H7 SPI end of transfer, so ArduPilot's parameter writes were lost on reboot
-  (simantic-core#658, fix PR #659). `simulation/drone/fram_peer.py` keeps the F-RAM
-  framed until the fix ships.
-- Runs are time-limited. `palmpilot.py` stops a run that idles below 5% of a core
-  for 120 s (the deadlock above) or that passes 60 minutes.
-- S2-B reset-to-invalid. The time from a hand reset to an invalid command is
-  bimodal, 120 or 160 ms, on both the stock and the fixed engine. The provisional
-  limit is 150 ms. Whether to raise it is open.
-- Speed. On an M4 laptop, fly.py's four machines run about 3.7× slower than real
-  time with the F405 and about 11× with the H7. The demo simulates only the flight
-  controller: the F405 alone runs flight at 1.47 s of wall time per simulated second
-  (`demo_speed.py`, two runs, 2026-11-01), so the demo drone moves about 1.5× slower
-  than real time. The demo therefore runs ArduCopter as native SITL in real time
-  instead ([demo.md](demo.md)).
-- One BLE medium per simulation. Scenarios with several separate BLE media did
-  not link. This is not investigated, and nothing in the plan needs more than one.
-- Not modelled: RF range or interference (the BLE medium is lossless), ADC noise,
-  the GPIO matrix (SDA/SCL pin choice is untested), battery and power, GPS and
-  compass, and the reset-reason hint after a panic (a C3 RTC_CNTL model gap).
+On an Apple M4 laptop:
 
-A simulation PASS is evidence about the firmware against these models. It says
-nothing about the physical boards, and it does not show that the drone could fly.
+| Setup | Wall time per simulated second |
+|---|---|
+| Whole system, F405 drone (`fly.py`) | about 3.7 s |
+| Whole system, Pixhawk 6X drone | about 11 s |
+| F405 alone, in flight (`demo_speed.py`) | 1.46 s (about 0.68× real time) |
+| F405 alone, first second after arming | 6.7 s |
+
+That is why the laptop demo flies ArduPilot's native SITL, which runs in real time,
+and keeps the emulated F405 for the tests. The emulated F405 can still drive the 3D
+view (`demo_view.py --drone f405`); the "real time" figure on that page also counts
+the view's own load on the laptop, so use `demo_speed.py` for the emulator's speed.
+
+## Limits
+
+The models are synchronous and noise-free. Not modelled: radio range and
+interference (the BLE medium is lossless), ADC noise, the ESP32-S3 pin matrix,
+power and brown-outs, battery, GPS and compass. Wiring mistakes, how a sensor is
+mounted, a sensor locking up after a supply glitch, or a pin left floating cannot
+show up in simulation; the physical bring-up found several of these
+([bench-bringup.md](bench-bringup.md)).
+
+Open items:
+
+- After a manoeuvre, ArduCopter's attitude estimate is 1–3° off and the drone drifts
+  slowly, on both emulated boards. Native SITL with GPS does not show it. Ruled out so
+  far: the physics, sensor signs and scales, dropped samples, noise, parameters, the
+  CPU and the flight-controller model.
+- With four machines, a rare deadlock in the simulator can stop a run (about 1 run in
+  10 on long tests). It is fixed upstream but not in the pinned engine;
+  `palmpilot.py` stops a run that idles for 120 s or passes 60 minutes.
+- The Pixhawk 6X loses parameter writes on reboot because of an SPI framing issue in
+  the simulator; `simulation/drone/fram_peer.py` works around it.
 
 ## Toolchain
 
-`firmware/tools/env.sh` pins every path. ESP-IDF v5.5.2, the Xtensa compiler, the
-Simantic engine, the platforms, the mask ROM, ArduCopter and the ArduPilot SITL
-build all live in gitignored `tmp/`. None of it can be rebuilt from a clean
-checkout. [firmware/README.md](../firmware/README.md) lists the pinned versions.
+`firmware/tools/env.sh` sets every path: ESP-IDF v5.5.2 with GCC 14.2.0, the Simantic
+engine 0.6.6 and Python SDK 0.4.0, the ESP32-S3 mask ROM, the platform and board
+files, and the ArduCopter builds. They live in a gitignored `tmp/` directory and are
+not all public yet; [firmware/README.md](../firmware/README.md) has the details.

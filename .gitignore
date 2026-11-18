@@ -25,3 +25,4 @@ __pycache__/
 /outputs/
 .chart-data-*/
 .claude/
+CLAUDE.md

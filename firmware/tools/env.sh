@@ -2,10 +2,10 @@
 # Usage:  . firmware/tools/env.sh     (from the repository root)
 #
 # Everything here lives in gitignored tmp/ and is NOT reproducible from a clean
-# checkout. See CLAUDE.md section 3. Do not delete tmp/simantic/.
+# checkout. See firmware/README.md. Do not delete tmp/simantic/.
 
-if [ ! -f CLAUDE.md ] || [ ! -d tmp/simantic ]; then
-  echo "env.sh: run from the repository root (needs ./CLAUDE.md and ./tmp/simantic)" >&2
+if [ ! -f firmware/tools/env.sh ] || [ ! -d tmp/simantic ]; then
+  echo "env.sh: run from the repository root (needs ./firmware/tools/env.sh and ./tmp/simantic)" >&2
   return 1 2>/dev/null || exit 1
 fi
 

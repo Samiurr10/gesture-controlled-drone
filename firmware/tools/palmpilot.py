@@ -2,7 +2,7 @@
 """PalmPilot ESP32-S3 firmware driver: build -> pack -> simulate.
 
 Replaces the ad-hoc shell scripts under tmp/simantic/. All pinned paths come
-from firmware/tools/env.sh (CLAUDE.md section 3).
+from firmware/tools/env.sh (firmware/README.md).
 
   palmpilot.py build <app>          idf.py build
   palmpilot.py pack  <app>          merge_bin + ROM wrapper -> sim.elf

@@ -12,7 +12,7 @@ Also exercised, formerly BLOCKED: erase, on-device CRC rejection of a
 corrupted profile, and restore across a real esp_restart(). The erase hang was
 the simulator's dead FreeRTOS tick (the erase yields with vTaskDelay), and the
 reboot hang came from a superseded local timer overlay. Both are fixed by the
-upstream candidates env.sh loads (CLAUDE.md section 4).
+upstream candidates env.sh loads (docs/simulation.md).
 
 Scope: NVS against simulated flash only. No wear, no power loss during a write,
 no silicon flash timing. A simulation pass does not qualify persistence; the

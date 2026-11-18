@@ -15,7 +15,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
-# frozen pin map: CLAUDE.md section 2, docs/wiring/README.md
+# frozen pin map: docs/wiring/README.md, docs/wiring/README.md
 # (finger, GPIO, ADC channel, jumper colour, node column)
 FLEX = [("middle", "GPIO4", "ADC1_CH3", "purple", 5), ("ring", "GPIO5", "ADC1_CH4", "teal", 14),
         ("little", "GPIO6", "ADC1_CH5", "pink", 23), ("thumb", "GPIO1", "ADC1_CH0", "orange", 45),
@@ -109,7 +109,7 @@ def hand(side, title, enable, fingers=FINGERS, with_imu=True):
     if with_imu:
         parts.append({"id": "imu", "board": "adafruit-5543", "x": 82, "y": 68, "label": f"{side} Adafruit #5543 (0x6A / 0x1C)"})
     return {"version": 1, "title": title,
-            "notes": f"PalmPilot {side} hand, bench plan on a full breadboard. Pins match PalmPilot CLAUDE.md section 2 and "
+            "notes": f"PalmPilot {side} hand, bench plan on a full breadboard. Pins match the PalmPilot pin map (docs/wiring/README.md) and "
                      "docs/wiring/README.md; not checked on hardware. + rails = this board's 3V3, - rails = its GND; "
                      "the right-end jumpers join the bottom rails to the top ones. Never join supplies across boards. The flex sensors sit on the glove: their two leads come to the rail hole and "
                      "the node hole shown. IMU: leave 3Vo, INT1/INT2/INTM/DRDY and the address pads unconnected. " + DONT
@@ -123,7 +123,7 @@ def hub(title="PalmPilot HUB: CALIBRATE button, USB-UART to laptop"):
     r = Rails("breadboard-half")
     conns = power(r, "HUB", far=29) + button(r, "HUB", "CALIBRATE", c=14)
     return {"version": 1, "title": title,
-            "notes": "PalmPilot HUB, bench plan on a half breadboard. Pins match PalmPilot CLAUDE.md section 2; not checked on hardware. "
+            "notes": "PalmPilot HUB, bench plan on a half breadboard. Pins match the PalmPilot pin map (docs/wiring/README.md); not checked on hardware. "
                      "Laptop link: USB data cable from the DevKit port labelled UART (on-board USB-to-UART bridge on UART0, 115200 baud) "
                      "to the laptop; it also powers the hub. GPIO43 (U0TXD) and GPIO44 (U0RXD) are highlighted because the bridge uses "
                      "them: do not wire them. No flex sensors and no motion sensor on the hub. Hands reach the hub over BLE only. " + DONT,

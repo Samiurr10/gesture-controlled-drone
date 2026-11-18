@@ -1,4 +1,4 @@
-# Same frozen build configuration as the hands (CLAUDE.md section 3).
+# Same frozen build configuration as the hands (firmware/README.md).
 CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
 CONFIG_ESPTOOLPY_FLASHFREQ_40M=y
 CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y

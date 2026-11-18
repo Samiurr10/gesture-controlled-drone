@@ -6,7 +6,7 @@ ESP32-S3, the hub. The hub turns finger curl and hand tilt into stick commands f
 ArduCopter. The controller is real hardware; the drone is simulated and flies on
 screen.
 
-![The simulated quad, flown with the physical gloves and hub](docs/media/flight-view.jpg)
+![The simulated quad, flown with the physical gloves and hub](docs/media/flight.gif)
 
 ## How it works
 
@@ -82,8 +82,7 @@ The simulator runs the exact images that are flashed onto the boards, with test
 inputs entering through the simulated chip's own ADC, I2C and GPIO. The same images
 then went onto the physical boards.
 
-- [docs/simulation.md](docs/simulation.md): what is simulated and how the physics was checked
-- [docs/simantic.md](docs/simantic.md): how a simulation run works, step by step
+- [docs/simulation.md](docs/simulation.md): how the simulation runs, the tests, and how the physics was checked
 - [docs/test-plan.md](docs/test-plan.md): every test, in order
 - [docs/bench-bringup.md](docs/bench-bringup.md): moving to the physical boards, and what simulation could not catch
 - [docs/demo.md](docs/demo.md): the laptop demo

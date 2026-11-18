@@ -1,7 +1,7 @@
 {
   "version": 1,
   "title": "Bench 07 / S1-F: calibration persistence (full LEFT hand)",
-  "notes": "PalmPilot LEFT hand, bench plan on a full breadboard. Pins match PalmPilot CLAUDE.md section 2 and docs/wiring/README.md; not checked on hardware. + rails = this board's 3V3, - rails = its GND; the right-end jumpers join the bottom rails to the top ones. Never join supplies across boards. The flex sensors sit on the glove: their two leads come to the rail hole and the node hole shown. IMU: leave 3Vo, INT1/INT2/INTM/DRDY and the address pads unconnected. Do not use GPIO0/3/45/46 (strapping), GPIO19/20 (native USB), GPIO43/44 (UART0 bridge). GPIO10 is reserved for battery sense: leave it disconnected. ENABLE on GPIO7 is LEFT only.",
+  "notes": "PalmPilot LEFT hand, bench plan on a full breadboard. Pins match the PalmPilot pin map (docs/wiring/README.md) and docs/wiring/README.md; not checked on hardware. + rails = this board's 3V3, - rails = its GND; the right-end jumpers join the bottom rails to the top ones. Never join supplies across boards. The flex sensors sit on the glove: their two leads come to the rail hole and the node hole shown. IMU: leave 3Vo, INT1/INT2/INTM/DRDY and the address pads unconnected. Do not use GPIO0/3/45/46 (strapping), GPIO19/20 (native USB), GPIO43/44 (UART0 bridge). GPIO10 is reserved for battery sense: leave it disconnected. ENABLE on GPIO7 is LEFT only.",
   "parts": [
     {
       "id": "bb",

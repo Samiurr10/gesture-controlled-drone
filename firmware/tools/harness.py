@@ -1,7 +1,7 @@
 """Reusable Simantic harness for PalmPilot ESP32-S3 firmware.
 
 Encodes the workarounds that the September 2026 bench work established, so they
-are not re-derived per script (CLAUDE.md section 4):
+are not re-derived per script (docs/simulation.md):
 
   * ADC1 conversion is upstream since engine 0.5.14 (PR #168). The stock
     platform wires `CalibrationEfuse`, so raw counts follow the modeled die's
@@ -26,7 +26,7 @@ import os
 import sys
 from pathlib import Path
 
-# Frozen bench pin map — CLAUDE.md section 2. Keys are the finger names used in
+# Frozen bench pin map — docs/wiring/README.md#pins. Keys are the finger names used in
 # the build guide; ADC1 channel n is GPIO n+1 on this part.
 FLEX: dict[str, dict[str, int]] = {
     "thumb":  {"gpio": 1, "channel": 0},

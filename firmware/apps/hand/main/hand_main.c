@@ -5,7 +5,7 @@
 //
 // Timing uses esp_timer (SYSTIMER-backed), which is verified on this model.
 // GPTimer/TIMG is a confirmed model gap and must not be used here
-// (CLAUDE.md section 4, 2026-09-17 readiness record).
+// (docs/simulation.md).
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>

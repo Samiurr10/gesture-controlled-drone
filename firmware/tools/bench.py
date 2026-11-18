@@ -2,7 +2,7 @@
 """Bench console for a physical board: type commands, see replies, keep a log.
 
 Every line received is printed and appended, with the host time, to a log file,
-so a bench run leaves the capture CLAUDE.md section 7 asks for. Runs under the
+so a bench run leaves the capture CONTRIBUTING.md asks for. Runs under the
 ESP-IDF python, which has pyserial:
 
     . firmware/tools/env.sh

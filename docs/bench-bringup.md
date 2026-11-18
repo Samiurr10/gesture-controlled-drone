@@ -9,7 +9,7 @@ C1–C4 in [test-plan.md](test-plan.md)) is claimed passed.
 ## The approach: simulate first, then wire
 
 Every firmware feature was written and tested in Simantic before a sensor was
-connected ([simantic.md](simantic.md)). The simulator ran the exact bootloader,
+connected ([simulation.md](simulation.md)). The simulator ran the exact bootloader,
 partition table and application images that were later flashed, so the first
 physical flash was not a port: the same `hand:left`, `hand:right` and `hub` builds
 went onto three ESP32-S3 DevKits, and the bench work was wiring sensors to them
@@ -38,7 +38,7 @@ simulation (no code change for that behaviour):
 ## What the bench found
 
 Simulation cannot show wiring, mounting, power glitches or pins left floating
-([simantic.md §7](simantic.md#7-what-simulation-cannot-tell-you)). The bench found
+([simulation.md](simulation.md#limits)). The bench found
 these. Each row says what was seen, the cause where it is known, and what changed.
 
 | # | Seen | Cause | Change |

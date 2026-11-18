@@ -1,4 +1,4 @@
-# Frozen build configuration - CLAUDE.md section 3. The physical board and the
+# Frozen build configuration (firmware/README.md). The physical board and the
 # simulator run the same binaries, so this file governs both.
 CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
 CONFIG_ESPTOOLPY_FLASHFREQ_40M=y
